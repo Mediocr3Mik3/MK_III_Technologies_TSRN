@@ -1,0 +1,33 @@
+{
+  "model": "TropFormer (untrained)",
+  "maslov_temps": {
+    "block_0": [
+      1.0,
+      1.0
+    ],
+    "block_1": [
+      1.0,
+      1.0
+    ]
+  },
+  "gates": {
+    "blocks.0.attn.score_gate": 0.11920291930437088,
+    "blocks.0.ffn.gate_proj": 0.11920291930437088,
+    "blocks.1.attn.score_gate": 0.11920291930437088,
+    "blocks.1.ffn.gate_proj": 0.11920291930437088
+  },
+  "routing_stats": [
+    {
+      "layer": "blocks.0.ffn.trop_up",
+      "in_features": 64,
+      "out_features": 128,
+      "avg_unique_winners": 19.15625
+    },
+    {
+      "layer": "blocks.1.ffn.trop_up",
+      "in_features": 64,
+      "out_features": 128,
+      "avg_unique_winners": 25.4375
+    }
+  ]
+}

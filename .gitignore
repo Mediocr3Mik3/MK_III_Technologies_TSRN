@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv*/
+venv*/
+
+# Data files (too large for git)
+data/
+*.bin
+enwik8
+enwik8.zip
+
+# Checkpoints (large model files)
+checkpoints/*.pt
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Byte-compiled
+*.pyc
+
+# Logs
+*.log

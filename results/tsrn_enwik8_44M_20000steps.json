@@ -1,0 +1,827 @@
+{
+  "run": "tsrn_enwik8_convergence",
+  "config": {
+    "d_model": 640,
+    "context": 256,
+    "n_blocks": 4,
+    "n_heads": 8,
+    "top_k": 16,
+    "mem_depth": 7,
+    "n_steps": 20000,
+    "batch_size": 4,
+    "lr": 0.0002,
+    "vocab_size": 205,
+    "tokenization": "byte-level (latin-1)"
+  },
+  "params": 45097650,
+  "val": {
+    "bpc": 0.9545,
+    "ppl": 1.938
+  },
+  "test": {
+    "bpc": 0.9406,
+    "ppl": 1.919
+  },
+  "best_val_bpc": 0.943,
+  "training_log": [
+    {
+      "step": 1,
+      "train_loss": 5.3651,
+      "train_bpc": 7.7402,
+      "val_loss": 5.31911,
+      "val_ppl": 204.201,
+      "val_bpc": 7.6738,
+      "grad_norm": 8.1862,
+      "lr": 1e-07,
+      "wall_time_s": 15.1,
+      "ms_per_step": 15093.8
+    },
+    {
+      "step": 400,
+      "train_loss": 2.20568,
+      "train_bpc": 3.1821,
+      "val_loss": 1.94968,
+      "val_ppl": 7.026,
+      "val_bpc": 2.8128,
+      "grad_norm": 2.7486,
+      "lr": 4e-05,
+      "wall_time_s": 470.9,
+      "ms_per_step": 1177.2
+    },
+    {
+      "step": 800,
+      "train_loss": 1.29031,
+      "train_bpc": 1.8615,
+      "val_loss": 1.3231,
+      "val_ppl": 3.755,
+      "val_bpc": 1.9088,
+      "grad_norm": 1.6008,
+      "lr": 8e-05,
+      "wall_time_s": 931.7,
+      "ms_per_step": 1164.6
+    },
+    {
+      "step": 1200,
+      "train_loss": 1.33074,
+      "train_bpc": 1.9199,
+      "val_loss": 1.1447,
+      "val_ppl": 3.142,
+      "val_bpc": 1.6515,
+      "grad_norm": 1.5665,
+      "lr": 0.00012,
+      "wall_time_s": 1391.0,
+      "ms_per_step": 1159.2
+    },
+    {
+      "step": 1600,
+      "train_loss": 1.30704,
+      "train_bpc": 1.8857,
+      "val_loss": 1.07239,
+      "val_ppl": 2.922,
+      "val_bpc": 1.5471,
+      "grad_norm": 1.2591,
+      "lr": 0.00016,
+      "wall_time_s": 1852.9,
+      "ms_per_step": 1158.0
+    },
+    {
+      "step": 2000,
+      "train_loss": 0.95052,
+      "train_bpc": 1.3713,
+      "val_loss": 1.03353,
+      "val_ppl": 2.811,
+      "val_bpc": 1.4911,
+      "grad_norm": 0.9854,
+      "lr": 0.0002,
+      "wall_time_s": 2318.2,
+      "ms_per_step": 1159.1
+    },
+    {
+      "step": 2400,
+      "train_loss": 1.01132,
+      "train_bpc": 1.459,
+      "val_loss": 1.01109,
+      "val_ppl": 2.749,
+      "val_bpc": 1.4587,
+      "grad_norm": 0.9554,
+      "lr": 0.0001998,
+      "wall_time_s": 2780.5,
+      "ms_per_step": 1158.5
+    },
+    {
+      "step": 2800,
+      "train_loss": 0.92464,
+      "train_bpc": 1.334,
+      "val_loss": 0.93686,
+      "val_ppl": 2.552,
+      "val_bpc": 1.3516,
+      "grad_norm": 0.9578,
+      "lr": 0.0001991,
+      "wall_time_s": 3233.5,
+      "ms_per_step": 1154.8
+    },
+    {
+      "step": 3200,
+      "train_loss": 1.02527,
+      "train_bpc": 1.4792,
+      "val_loss": 0.9205,
+      "val_ppl": 2.511,
+      "val_bpc": 1.328,
+      "grad_norm": 0.9275,
+      "lr": 0.000198,
+      "wall_time_s": 3684.9,
+      "ms_per_step": 1151.5
+    },
+    {
+      "step": 3600,
+      "train_loss": 1.05346,
+      "train_bpc": 1.5198,
+      "val_loss": 0.89311,
+      "val_ppl": 2.443,
+      "val_bpc": 1.2885,
+      "grad_norm": 0.9122,
+      "lr": 0.0001965,
+      "wall_time_s": 4125.7,
+      "ms_per_step": 1146.0
+    },
+    {
+      "step": 4000,
+      "train_loss": 0.91192,
+      "train_bpc": 1.3156,
+      "val_loss": 0.8963,
+      "val_ppl": 2.451,
+      "val_bpc": 1.2931,
+      "grad_norm": 0.9598,
+      "lr": 0.0001946,
+      "wall_time_s": 4577.4,
+      "ms_per_step": 1144.3
+    },
+    {
+      "step": 4400,
+      "train_loss": 1.00042,
+      "train_bpc": 1.4433,
+      "val_loss": 0.89583,
+      "val_ppl": 2.449,
+      "val_bpc": 1.2924,
+      "grad_norm": 0.9375,
+      "lr": 0.0001922,
+      "wall_time_s": 5030.2,
+      "ms_per_step": 1143.2
+    },
+    {
+      "step": 4800,
+      "train_loss": 0.88153,
+      "train_bpc": 1.2718,
+      "val_loss": 0.84332,
+      "val_ppl": 2.324,
+      "val_bpc": 1.2167,
+      "grad_norm": 0.9306,
+      "lr": 0.0001895,
+      "wall_time_s": 5484.5,
+      "ms_per_step": 1142.6
+    },
+    {
+      "step": 5200,
+      "train_loss": 0.8074,
+      "train_bpc": 1.1648,
+      "val_loss": 0.82521,
+      "val_ppl": 2.282,
+      "val_bpc": 1.1905,
+      "grad_norm": 0.8497,
+      "lr": 0.0001863,
+      "wall_time_s": 5972.1,
+      "ms_per_step": 1148.5
+    },
+    {
+      "step": 5600,
+      "train_loss": 0.85567,
+      "train_bpc": 1.2345,
+      "val_loss": 0.83288,
+      "val_ppl": 2.3,
+      "val_bpc": 1.2016,
+      "grad_norm": 0.8795,
+      "lr": 0.0001828,
+      "wall_time_s": 6426.7,
+      "ms_per_step": 1147.6
+    },
+    {
+      "step": 6000,
+      "train_loss": 0.79886,
+      "train_bpc": 1.1525,
+      "val_loss": 0.80374,
+      "val_ppl": 2.234,
+      "val_bpc": 1.1595,
+      "grad_norm": 0.8879,
+      "lr": 0.0001789,
+      "wall_time_s": 6882.3,
+      "ms_per_step": 1147.0
+    },
+    {
+      "step": 6400,
+      "train_loss": 0.78269,
+      "train_bpc": 1.1292,
+      "val_loss": 0.80798,
+      "val_ppl": 2.243,
+      "val_bpc": 1.1657,
+      "grad_norm": 0.9322,
+      "lr": 0.0001747,
+      "wall_time_s": 7338.0,
+      "ms_per_step": 1146.6
+    },
+    {
+      "step": 6800,
+      "train_loss": 0.84691,
+      "train_bpc": 1.2218,
+      "val_loss": 0.75294,
+      "val_ppl": 2.123,
+      "val_bpc": 1.0863,
+      "grad_norm": 0.7999,
+      "lr": 0.0001702,
+      "wall_time_s": 7793.5,
+      "ms_per_step": 1146.1
+    },
+    {
+      "step": 7200,
+      "train_loss": 0.83418,
+      "train_bpc": 1.2035,
+      "val_loss": 0.78297,
+      "val_ppl": 2.188,
+      "val_bpc": 1.1296,
+      "grad_norm": 0.8105,
+      "lr": 0.0001654,
+      "wall_time_s": 8244.8,
+      "ms_per_step": 1145.1
+    },
+    {
+      "step": 7600,
+      "train_loss": 0.81013,
+      "train_bpc": 1.1688,
+      "val_loss": 0.77301,
+      "val_ppl": 2.166,
+      "val_bpc": 1.1152,
+      "grad_norm": 0.7727,
+      "lr": 0.0001603,
+      "wall_time_s": 8694.0,
+      "ms_per_step": 1143.9
+    },
+    {
+      "step": 8000,
+      "train_loss": 0.82059,
+      "train_bpc": 1.1839,
+      "val_loss": 0.74721,
+      "val_ppl": 2.111,
+      "val_bpc": 1.078,
+      "grad_norm": 0.8881,
+      "lr": 0.000155,
+      "wall_time_s": 9133.5,
+      "ms_per_step": 1141.7
+    },
+    {
+      "step": 8400,
+      "train_loss": 0.76301,
+      "train_bpc": 1.1008,
+      "val_loss": 0.78675,
+      "val_ppl": 2.196,
+      "val_bpc": 1.135,
+      "grad_norm": 0.8719,
+      "lr": 0.0001495,
+      "wall_time_s": 9577.8,
+      "ms_per_step": 1140.2
+    },
+    {
+      "step": 8800,
+      "train_loss": 0.83393,
+      "train_bpc": 1.2031,
+      "val_loss": 0.77381,
+      "val_ppl": 2.168,
+      "val_bpc": 1.1164,
+      "grad_norm": 0.821,
+      "lr": 0.0001437,
+      "wall_time_s": 10044.8,
+      "ms_per_step": 1141.5
+    },
+    {
+      "step": 9200,
+      "train_loss": 0.78056,
+      "train_bpc": 1.1261,
+      "val_loss": 0.73514,
+      "val_ppl": 2.086,
+      "val_bpc": 1.0606,
+      "grad_norm": 0.8499,
+      "lr": 0.0001378,
+      "wall_time_s": 10511.2,
+      "ms_per_step": 1142.5
+    },
+    {
+      "step": 9600,
+      "train_loss": 0.73871,
+      "train_bpc": 1.0657,
+      "val_loss": 0.75058,
+      "val_ppl": 2.118,
+      "val_bpc": 1.0829,
+      "grad_norm": 0.8263,
+      "lr": 0.0001318,
+      "wall_time_s": 10978.6,
+      "ms_per_step": 1143.6
+    },
+    {
+      "step": 10000,
+      "train_loss": 0.79221,
+      "train_bpc": 1.1429,
+      "val_loss": 0.76328,
+      "val_ppl": 2.145,
+      "val_bpc": 1.1012,
+      "grad_norm": 0.7675,
+      "lr": 0.0001256,
+      "wall_time_s": 11444.6,
+      "ms_per_step": 1144.5
+    },
+    {
+      "step": 10400,
+      "train_loss": 0.79615,
+      "train_bpc": 1.1486,
+      "val_loss": 0.74042,
+      "val_ppl": 2.097,
+      "val_bpc": 1.0682,
+      "grad_norm": 0.8507,
+      "lr": 0.0001194,
+      "wall_time_s": 11941.8,
+      "ms_per_step": 1148.2
+    },
+    {
+      "step": 10800,
+      "train_loss": 0.56347,
+      "train_bpc": 0.8129,
+      "val_loss": 0.73321,
+      "val_ppl": 2.082,
+      "val_bpc": 1.0578,
+      "grad_norm": 0.7185,
+      "lr": 0.0001131,
+      "wall_time_s": 12408.2,
+      "ms_per_step": 1148.9
+    },
+    {
+      "step": 11200,
+      "train_loss": 0.70011,
+      "train_bpc": 1.01,
+      "val_loss": 0.72616,
+      "val_ppl": 2.067,
+      "val_bpc": 1.0476,
+      "grad_norm": 0.8849,
+      "lr": 0.0001069,
+      "wall_time_s": 12875.5,
+      "ms_per_step": 1149.6
+    },
+    {
+      "step": 11600,
+      "train_loss": 0.84304,
+      "train_bpc": 1.2163,
+      "val_loss": 0.71601,
+      "val_ppl": 2.046,
+      "val_bpc": 1.033,
+      "grad_norm": 0.9569,
+      "lr": 0.0001006,
+      "wall_time_s": 13335.5,
+      "ms_per_step": 1149.6
+    },
+    {
+      "step": 12000,
+      "train_loss": 0.78909,
+      "train_bpc": 1.1384,
+      "val_loss": 0.72398,
+      "val_ppl": 2.063,
+      "val_bpc": 1.0445,
+      "grad_norm": 0.9037,
+      "lr": 9.44e-05,
+      "wall_time_s": 13795.8,
+      "ms_per_step": 1149.6
+    },
+    {
+      "step": 12400,
+      "train_loss": 0.77804,
+      "train_bpc": 1.1225,
+      "val_loss": 0.72594,
+      "val_ppl": 2.067,
+      "val_bpc": 1.0473,
+      "grad_norm": 0.8264,
+      "lr": 8.82e-05,
+      "wall_time_s": 14254.4,
+      "ms_per_step": 1149.5
+    },
+    {
+      "step": 12800,
+      "train_loss": 0.67969,
+      "train_bpc": 0.9806,
+      "val_loss": 0.7242,
+      "val_ppl": 2.063,
+      "val_bpc": 1.0448,
+      "grad_norm": 0.8458,
+      "lr": 8.22e-05,
+      "wall_time_s": 14709.8,
+      "ms_per_step": 1149.2
+    },
+    {
+      "step": 13200,
+      "train_loss": 0.68708,
+      "train_bpc": 0.9912,
+      "val_loss": 0.72779,
+      "val_ppl": 2.07,
+      "val_bpc": 1.05,
+      "grad_norm": 0.8132,
+      "lr": 7.63e-05,
+      "wall_time_s": 15165.9,
+      "ms_per_step": 1148.9
+    },
+    {
+      "step": 13600,
+      "train_loss": 0.72634,
+      "train_bpc": 1.0479,
+      "val_loss": 0.6718,
+      "val_ppl": 1.958,
+      "val_bpc": 0.9692,
+      "grad_norm": 0.8285,
+      "lr": 7.05e-05,
+      "wall_time_s": 15623.0,
+      "ms_per_step": 1148.8
+    },
+    {
+      "step": 14000,
+      "train_loss": 0.66954,
+      "train_bpc": 0.9659,
+      "val_loss": 0.68091,
+      "val_ppl": 1.976,
+      "val_bpc": 0.9823,
+      "grad_norm": 0.7976,
+      "lr": 6.5e-05,
+      "wall_time_s": 16080.7,
+      "ms_per_step": 1148.6
+    },
+    {
+      "step": 14400,
+      "train_loss": 0.67259,
+      "train_bpc": 0.9703,
+      "val_loss": 0.70221,
+      "val_ppl": 2.018,
+      "val_bpc": 1.0131,
+      "grad_norm": 0.8005,
+      "lr": 5.97e-05,
+      "wall_time_s": 16536.2,
+      "ms_per_step": 1148.3
+    },
+    {
+      "step": 14800,
+      "train_loss": 0.75908,
+      "train_bpc": 1.0951,
+      "val_loss": 0.67855,
+      "val_ppl": 1.971,
+      "val_bpc": 0.9789,
+      "grad_norm": 0.8746,
+      "lr": 5.46e-05,
+      "wall_time_s": 16997.0,
+      "ms_per_step": 1148.4
+    },
+    {
+      "step": 15200,
+      "train_loss": 0.4321,
+      "train_bpc": 0.6234,
+      "val_loss": 0.68888,
+      "val_ppl": 1.991,
+      "val_bpc": 0.9938,
+      "grad_norm": 0.6369,
+      "lr": 4.98e-05,
+      "wall_time_s": 17486.7,
+      "ms_per_step": 1150.4
+    },
+    {
+      "step": 15600,
+      "train_loss": 0.66292,
+      "train_bpc": 0.9564,
+      "val_loss": 0.68273,
+      "val_ppl": 1.979,
+      "val_bpc": 0.985,
+      "grad_norm": 0.8396,
+      "lr": 4.53e-05,
+      "wall_time_s": 17945.0,
+      "ms_per_step": 1150.3
+    },
+    {
+      "step": 16000,
+      "train_loss": 0.65393,
+      "train_bpc": 0.9434,
+      "val_loss": 0.67071,
+      "val_ppl": 1.956,
+      "val_bpc": 0.9676,
+      "grad_norm": 0.8764,
+      "lr": 4.11e-05,
+      "wall_time_s": 18404.7,
+      "ms_per_step": 1150.3
+    },
+    {
+      "step": 16400,
+      "train_loss": 0.68507,
+      "train_bpc": 0.9883,
+      "val_loss": 0.70355,
+      "val_ppl": 2.021,
+      "val_bpc": 1.015,
+      "grad_norm": 0.8144,
+      "lr": 3.72e-05,
+      "wall_time_s": 18863.1,
+      "ms_per_step": 1150.2
+    },
+    {
+      "step": 16800,
+      "train_loss": 0.60997,
+      "train_bpc": 0.88,
+      "val_loss": 0.66902,
+      "val_ppl": 1.952,
+      "val_bpc": 0.9652,
+      "grad_norm": 0.7602,
+      "lr": 3.37e-05,
+      "wall_time_s": 19318.3,
+      "ms_per_step": 1149.9
+    },
+    {
+      "step": 17200,
+      "train_loss": 0.78993,
+      "train_bpc": 1.1396,
+      "val_loss": 0.65364,
+      "val_ppl": 1.923,
+      "val_bpc": 0.943,
+      "grad_norm": 0.9067,
+      "lr": 3.05e-05,
+      "wall_time_s": 19773.9,
+      "ms_per_step": 1149.6
+    },
+    {
+      "step": 17600,
+      "train_loss": 0.69379,
+      "train_bpc": 1.0009,
+      "val_loss": 0.68162,
+      "val_ppl": 1.977,
+      "val_bpc": 0.9834,
+      "grad_norm": 0.9286,
+      "lr": 2.78e-05,
+      "wall_time_s": 20229.3,
+      "ms_per_step": 1149.4
+    },
+    {
+      "step": 18000,
+      "train_loss": 0.56358,
+      "train_bpc": 0.8131,
+      "val_loss": 0.68144,
+      "val_ppl": 1.977,
+      "val_bpc": 0.9831,
+      "grad_norm": 0.7891,
+      "lr": 2.54e-05,
+      "wall_time_s": 20685.5,
+      "ms_per_step": 1149.2
+    },
+    {
+      "step": 18400,
+      "train_loss": 0.76843,
+      "train_bpc": 1.1086,
+      "val_loss": 0.6613,
+      "val_ppl": 1.937,
+      "val_bpc": 0.954,
+      "grad_norm": 0.9479,
+      "lr": 2.35e-05,
+      "wall_time_s": 21141.6,
+      "ms_per_step": 1149.0
+    },
+    {
+      "step": 18800,
+      "train_loss": 0.65192,
+      "train_bpc": 0.9405,
+      "val_loss": 0.65598,
+      "val_ppl": 1.927,
+      "val_bpc": 0.9464,
+      "grad_norm": 0.8689,
+      "lr": 2.2e-05,
+      "wall_time_s": 21597.5,
+      "ms_per_step": 1148.8
+    },
+    {
+      "step": 19200,
+      "train_loss": 0.66752,
+      "train_bpc": 0.963,
+      "val_loss": 0.66077,
+      "val_ppl": 1.936,
+      "val_bpc": 0.9533,
+      "grad_norm": 0.8891,
+      "lr": 2.09e-05,
+      "wall_time_s": 22053.1,
+      "ms_per_step": 1148.6
+    },
+    {
+      "step": 19600,
+      "train_loss": 0.73583,
+      "train_bpc": 1.0616,
+      "val_loss": 0.6652,
+      "val_ppl": 1.945,
+      "val_bpc": 0.9597,
+      "grad_norm": 0.8851,
+      "lr": 2.02e-05,
+      "wall_time_s": 22509.1,
+      "ms_per_step": 1148.4
+    },
+    {
+      "step": 20000,
+      "train_loss": 0.67283,
+      "train_bpc": 0.9707,
+      "val_loss": 0.66439,
+      "val_ppl": 1.943,
+      "val_bpc": 0.9585,
+      "grad_norm": 0.8456,
+      "lr": 2e-05,
+      "wall_time_s": 22965.3,
+      "ms_per_step": 1148.3
+    }
+  ],
+  "quality_benchmark": {
+    "label": "TSRN",
+    "prompts": [
+      {
+        "prompt": "The history of mathematics ",
+        "generated": "Herbeland King</time>\n  <page>\n Davice</time>\n</te>\n</te>\n  </text>\n  </text>\n  </text>\n  </te>\nre</time>\n  </text>\n//te>\n  </te>\nextext>\n//time>\n  </text>\n  </text>\n__EUthamOS</time>\n  </te>\n!sky</time>\nxmale>\n    </revistanco</title>\n    <id>4172</id>\n    <revision>\n      <id>40913045</id>\n      <",
+        "generation_stats": {
+          "chars_per_sec": 6.9,
+          "mean_entropy": 0.865,
+          "mean_top1_prob": 0.7891
+        },
+        "text_metrics": {
+          "n_chars": 300,
+          "n_words": 27,
+          "unique_word_ratio": 0.667,
+          "avg_word_length": 8.48,
+          "trigram_repeat_ratio": 0.0,
+          "alpha_ratio": 0.46,
+          "sentence_count": 1,
+          "avg_sentence_length": 27.0,
+          "max_char_run": 6,
+          "degenerate": false
+        }
+      },
+      {
+        "prompt": "In the year 1776, ",
+        "generated": "and [[RicT]], and the first-weet (they alte-beta + 20*8*3\n\n/he [[= Juline\u00c2\u00b0Q]]) of Grine Hend in \u0088 \t\n\n== Hind of Grim2==\n[[he:\u00d7\u00b0\u00d75\u00d7\u009d \u00efahu\u00ca\u00b2\u00b5\u00e796\u00eb\u00b4\u00cd\u00eb\u00bc]]</text>\n [[Re\u00b8nL Rich]]\n[[ja:\u00d8\u0081\u00d9\u0086\u00db\u0089\u00da\u00a9\u00c7\u00a6\u00c7\u00ac\u00de]]</text>\n xxpartin>\n  </te>\n''SeknieleX'ahugrically, Minnish people in [[Simonica de Great]]\n\n===Constituti",
+        "generation_stats": {
+          "chars_per_sec": 6.9,
+          "mean_entropy": 2.007,
+          "mean_top1_prob": 0.5087
+        },
+        "text_metrics": {
+          "n_chars": 300,
+          "n_words": 36,
+          "unique_word_ratio": 0.917,
+          "avg_word_length": 7.11,
+          "trigram_repeat_ratio": 0.0,
+          "alpha_ratio": 0.58,
+          "sentence_count": 0,
+          "avg_sentence_length": 36.0,
+          "max_char_run": 3,
+          "degenerate": false
+        }
+      },
+      {
+        "prompt": "The quantum mechanical ",
+        "generated": "enouncing \u0099ut Athl# Ru2 \u00da\u00b0E Chingers&are; Everge; OrnifiZ</celt>\n    </revis</time>\n  <p>29.Athl:Ath SquistancOl*S\u00be</comwexxpresJ</cal2.png|RA\u00d8\u00a7\u00d9\u0084\u00db\u008c\u00d3\u00b7\u00ea\u00bc\u00cd</the>\nva\u00a8Sus PO]]\n</text>\n  </te>\nship>\n\u00d1\u0081reon>\n! Dame\u00af Inc. 'Invaring\u0097urn</tixtext>\n    </revision>\n  </page>\n  <page>\n    <title>Darwin</title>\n",
+        "generation_stats": {
+          "chars_per_sec": 6.8,
+          "mean_entropy": 1.659,
+          "mean_top1_prob": 0.6092
+        },
+        "text_metrics": {
+          "n_chars": 300,
+          "n_words": 25,
+          "unique_word_ratio": 1.0,
+          "avg_word_length": 10.2,
+          "trigram_repeat_ratio": 0.0,
+          "alpha_ratio": 0.613,
+          "sentence_count": 4,
+          "avg_sentence_length": 6.2,
+          "max_char_run": 4,
+          "degenerate": false
+        }
+      },
+      {
+        "prompt": "Once upon a time, there was a ",
+        "generated": "high Fourt \u00c2\u00b00 \u00da\u00b2\u00d9\u0082\u00db\u009b\u00d9\u0084\u00d9\u0083\u00d4\u00b7\u00da\u00bc\u00d3\u00e5\"\u00e6\u00e3\u0083\" \u00a7)\u00b5[\u008a ZOM, F\u00c6LU (of \u00d5\u0081\u0099)e \u00d7\u00a7\u00f0 \u00d7\u0098\u00d7\u0095\u00cc\u00ec\u00d9\u00a1\u00cd\u009e\u00d8\u00b1\u00dc, \u00e6\u00a4\u00b2\u00e4\u00ba\u00f0\u00b7\u00da\u00a7\u00c6\u00b5\"\u00e5\u00a6\u00b0\u00ca\u008d@\u008c\u00c8\u008b\u00f0\u0089; \u00dc\u0080\u009d(\u00e8\u0093\u00d6\u009d\u00d9\u0085\u00c7\u00ec[); Co\u00f0\u00ac\n \u00a9 La\u009ay andel (\u00aa\u00aa\u00ef)\t \u00c8\u00a7>\n\n=== Recort */\u00d7\u0099\u00da\u00a3\u00c6\u0095\u00de\u00be\u00da\u0093\u00d6\u0092`\u00bc\"\u008a\u00db\u00b0[Rhen Qu\n\n\u00d9\u0083\u00bb\u00e3\u0083\u0080\u00e3\u0082\"\u00e3\u0083\u00b4\u00e3\u0083\u00b3\u00e3\u0083\u0089\u00e3\u0083\u00b3\u00e3\u0083\u0089\u00e3\u0083\u00c8\u00e3\u0083\u00ac\u00e3\u0083\u0090\u00e3\u0082\u00a2\u00e3\u0083\u00bc\u00e3\u0082\u00b9\u00e3\u0083\u00ab\u00e5\u0082\u00b9\u00c2\u009b\u0098]] (''X'')==\n[[Finding (coming)|The Galin (Gorth]] ([[",
+        "generation_stats": {
+          "chars_per_sec": 6.5,
+          "mean_entropy": 2.99,
+          "mean_top1_prob": 0.33
+        },
+        "text_metrics": {
+          "n_chars": 300,
+          "n_words": 31,
+          "unique_word_ratio": 1.0,
+          "avg_word_length": 8.58,
+          "trigram_repeat_ratio": 0.0,
+          "alpha_ratio": 0.45,
+          "sentence_count": 0,
+          "avg_sentence_length": 31.0,
+          "max_char_run": 3,
+          "degenerate": false
+        }
+      },
+      {
+        "prompt": "The old man walked slowly through the ",
+        "generated": "relighting \u0099athernmand #c96ay\u00b6a\" \u00e3\u0083>\n[[Amay Repie|A3]] ([[184\"]]) wough [[L_S$]]). By anywhol\u00bd\u0080\u009d [[Kl\u00ef]] /{Therla\"NIV}}n-[[\u0084o\u009d\u009d(F\u00cb\u00a7\u00b0)\u00c7\u0088\u00f0 \u00ca\u0094\u00d9\u0085\u00d8\u00b1\u00c8\u00eb\u0083\u00a0\u00ed\u0082\u00cc\u0093\u009d\u0083\u00de\u00cf\u00ef\u0089G=\u00a9(\u00d4\u008b\u00d5]]\n\u00e1{\u00de\u008c\u008e\u00b4\u00c7\u00bf\u00c6\u00e5\u008b#\u00e8\u0081\u00c6\u0080\u00d5\u00b7\u00d3\u00ce\u00b5|\u00e1\u0083Trefx|A)}}UUL @\u00b2\u00e0\u00a4\u00d4\u00e0\u00cd\u00b7\u00ca\u0090\u00dc\u00eb\u00b6\u00af d \u00c5\u0092a}} decision of the [[January]] ([[Barona Language|September]] ({{flag|thumb",
+        "generation_stats": {
+          "chars_per_sec": 6.3,
+          "mean_entropy": 2.523,
+          "mean_top1_prob": 0.4186
+        },
+        "text_metrics": {
+          "n_chars": 300,
+          "n_words": 27,
+          "unique_word_ratio": 1.0,
+          "avg_word_length": 10.15,
+          "trigram_repeat_ratio": 0.0,
+          "alpha_ratio": 0.55,
+          "sentence_count": 1,
+          "avg_sentence_length": 27.0,
+          "max_char_run": 2,
+          "degenerate": false
+        }
+      },
+      {
+        "prompt": "A system of linear equations can be solved by ",
+        "generated": "then the Qual\u00d4\u0083\u00e4quaptis\u00a1 = </commit>\n|-\n!The Underson's solk = [[:IPA]], Of c\u00a1n capQus +2\n|Q\n! [[\u0098ir \u00a5honox]]\n|-\n! Corp\n|>\n! ~?\u00b0Ik\n! \u008a \u00a3 CPD \n! &amp;#xed; x&lt;/ci;&qu;&lt;befor; \n! [[Geotta Kiqux]],\n|{{Martia>\n!  note|places = [[Flowing Floxflow]]\n| \n! space=\"present; | [[Lord Floxford Strict]], [[",
+        "generation_stats": {
+          "chars_per_sec": 6.3,
+          "mean_entropy": 1.86,
+          "mean_top1_prob": 0.5484
+        },
+        "text_metrics": {
+          "n_chars": 300,
+          "n_words": 49,
+          "unique_word_ratio": 0.776,
+          "avg_word_length": 5.06,
+          "trigram_repeat_ratio": 0.0,
+          "alpha_ratio": 0.547,
+          "sentence_count": 10,
+          "avg_sentence_length": 4.9,
+          "max_char_run": 2,
+          "degenerate": false
+        }
+      },
+      {
+        "prompt": "The algorithm processes each element in ",
+        "generated": "the sample, it early \u00b9there in Euron.&quo;;\n* 'SchoLaGhel`'elf, ''Fil\u009c'', ''S6'', ''SA,>\n* [[Grovy Wa%]], ''The(SEE, Steir En. In Schoore, Other You'no?\n* \tJA, &qurrays Ma\u00b2 Rocket\n* ''The Filkyl Mangzer'')\n* &qu; \u00d1dim'' ([[Walk]] (''Group)\n* [[Kover Stagger]], ''[[May Lovel News]], ''Kimber of Marin",
+        "generation_stats": {
+          "chars_per_sec": 6.4,
+          "mean_entropy": 2.003,
+          "mean_top1_prob": 0.5007
+        },
+        "text_metrics": {
+          "n_chars": 300,
+          "n_words": 45,
+          "unique_word_ratio": 0.867,
+          "avg_word_length": 5.67,
+          "trigram_repeat_ratio": 0.0,
+          "alpha_ratio": 0.58,
+          "sentence_count": 3,
+          "avg_sentence_length": 15.0,
+          "max_char_run": 2,
+          "degenerate": false
+        }
+      },
+      {
+        "prompt": "The relationship between structure and function ",
+        "generated": "on [[Zhpa\u00cb\u00a9'strum:1\u00e8\u009b\u00bc\u00e5\u00b3\u00b1\u00ea\u00b9\u00d9\u0086\u00db\u00a8\u00d9\u0082\u00c7\u00e3\u0082\u00b8\u00e3\u0083\"\u00e3\u0083\u00a1\u00e3\u0082\u00a3\u00e3\u0083\u0087\u00e3\u0083>\u00e3\u0083\u0090\u00e3\u0083\u00da\u009b\u00d9\u0085`\u0092\u00d8\u00a7\u00eb\u008c\u00da\u00b7\u00cc\u00af\u00d6\u00bd\u00a9]] [[Jo\u00db\u0081\u008dweb&quot;\n|- \n|{{\u00e3umm}}\n|Exam\u008f{{IPA|{\u00d0\u00a5\u00d1\u0081\u00d0\u00bd\u00d1\u0083\u00d1\u0082\u00d0\u00b8\u00d1\u0081\u00d1\u0080\u00d0\u00be\u00d1\u0080\u00d0\u00b0\u00d1\u0082\u00d1\u008f\u00d0\u00b5\u00d0\u00bc\u00d1\u0080\u00d0\u00b5\u00d1\u0082\u00d0\u00b0\u00d0\u00bd\u00d0\u00bd\u00d1\u00d1\u00d0\u00b2\u00d0\u00b0\u00d0\u00b2\u00d1\u0080\u00d0\u00b5\u00d1\u0087\u00d0\u00b0\u00d1\u0080\u00d0\u00b9\u00d0\u00b4\u00d0\u00b8\u00d0\u00bd\u00d0\u00b8\u00d0\u00ba\u00d0\u00b0\u00d0\u00ba\u00d1\u008b\u00d0\u00be\u00d0\u00b1\u00d0\u00b0\u00d0\u00b8\u00d0\u00b7]]||\n|-\n|'''[[Run Haye Johnston]]'''||[[Campaign Fernston]]||\n|-\n|           ||      ||\n|-\n",
+        "generation_stats": {
+          "chars_per_sec": 6.3,
+          "mean_entropy": 1.998,
+          "mean_top1_prob": 0.4825
+        },
+        "text_metrics": {
+          "n_chars": 300,
+          "n_words": 17,
+          "unique_word_ratio": 0.765,
+          "avg_word_length": 15.71,
+          "trigram_repeat_ratio": 0.0,
+          "alpha_ratio": 0.453,
+          "sentence_count": 0,
+          "avg_sentence_length": 17.0,
+          "max_char_run": 11,
+          "degenerate": true
+        }
+      }
+    ],
+    "aggregate": {
+      "avg_unique_word_ratio": 0.874,
+      "avg_trigram_repeat": 0.0,
+      "avg_word_length": 8.87,
+      "degenerate_count": 1,
+      "total_prompts": 8
+    }
+  },
+  "hardware": {
+    "gpu": "AMD RX 6750 XT (12GB, DirectML)",
+    "gpu_tdp_watts": 186,
+    "wall_time_hours": 6.53,
+    "gpu_energy_kwh": 1.215,
+    "ms_per_step_avg": 1175.7
+  }
+}

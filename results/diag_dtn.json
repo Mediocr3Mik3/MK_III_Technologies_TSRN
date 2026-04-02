@@ -1,0 +1,57 @@
+{
+  "model": "DTN (untrained)",
+  "maslov_temps": {
+    "block_0": [
+      1.0,
+      1.0
+    ],
+    "block_1": [
+      1.0,
+      1.0
+    ]
+  },
+  "gates": {
+    "block_0_attn_gate": 0.8807970285415649,
+    "block_0_ffn_gate": 0.8807969689369202,
+    "block_1_attn_gate": 0.8807970285415649,
+    "block_1_ffn_gate": 0.8807969689369202
+  },
+  "routing_stats": [
+    {
+      "layer": "blocks.0.attn.q_proj",
+      "in_features": 64,
+      "out_features": 64,
+      "avg_unique_winners": 34.375
+    },
+    {
+      "layer": "blocks.0.attn.k_proj",
+      "in_features": 64,
+      "out_features": 64,
+      "avg_unique_winners": 33.96875
+    },
+    {
+      "layer": "blocks.0.ffn.trop_up",
+      "in_features": 64,
+      "out_features": 128,
+      "avg_unique_winners": 29.53125
+    },
+    {
+      "layer": "blocks.1.attn.q_proj",
+      "in_features": 64,
+      "out_features": 64,
+      "avg_unique_winners": 3.15625
+    },
+    {
+      "layer": "blocks.1.attn.k_proj",
+      "in_features": 64,
+      "out_features": 64,
+      "avg_unique_winners": 3.3125
+    },
+    {
+      "layer": "blocks.1.ffn.trop_up",
+      "in_features": 64,
+      "out_features": 128,
+      "avg_unique_winners": 3.65625
+    }
+  ]
+}

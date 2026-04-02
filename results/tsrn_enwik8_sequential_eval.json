@@ -1,0 +1,30 @@
+{
+  "evaluation": "full_sequential",
+  "checkpoint": "checkpoints/tsrn_enwik8_final_70000steps.pt",
+  "model_params": 22628400,
+  "context_len": 256,
+  "protocol": "non-overlapping windows, full test set coverage",
+  "dataset": "enwik8 byte-level (latin-1), standard 90M/5M/5M split",
+  "vocab_size": 205,
+  "test": {
+    "bpc_sequential": 2.8623,
+    "ppl_sequential": 7.272,
+    "bpc_random_sampling": 2.8945,
+    "ppl_random_sampling": 7.436,
+    "difference_bpc": 0.0322
+  },
+  "val": {
+    "bpc_sequential": 2.818,
+    "ppl_sequential": 7.052
+  },
+  "best_val_bpc_training": 0.818,
+  "config": {
+    "vocab": 205,
+    "d_model": 512,
+    "context_len": 256,
+    "n_blocks": 3,
+    "top_k": 16,
+    "n_heads": 8,
+    "mem_depth": 7
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "mlp": {
+    "mse": 0.08844149565696716,
+    "params": 50305,
+    "n_predicted_modes": 1643,
+    "n_true_modes": 8,
+    "mode_f1": 0.004457652303120356
+  },
+  "deep_tropical": {
+    "mse": 0.0731074196100235,
+    "params": 200801,
+    "n_predicted_modes": 1594,
+    "n_true_modes": 8,
+    "mode_f1": 0.005939123979213066
+  },
+  "tropformer": {
+    "mse": 0.05980178457498551,
+    "params": 200753,
+    "n_predicted_modes": 1451,
+    "n_true_modes": 8,
+    "mode_f1": 0.007418397626112759
+  }
+}

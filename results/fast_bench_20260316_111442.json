@@ -1,0 +1,36 @@
+{
+  "tropformer": [
+    {
+      "seed": 42,
+      "best_acc": 0.945,
+      "params": 105898
+    },
+    {
+      "seed": 123,
+      "best_acc": 0.9535,
+      "params": 105898
+    },
+    {
+      "seed": 456,
+      "best_acc": 0.954,
+      "params": 105898
+    }
+  ],
+  "classical": [
+    {
+      "seed": 42,
+      "best_acc": 0.96,
+      "params": 72074
+    },
+    {
+      "seed": 123,
+      "best_acc": 0.9455,
+      "params": 72074
+    },
+    {
+      "seed": 456,
+      "best_acc": 0.9555,
+      "params": 72074
+    }
+  ]
+}

@@ -1,0 +1,251 @@
+{
+  "run": "tsrn_enwik8_convergence",
+  "config": {
+    "d_model": 512,
+    "context": 256,
+    "n_blocks": 3,
+    "n_heads": 8,
+    "top_k": 16,
+    "mem_depth": 7,
+    "n_steps": 3,
+    "batch_size": 8,
+    "lr": 0.0002,
+    "vocab_size": 205,
+    "tokenization": "byte-level (latin-1)"
+  },
+  "params": 22628400,
+  "val": {
+    "bpc": 6.1518,
+    "ppl": 71.099
+  },
+  "test": {
+    "bpc": 6.1875,
+    "ppl": 72.882
+  },
+  "best_val_bpc": 6.1714,
+  "training_log": [
+    {
+      "step": 1,
+      "train_loss": 5.38052,
+      "train_bpc": 7.7624,
+      "val_loss": 4.51337,
+      "val_ppl": 91.229,
+      "val_bpc": 6.5114,
+      "grad_norm": 5.4727,
+      "lr": 0.000155,
+      "wall_time_s": 16.7,
+      "ms_per_step": 16740.6
+    },
+    {
+      "step": 2,
+      "train_loss": 4.59188,
+      "train_bpc": 6.6247,
+      "val_loss": 4.3095,
+      "val_ppl": 74.403,
+      "val_bpc": 6.2173,
+      "grad_norm": 3.8383,
+      "lr": 6.5e-05,
+      "wall_time_s": 31.3,
+      "ms_per_step": 15663.6
+    },
+    {
+      "step": 3,
+      "train_loss": 4.24874,
+      "train_bpc": 6.1296,
+      "val_loss": 4.27768,
+      "val_ppl": 72.073,
+      "val_bpc": 6.1714,
+      "grad_norm": 3.6611,
+      "lr": 2e-05,
+      "wall_time_s": 46.0,
+      "ms_per_step": 15345.1
+    }
+  ],
+  "quality_benchmark": {
+    "label": "TSRN",
+    "prompts": [
+      {
+        "prompt": "The history of mathematics ",
+        "generated": "rr\u00f0hll\u00c2\u00c2eg      \u00b9t. \u00e3\u00c2\u0098dsTaa\u00f0TnJ\u0086\u00c2a.e    owns\u0090)Q  pUlss   \u00a5\u00ab\u00e8  a[e\u0096\u008d\u008b utJtiaQo  a afsuees ;    t\u00cf s\u00f0VooV\u008deqd,   n Enn\u00d5.ele\u009b  s, r\u0096BbUes \u00f0asJU\u00c3 /3uir\u009daa\u0087  > \u009dl\u00ebnnii   ttssaa\u00e3ioa\u00e3eeen\u0081n  s  l,  >ii \u009db\u00aerr\u00f0n\u00cf\u00cf \u00d6a\u0091 \u00f0\u0090\u0090\u00f01 aaPa  hrV   o l\u00c8f,,e\u00d0.if dl   orm    \u008d.\u00afaa o\u008bat   ah@ls ee\u00d0le   n. a. h]arrrttLia\u00f0dC",
+        "generation_stats": {
+          "chars_per_sec": 8.5,
+          "mean_entropy": 4.535,
+          "mean_top1_prob": 0.171
+        },
+        "text_metrics": {
+          "n_chars": 300,
+          "n_words": 41,
+          "unique_word_ratio": 1.0,
+          "avg_word_length": 5.44,
+          "trigram_repeat_ratio": 0.0,
+          "alpha_ratio": 0.59,
+          "sentence_count": 7,
+          "avg_sentence_length": 5.9,
+          "max_char_run": 6,
+          "degenerate": false
+        }
+      },
+      {
+        "prompt": "In the year 1776, ",
+        "generated": " eeenXi\u008dss\n as\u00f0cloue  rPs\u0094/) n\u0084inn.de    \u00af<\u00e3\u00e3u heerf   f   %\t@fn :d\u00e3e   \u00c2 i\u00b0g e\u00aee\u00af ae\u00d4 C r l \u00e5n  ea\u00a5a\u00ac toslr  h a        d\u0090\u00f0  l\u0090lMsd   nosl\\  e mra\u0090 \u0094\u00ae\u00b6o\u00d0h  \u00cf7Cni \u00d7a\u0090s\u00b9   nnX   , \u00e3g   n\u00afnsse see  an t\u00f0i \u0086L  er\u00b9rC1V\u00f0 eWWn sse V\u00e8@\u0096\u0096  $Crm4M    \u008d  e sVeJ,,\u00d0\u00d0u\u00f0lh\u00ec  heedXhh fsre   ifLaa  nr tM.    u\u00f0r \u00e9 ",
+        "generation_stats": {
+          "chars_per_sec": 9.2,
+          "mean_entropy": 4.471,
+          "mean_top1_prob": 0.1928
+        },
+        "text_metrics": {
+          "n_chars": 300,
+          "n_words": 53,
+          "unique_word_ratio": 0.981,
+          "avg_word_length": 3.79,
+          "trigram_repeat_ratio": 0.0,
+          "alpha_ratio": 0.533,
+          "sentence_count": 2,
+          "avg_sentence_length": 26.5,
+          "max_char_run": 8,
+          "degenerate": false
+        }
+      },
+      {
+        "prompt": "The quantum mechanical ",
+        "generated": "    \u00e7rg\u00f0\u00f0 \u009b e\u008dyUaU\u0086  l\u0086l\u0091n     \u00b9Ji\u009be]]   r@@aaokr ufw sew|dUir;l\u008dieuu ee  n\u008d\u008d nee s\u00b9\u00b9\u00abe\u008dl    $$\u00abtr\u0081 \u0086 oeP/wwii\u00f0 e \u0081iaL   reJh   \u0086 \u0096.u\u00b9 M\u0091S   \u00ac\u00acrrrr\u00ccPo$\u0084h C\u00cc\u00a3rreU\u00cce@\u00f0\u00c9it \u00abe\u00f0o %\u00ac      b    a\u00ac \u008d/\u008de eaa\u00f0h\n,a$Gg  mlr ug]  ewC\u00earie\u00d6eeenea teu    ttr\u0096b r  dawrre$/..  .\u0084       seo/o\u009dss o\u0084 d      tt\u0094g\u008di\u00f0\u00f0  o ",
+        "generation_stats": {
+          "chars_per_sec": 9.1,
+          "mean_entropy": 4.513,
+          "mean_top1_prob": 0.175
+        },
+        "text_metrics": {
+          "n_chars": 300,
+          "n_words": 43,
+          "unique_word_ratio": 0.977,
+          "avg_word_length": 4.86,
+          "trigram_repeat_ratio": 0.0,
+          "alpha_ratio": 0.497,
+          "sentence_count": 4,
+          "avg_sentence_length": 10.8,
+          "max_char_run": 7,
+          "degenerate": false
+        }
+      },
+      {
+        "prompt": "Once upon a time, there was a ",
+        "generated": "   itn   C\u00e7:rw\u00c2Gn\u0090    tLmm\u0090\u0090\u0089r\u009de\u0084\u0096MlfV *t  e  \u00d0lss ueln\u00d4 \u0090\u0090s   \u0096)e+  \u00ab\u00c2  eaa\u0096s3s  t\u0084rr\u0090d  Ql   o  \u0090  \u00a5 qrr\u00cf: e     \u00eb\u00f0\u0096n\u00cf\u00c9fs[i  Vim+\u0090annnsl     , o rswa    .Vs tuw \u0086  ,\u0084   % sTim\u00d0gu\u0084\u0093,  [m\u00acaheeee\u009d\u009dorr  l  t ,++\u00cfdnMonrBD 4$o\u00f0\u00f0t,re   k X \u009bre\u0089rs s     a\u00d6\u00d6ns'ei;r+   ld \u00c3e fMV/  rl$aeehh  \u00af  \u00afeefo   \u00ac\u0081m| ",
+        "generation_stats": {
+          "chars_per_sec": 8.8,
+          "mean_entropy": 4.486,
+          "mean_top1_prob": 0.1863
+        },
+        "text_metrics": {
+          "n_chars": 300,
+          "n_words": 46,
+          "unique_word_ratio": 0.957,
+          "avg_word_length": 4.41,
+          "trigram_repeat_ratio": 0.0,
+          "alpha_ratio": 0.487,
+          "sentence_count": 1,
+          "avg_sentence_length": 46.0,
+          "max_char_run": 5,
+          "degenerate": false
+        }
+      },
+      {
+        "prompt": "The old man walked slowly through the ",
+        "generated": " a bb\u0096arr\n \u0089o\u00b0..S ete  4\u00c3fhhnP \u00b9\u00d0\u0084\u0084\u00e3 \u00acetm\u00eaMq\u00abr p )h\u008d \u0094 \u00c5 0 \u00a5\u008de \u008ds  \u00d6 \u00b9eeiia3e,\u00ca  id iie\u00cfs\u00d0rrUh   ni\u00e8e\u0086,,   \u0086  l<i\u00e3     u\u00a3wa\u0081ee\u009bs w\u0090rruase\u00b9g\u00e5l\u00b9 e\u00b9\u0080/\t\u0084d$\u00c9 @\u00c2i[    uaa\u00acenwaaa   era\u0090iw   e  m[ ngeen \u0090 \u0096,\u00aceee,   a[\u00f0s,eeeee\u009d\u009dwl      ah       hsl\u008dfr h  Ud\u00e7 ireln    e      ot   \u00acrm 7  \u00f0a. \u00f0 qhge\u00e9r r \u00aeianhar",
+        "generation_stats": {
+          "chars_per_sec": 8.6,
+          "mean_entropy": 4.484,
+          "mean_top1_prob": 0.1853
+        },
+        "text_metrics": {
+          "n_chars": 300,
+          "n_words": 48,
+          "unique_word_ratio": 0.979,
+          "avg_word_length": 4.29,
+          "trigram_repeat_ratio": 0.0,
+          "alpha_ratio": 0.5,
+          "sentence_count": 3,
+          "avg_sentence_length": 16.0,
+          "max_char_run": 7,
+          "degenerate": false
+        }
+      },
+      {
+        "prompt": "A system of linear equations can be solved by ",
+        "generated": "    \u00afdi Bbe\u00e7   \u0096aaas unrr\u00e7  n g   d\u008a\u00ac7 ]ss \u00d0     \u009b m\u00f0\u00f0)r\u009di \u00e3\u009d\u00f0     Ln   \u00cf  b \u009b   Ca3ndia r\u00d63  \u00d0  ltnle so\u0090a**a.rr  Ln  e\u0084\u00f0 \u00f0ur\u0094\u0084    ied \u0084\u0097  b\u00d6V,]ittr r e r\u00b6Vll\u00f0en   a\u00f0\u009b \u00a5  \u00e7r \u0090\u00ac7\u00d7es4 l \u0094o, rn   Ve llu,V 3 \u00d0eo -.gs  ryeen   \u00acL7i\u00aes|        eaaV neo\u00d0\u00d0soo M\u0098n ?Mleu st\u00c8  e tt  M \u00c8\u00bemtnh\u00c8]tl\u00aeuyn|ll\u008df\u00d0a S  ",
+        "generation_stats": {
+          "chars_per_sec": 8.4,
+          "mean_entropy": 4.459,
+          "mean_top1_prob": 0.1949
+        },
+        "text_metrics": {
+          "n_chars": 300,
+          "n_words": 54,
+          "unique_word_ratio": 0.926,
+          "avg_word_length": 3.67,
+          "trigram_repeat_ratio": 0.0,
+          "alpha_ratio": 0.497,
+          "sentence_count": 3,
+          "avg_sentence_length": 18.0,
+          "max_char_run": 8,
+          "degenerate": false
+        }
+      },
+      {
+        "prompt": "The algorithm processes each element in ",
+        "generated": "   m\u0089\u00c2\u00c2\u0089   hsl s fesa\n   d \u00cf   7M  \u009d hrrsgn\u0090e\u0084 \u00c7sa \u00b9n\u009b\u0098\u0098   ln.,n s     s \u009bl\u0086    \u00ac\u00acld\u00c9\u00c9\u00d0 n\u00d0eessrJ   \u00d9d\u0096\u009d  ssoraaa nhweo wg   \u00c2 n\u00ac\u0081n\u0098[  rr   @u]\u00c9 hy\u00e7nnr    altea\u0080 \u00b9$  se a  f\u0084w\u009d\u0098\u00c2rUsC   Vaa ne\u0090;  t \u00c9 \u00af\u0094oooqar     \u00c9 \u00e3\u00d0PnBMeefytMoo htillr \u009br gho[\u00cfr/\u00af\u00c3eeea\u00af ais hi\u008drr \u0089traunnl\u0096, \u00ac l  Le lUyl. a.eaar   u\u00d0r",
+        "generation_stats": {
+          "chars_per_sec": 8.5,
+          "mean_entropy": 4.458,
+          "mean_top1_prob": 0.1944
+        },
+        "text_metrics": {
+          "n_chars": 300,
+          "n_words": 50,
+          "unique_word_ratio": 0.94,
+          "avg_word_length": 4.16,
+          "trigram_repeat_ratio": 0.0,
+          "alpha_ratio": 0.54,
+          "sentence_count": 3,
+          "avg_sentence_length": 16.7,
+          "max_char_run": 5,
+          "degenerate": false
+        }
+      },
+      {
+        "prompt": "The relationship between structure and function ",
+        "generated": " am\u00b9nc\u00f0 t e   g    \u008dqq  th mlhhl  \u00b3h \u00d9os\u009d  \u0097at\u00d0tt\u00d7dd  \u00c3nt,Q\u00d7      ttmlrr\u00e9\u0090 \u00ac\u00ac\u00b6\u00ec\u00cflbebo,  gr\u0086\u0086>ll\u0086K,\u0084shra        \u00cf d\u00ae,,    \u00d9o\u00d7s  e \u0086s en *\u009dusJ     h se\u009b    r<oCe\u0086l\u0090     w\u0090\u0090\u00acwt  ad\u00d5\u008d    \u00e3a\u00b9.d *st\u0098\u0096n\u0097e\u00e4 rgmoLs@Mt l\ngose   \u008b fe\u0089 Vteeie\u00af \u0096    \u00d7ooa  \u00ae\u0096|i n s    \u0089 ay\u00aeny\u0089+ffl aaaEee\u00ac\u008d.\u00b9 hhh\u00e9  r   d\u00c5\u00b9to  )a\u00e9 ",
+        "generation_stats": {
+          "chars_per_sec": 8.4,
+          "mean_entropy": 4.406,
+          "mean_top1_prob": 0.2103
+        },
+        "text_metrics": {
+          "n_chars": 300,
+          "n_words": 46,
+          "unique_word_ratio": 0.978,
+          "avg_word_length": 4.33,
+          "trigram_repeat_ratio": 0.0,
+          "alpha_ratio": 0.467,
+          "sentence_count": 2,
+          "avg_sentence_length": 23.0,
+          "max_char_run": 8,
+          "degenerate": false
+        }
+      }
+    ],
+    "aggregate": {
+      "avg_unique_word_ratio": 0.967,
+      "avg_trigram_repeat": 0.0,
+      "avg_word_length": 4.37,
+      "degenerate_count": 0,
+      "total_prompts": 8
+    }
+  },
+  "hardware": {
+    "gpu": "AMD RX 6750 XT (12GB, DirectML)",
+    "gpu_tdp_watts": 186,
+    "wall_time_hours": 0.14,
+    "gpu_energy_kwh": 0.025,
+    "ms_per_step_avg": 162176.2
+  }
+}

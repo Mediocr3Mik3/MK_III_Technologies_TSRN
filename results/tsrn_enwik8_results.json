@@ -1,0 +1,53 @@
+{
+  "dataset": "enwik8",
+  "n_steps": 20000,
+  "batch_size": 8,
+  "context_length": 256,
+  "device": "AMD RX 6750 XT (DirectML)",
+  "preset": "50m",
+  "models": {
+    "transformer": {
+      "params": 31560704,
+      "test_bpc": 1.6654,
+      "test_ppl": 3.172,
+      "ms_per_step": 314,
+      "training_curve": {
+        "steps":    [1, 1000, 2000, 3000],
+        "val_bpc":  [12.6466, 3.7561, 3.2246, 2.7529],
+        "val_ppl":  [6412.0, 13.51, 9.35, 6.74],
+        "note": "Transformer training was 20k steps but only first 3k logged before TSRN training started"
+      }
+    },
+    "tsrn": {
+      "params": 25523248,
+      "test_bpc": 0.9283,
+      "test_ppl": 1.903,
+      "final_val_bpc": 0.9296,
+      "final_val_ppl": 1.905,
+      "ms_per_step": 1165,
+      "training_curve": {
+        "steps":    [2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000, 11000, 12000, 13000, 14000, 15000, 16000, 17000, 18000, 19000, 20000],
+        "val_bpc":  [1.3855, 1.2342, 1.1761, 1.1539, 1.1240, 1.0954, 1.0690, 1.0925, 1.0109, 1.0266, 1.0052, 0.9631, 0.9508, 0.9794, 0.9591, 0.9488, 0.9575, 0.9377, 0.9296],
+        "val_ppl":  [2.40, 2.35, 2.26, 2.23, 2.18, 2.14, 2.10, 2.13, 2.02, 2.04, 2.01, 1.95, 1.93, 1.97, 1.94, 1.93, 1.94, 1.92, 1.90]
+      }
+    }
+  },
+  "comparison": {
+    "bpc_reduction_pct": 44.3,
+    "param_reduction_pct": 19.1,
+    "tsrn_slower_factor": 3.71
+  },
+  "quality_benchmark": {
+    "status": "partial - crashed on Unicode encoding (cp1252) at 3rd prompt",
+    "completed_prompts": [
+      {
+        "prompt": "The history of mathematics ",
+        "stats": {"words": 42, "unique_ratio": 0.91, "entropy": 1.76, "top1_prob": 0.560, "chars_per_sec": 9}
+      },
+      {
+        "prompt": "In the year 1776, ",
+        "stats": {"words": 36, "unique_ratio": 0.83, "entropy": 1.96, "top1_prob": 0.518, "chars_per_sec": 9}
+      }
+    ]
+  }
+}

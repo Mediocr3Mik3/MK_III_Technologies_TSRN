@@ -1,0 +1,14 @@
+{
+  "classical_mlp": {
+    "best_mse": 0.2599523067474365,
+    "params": 33793
+  },
+  "tropical_mlp": {
+    "best_mse": 4.003788471221924,
+    "params": 34249
+  },
+  "hybrid_mlp": {
+    "best_mse": 1.0102967023849487,
+    "params": 101577
+  }
+}

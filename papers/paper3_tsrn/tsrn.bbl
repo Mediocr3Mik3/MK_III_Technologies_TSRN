@@ -1,0 +1,173 @@
+\begin{thebibliography}{26}
+\providecommand{\natexlab}[1]{#1}
+\providecommand{\url}[1]{\texttt{#1}}
+\expandafter\ifx\csname urlstyle\endcsname\relax
+  \providecommand{\doi}[1]{doi: #1}\else
+  \providecommand{\doi}{doi: \begingroup \urlstyle{rm}\Url}\fi
+
+\bibitem[Al-Rfou et~al.(2019)Al-Rfou, Choe, Constant, Guo, and
+  Jones]{al2019character}
+Rami Al-Rfou, Dokook Choe, Noah Constant, Mandy Guo, and Llion Jones.
+\newblock Character-level language modeling with deeper self-attention.
+\newblock 33:\penalty0 3159--3166, 2019.
+
+\bibitem[Ba et~al.(2016)Ba, Kiros, and Hinton]{ba2016layer}
+Jimmy~Lei Ba, Jamie~Ryan Kiros, and Geoffrey~E Hinton.
+\newblock Layer normalization.
+\newblock \emph{arXiv preprint arXiv:1607.06450}, 2016.
+
+\bibitem[Beltagy et~al.(2020)Beltagy, Peters, and Cohan]{beltagy2020longformer}
+Iz~Beltagy, Matthew~E Peters, and Arman Cohan.
+\newblock Longformer: The long-document transformer.
+\newblock 2020.
+
+\bibitem[Bodnar et~al.(2022)Bodnar, Di~Giovanni, Chamberlain, Li{\`o}, and
+  Bronstein]{bodnar2022neural}
+Cristian Bodnar, Francesco Di~Giovanni, Benjamin~Paul Chamberlain, Pietro
+  Li{\`o}, and Michael~M Bronstein.
+\newblock Neural sheaf diffusion: A topological perspective on heterophily and
+  oversmoothing in {GNN}s.
+\newblock In \emph{Advances in Neural Information Processing Systems},
+  volume~35, 2022.
+
+\bibitem[Child et~al.(2019)Child, Gray, Radford, and
+  Sutskever]{child2019generating}
+Rewon Child, Scott Gray, Alec Radford, and Ilya Sutskever.
+\newblock Generating long sequences with sparse transformers.
+\newblock \emph{arXiv preprint arXiv:1904.10509}, 2019.
+
+\bibitem[Choromanski et~al.(2021)Choromanski, Likhosherstov, Dohan, Song, Gane,
+  Sarlos, Hawkins, Davis, Mohiuddin, Kaiser, et~al.]{choromanski2021rethinking}
+Krzysztof Choromanski, Valerii Likhosherstov, David Dohan, Xingyou Song,
+  Andreea Gane, Tamas Sarlos, Peter Hawkins, Jared Davis, Afroz Mohiuddin,
+  Lukasz Kaiser, et~al.
+\newblock Rethinking attention with performers.
+\newblock In \emph{International Conference on Learning Representations}, 2021.
+
+\bibitem[Chung et~al.(2017)Chung, Ahn, and Bengio]{chung2016hierarchical}
+Junyoung Chung, Sungjin Ahn, and Yoshua Bengio.
+\newblock Hierarchical multiscale recurrent neural networks.
+\newblock In \emph{International Conference on Learning Representations}, 2017.
+
+\bibitem[Dai et~al.(2019)Dai, Yang, Yang, Carbonell, Le, and
+  Salakhutdinov]{dai2019transformerxl}
+Zihang Dai, Zhilin Yang, Yiming Yang, Jaime Carbonell, Quoc~V Le, and Ruslan
+  Salakhutdinov.
+\newblock Transformer-{XL}: Attentive language models beyond a fixed-length
+  context.
+\newblock In \emph{Proceedings of the 57th Annual Meeting of the Association
+  for Computational Linguistics}, pages 2978--2988, 2019.
+
+\bibitem[Dehghani et~al.(2019)Dehghani, Gouws, Vinyals, Uszkoreit, and
+  Kaiser]{dehghani2019universal}
+Mostafa Dehghani, Stephan Gouws, Oriol Vinyals, Jakob Uszkoreit, and {\L}ukasz
+  Kaiser.
+\newblock Universal transformers.
+\newblock 2019.
+
+\bibitem[Freund and Olson(1987)]{freund1987adelic}
+Peter~GO Freund and Mark Olson.
+\newblock Adelic string amplitudes.
+\newblock \emph{Physics Letters B}, 199\penalty0 (2):\penalty0 186--190, 1987.
+
+\bibitem[Hansen and Gebhart(2020)]{hansen2020sheaf}
+Jakob Hansen and Thomas Gebhart.
+\newblock Sheaf neural networks.
+\newblock In \emph{NeurIPS Workshop on Topological Data Analysis and Beyond},
+  2020.
+
+\bibitem[Hestenes and Sobczyk(1984)]{hestenes1984clifford}
+David Hestenes and Garret Sobczyk.
+\newblock \emph{Clifford Algebra to Geometric Calculus: A Unified Language for
+  Mathematics and Physics}.
+\newblock D. Reidel Publishing, 1984.
+
+\bibitem[Jaeger(2001)]{jaeger2001echo}
+Herbert Jaeger.
+\newblock The ``echo state'' approach to analysing and training recurrent
+  neural networks.
+\newblock \emph{GMD Technical Report}, 148, 2001.
+
+\bibitem[Katharopoulos et~al.(2020)Katharopoulos, Vyas, Pappas, and
+  Fleuret]{katharopoulos2020transformers}
+Angelos Katharopoulos, Apoorv Vyas, Nikolaos Pappas, and Fran{\c{c}}ois
+  Fleuret.
+\newblock Transformers are {RNN}s: Fast autoregressive transformers with linear
+  attention.
+\newblock In \emph{International Conference on Machine Learning}, 2020.
+
+\bibitem[Loshchilov and Hutter(2019)]{loshchilov2019decoupled}
+Ilya Loshchilov and Frank Hutter.
+\newblock Decoupled weight decay regularization.
+\newblock In \emph{International Conference on Learning Representations}, 2019.
+
+\bibitem[Maragos et~al.(2021)Maragos, Charisopoulos, and
+  Theodosis]{maragos2021tropical}
+Petros Maragos, Vasileios Charisopoulos, and Emmanouil Theodosis.
+\newblock Tropical geometry and machine learning.
+\newblock \emph{Proceedings of the IEEE}, 109\penalty0 (5):\penalty0 728--755,
+  2021.
+
+\bibitem[Merity et~al.(2017)Merity, Xiong, Bradbury, and
+  Socher]{merity2017pointer}
+Stephen Merity, Caiming Xiong, James Bradbury, and Richard Socher.
+\newblock Pointer sentinel mixture models.
+\newblock 2017.
+
+\bibitem[Parisi(1999)]{parisi1999p}
+Giorgio Parisi.
+\newblock On the $p$-adic five-point function.
+\newblock \emph{arXiv preprint hep-th/9911056}, 1999.
+
+\bibitem[Sabour et~al.(2017)Sabour, Frosst, and Hinton]{sabour2017dynamic}
+Sara Sabour, Nicholas Frosst, and Geoffrey~E Hinton.
+\newblock Dynamic routing between capsules.
+\newblock In \emph{Advances in Neural Information Processing Systems},
+  volume~30, 2017.
+
+\bibitem[Su et~al.(2024)Su, Ahmed, Lu, Pan, Bo, and Liu]{su2024roformer}
+Jianlin Su, Murtadha Ahmed, Yu~Lu, Shengfeng Pan, Wen Bo, and Yunfeng Liu.
+\newblock {RoFormer}: Enhanced transformer with rotary position embedding.
+\newblock \emph{Neurocomputing}, 568:\penalty0 127063, 2024.
+
+\bibitem[Vaswani et~al.(2017)Vaswani, Shazeer, Parmar, Uszkoreit, Jones, Gomez,
+  Kaiser, and Polosukhin]{vaswani2017attention}
+Ashish Vaswani, Noam Shazeer, Niki Parmar, Jakob Uszkoreit, Llion Jones,
+  Aidan~N Gomez, {\L}ukasz Kaiser, and Illia Polosukhin.
+\newblock Attention is all you need.
+\newblock In \emph{Advances in Neural Information Processing Systems},
+  volume~30, 2017.
+
+\bibitem[Vidal(2007)]{vidal2007entanglement}
+Guifr{\'e} Vidal.
+\newblock Entanglement renormalization.
+\newblock \emph{Physical Review Letters}, 99\penalty0 (22):\penalty0 220405,
+  2007.
+
+\bibitem[Wang et~al.(2020)Wang, Li, Khabsa, Fang, and Ma]{wang2020linformer}
+Sinong Wang, Belinda~Z Li, Madian Khabsa, Han Fang, and Hao Ma.
+\newblock Linformer: Self-attention with linear complexity.
+\newblock 2020.
+
+\bibitem[Wilson(1975)]{wilson1975renormalization}
+Kenneth~G Wilson.
+\newblock The renormalization group: Critical phenomena and the {Kondo}
+  problem.
+\newblock \emph{Reviews of Modern Physics}, 47\penalty0 (4):\penalty0 773,
+  1975.
+
+\bibitem[Zaheer et~al.(2020)Zaheer, Guruganesh, Dubey, Ainslie, Alberti,
+  Ontanon, Pham, Ravula, Wang, Yang, et~al.]{zaheer2020bigbird}
+Manzil Zaheer, Guru Guruganesh, Kumar~Avinava Dubey, Joshua Ainslie, Chris
+  Alberti, Santiago Ontanon, Philip Pham, Anirudh Ravula, Qifan Wang, Li~Yang,
+  et~al.
+\newblock {BigBird}: Transformers for longer sequences.
+\newblock In \emph{Advances in Neural Information Processing Systems},
+  volume~33, 2020.
+
+\bibitem[Zhang et~al.(2018)Zhang, Naitzat, and Lim]{zhang2018tropical}
+Liwen Zhang, Gregory Naitzat, and Lek-Heng Lim.
+\newblock Tropical geometry of deep neural networks.
+\newblock In \emph{International Conference on Machine Learning}, 2018.
+
+\end{thebibliography}

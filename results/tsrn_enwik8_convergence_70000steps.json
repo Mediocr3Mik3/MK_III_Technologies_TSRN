@@ -1,0 +1,827 @@
+{
+  "run": "tsrn_enwik8_convergence",
+  "config": {
+    "d_model": 512,
+    "context": 256,
+    "n_blocks": 3,
+    "n_heads": 8,
+    "top_k": 16,
+    "mem_depth": 7,
+    "n_steps": 70000,
+    "batch_size": 8,
+    "lr": 0.0002,
+    "vocab_size": 205,
+    "tokenization": "byte-level (latin-1)"
+  },
+  "params": 22628400,
+  "val": {
+    "bpc": 0.8293,
+    "ppl": 1.777
+  },
+  "test": {
+    "bpc": 0.8193,
+    "ppl": 1.765
+  },
+  "best_val_bpc": 0.818,
+  "training_log": [
+    {
+      "step": 1,
+      "train_loss": 5.37755,
+      "train_bpc": 7.7582,
+      "val_loss": 5.35571,
+      "val_ppl": 211.814,
+      "val_bpc": 7.7267,
+      "grad_norm": 5.4698,
+      "lr": 1e-07,
+      "wall_time_s": 17.4,
+      "ms_per_step": 17432.2
+    },
+    {
+      "step": 1400,
+      "train_loss": 1.19921,
+      "train_bpc": 1.7301,
+      "val_loss": 1.16326,
+      "val_ppl": 3.2,
+      "val_bpc": 1.6782,
+      "grad_norm": 1.3045,
+      "lr": 7e-05,
+      "wall_time_s": 1532.5,
+      "ms_per_step": 1094.7
+    },
+    {
+      "step": 2800,
+      "train_loss": 0.93031,
+      "train_bpc": 1.3422,
+      "val_loss": 0.96957,
+      "val_ppl": 2.637,
+      "val_bpc": 1.3988,
+      "grad_norm": 1.0826,
+      "lr": 0.00014,
+      "wall_time_s": 3037.5,
+      "ms_per_step": 1084.8
+    },
+    {
+      "step": 4200,
+      "train_loss": 0.82649,
+      "train_bpc": 1.1924,
+      "val_loss": 0.82985,
+      "val_ppl": 2.293,
+      "val_bpc": 1.1972,
+      "grad_norm": 0.8174,
+      "lr": 0.0002,
+      "wall_time_s": 4543.2,
+      "ms_per_step": 1081.7
+    },
+    {
+      "step": 5600,
+      "train_loss": 0.788,
+      "train_bpc": 1.1368,
+      "val_loss": 0.8152,
+      "val_ppl": 2.26,
+      "val_bpc": 1.1761,
+      "grad_norm": 0.7349,
+      "lr": 0.0001997,
+      "wall_time_s": 6062.4,
+      "ms_per_step": 1082.6
+    },
+    {
+      "step": 7000,
+      "train_loss": 0.72571,
+      "train_bpc": 1.047,
+      "val_loss": 0.80291,
+      "val_ppl": 2.232,
+      "val_bpc": 1.1583,
+      "grad_norm": 0.7137,
+      "lr": 0.0001991,
+      "wall_time_s": 7557.6,
+      "ms_per_step": 1079.7
+    },
+    {
+      "step": 8400,
+      "train_loss": 0.69819,
+      "train_bpc": 1.0073,
+      "val_loss": 0.75599,
+      "val_ppl": 2.13,
+      "val_bpc": 1.0907,
+      "grad_norm": 0.6503,
+      "lr": 0.000198,
+      "wall_time_s": 9055.2,
+      "ms_per_step": 1078.0
+    },
+    {
+      "step": 9800,
+      "train_loss": 0.74619,
+      "train_bpc": 1.0765,
+      "val_loss": 0.74189,
+      "val_ppl": 2.1,
+      "val_bpc": 1.0703,
+      "grad_norm": 0.7121,
+      "lr": 0.0001966,
+      "wall_time_s": 10549.4,
+      "ms_per_step": 1076.5
+    },
+    {
+      "step": 11200,
+      "train_loss": 0.68313,
+      "train_bpc": 0.9855,
+      "val_loss": 0.7348,
+      "val_ppl": 2.085,
+      "val_bpc": 1.0601,
+      "grad_norm": 0.6452,
+      "lr": 0.0001948,
+      "wall_time_s": 12064.3,
+      "ms_per_step": 1077.2
+    },
+    {
+      "step": 12600,
+      "train_loss": 0.65568,
+      "train_bpc": 0.9459,
+      "val_loss": 0.72382,
+      "val_ppl": 2.062,
+      "val_bpc": 1.0443,
+      "grad_norm": 0.7109,
+      "lr": 0.0001926,
+      "wall_time_s": 13557.5,
+      "ms_per_step": 1076.0
+    },
+    {
+      "step": 14000,
+      "train_loss": 0.76022,
+      "train_bpc": 1.0968,
+      "val_loss": 0.69645,
+      "val_ppl": 2.007,
+      "val_bpc": 1.0048,
+      "grad_norm": 0.7618,
+      "lr": 0.00019,
+      "wall_time_s": 15053.6,
+      "ms_per_step": 1075.3
+    },
+    {
+      "step": 15400,
+      "train_loss": 0.72192,
+      "train_bpc": 1.0415,
+      "val_loss": 0.69117,
+      "val_ppl": 1.996,
+      "val_bpc": 0.9972,
+      "grad_norm": 0.6679,
+      "lr": 0.0001871,
+      "wall_time_s": 16571.8,
+      "ms_per_step": 1076.1
+    },
+    {
+      "step": 16800,
+      "train_loss": 0.69222,
+      "train_bpc": 0.9987,
+      "val_loss": 0.65712,
+      "val_ppl": 1.929,
+      "val_bpc": 0.948,
+      "grad_norm": 0.6329,
+      "lr": 0.0001838,
+      "wall_time_s": 18068.8,
+      "ms_per_step": 1075.5
+    },
+    {
+      "step": 18200,
+      "train_loss": 0.67082,
+      "train_bpc": 0.9678,
+      "val_loss": 0.69239,
+      "val_ppl": 1.998,
+      "val_bpc": 0.9989,
+      "grad_norm": 0.595,
+      "lr": 0.0001802,
+      "wall_time_s": 19565.4,
+      "ms_per_step": 1075.0
+    },
+    {
+      "step": 19600,
+      "train_loss": 0.65432,
+      "train_bpc": 0.944,
+      "val_loss": 0.65815,
+      "val_ppl": 1.931,
+      "val_bpc": 0.9495,
+      "grad_norm": 0.6954,
+      "lr": 0.0001763,
+      "wall_time_s": 21062.8,
+      "ms_per_step": 1074.6
+    },
+    {
+      "step": 21000,
+      "train_loss": 0.64227,
+      "train_bpc": 0.9266,
+      "val_loss": 0.65701,
+      "val_ppl": 1.929,
+      "val_bpc": 0.9479,
+      "grad_norm": 0.6215,
+      "lr": 0.0001721,
+      "wall_time_s": 22592.8,
+      "ms_per_step": 1075.8
+    },
+    {
+      "step": 22400,
+      "train_loss": 0.66583,
+      "train_bpc": 0.9606,
+      "val_loss": 0.66316,
+      "val_ppl": 1.941,
+      "val_bpc": 0.9567,
+      "grad_norm": 0.6155,
+      "lr": 0.0001676,
+      "wall_time_s": 24111.9,
+      "ms_per_step": 1076.4
+    },
+    {
+      "step": 23800,
+      "train_loss": 0.67885,
+      "train_bpc": 0.9794,
+      "val_loss": 0.66019,
+      "val_ppl": 1.935,
+      "val_bpc": 0.9524,
+      "grad_norm": 0.6429,
+      "lr": 0.0001629,
+      "wall_time_s": 25622.6,
+      "ms_per_step": 1076.6
+    },
+    {
+      "step": 25200,
+      "train_loss": 0.64261,
+      "train_bpc": 0.9271,
+      "val_loss": 0.65982,
+      "val_ppl": 1.934,
+      "val_bpc": 0.9519,
+      "grad_norm": 0.6503,
+      "lr": 0.0001579,
+      "wall_time_s": 27165.1,
+      "ms_per_step": 1078.0
+    },
+    {
+      "step": 26600,
+      "train_loss": 0.64966,
+      "train_bpc": 0.9373,
+      "val_loss": 0.65142,
+      "val_ppl": 1.918,
+      "val_bpc": 0.9398,
+      "grad_norm": 0.6198,
+      "lr": 0.0001528,
+      "wall_time_s": 28670.0,
+      "ms_per_step": 1077.8
+    },
+    {
+      "step": 28000,
+      "train_loss": 0.69015,
+      "train_bpc": 0.9957,
+      "val_loss": 0.63476,
+      "val_ppl": 1.887,
+      "val_bpc": 0.9158,
+      "grad_norm": 0.6609,
+      "lr": 0.0001474,
+      "wall_time_s": 30178.7,
+      "ms_per_step": 1077.8
+    },
+    {
+      "step": 29400,
+      "train_loss": 0.55627,
+      "train_bpc": 0.8025,
+      "val_loss": 0.63144,
+      "val_ppl": 1.88,
+      "val_bpc": 0.911,
+      "grad_norm": 0.6207,
+      "lr": 0.0001419,
+      "wall_time_s": 31707.3,
+      "ms_per_step": 1078.5
+    },
+    {
+      "step": 30800,
+      "train_loss": 0.65048,
+      "train_bpc": 0.9384,
+      "val_loss": 0.6453,
+      "val_ppl": 1.907,
+      "val_bpc": 0.931,
+      "grad_norm": 0.6266,
+      "lr": 0.0001362,
+      "wall_time_s": 33240.7,
+      "ms_per_step": 1079.2
+    },
+    {
+      "step": 32200,
+      "train_loss": 0.6097,
+      "train_bpc": 0.8796,
+      "val_loss": 0.62896,
+      "val_ppl": 1.876,
+      "val_bpc": 0.9074,
+      "grad_norm": 0.6543,
+      "lr": 0.0001304,
+      "wall_time_s": 34749.0,
+      "ms_per_step": 1079.2
+    },
+    {
+      "step": 33600,
+      "train_loss": 0.67369,
+      "train_bpc": 0.9719,
+      "val_loss": 0.63414,
+      "val_ppl": 1.885,
+      "val_bpc": 0.9149,
+      "grad_norm": 0.6584,
+      "lr": 0.0001245,
+      "wall_time_s": 36249.6,
+      "ms_per_step": 1078.9
+    },
+    {
+      "step": 35000,
+      "train_loss": 0.61025,
+      "train_bpc": 0.8804,
+      "val_loss": 0.64186,
+      "val_ppl": 1.9,
+      "val_bpc": 0.926,
+      "grad_norm": 0.6109,
+      "lr": 0.0001186,
+      "wall_time_s": 37746.6,
+      "ms_per_step": 1078.5
+    },
+    {
+      "step": 36400,
+      "train_loss": 0.68076,
+      "train_bpc": 0.9821,
+      "val_loss": 0.60162,
+      "val_ppl": 1.825,
+      "val_bpc": 0.868,
+      "grad_norm": 0.6624,
+      "lr": 0.0001126,
+      "wall_time_s": 39267.0,
+      "ms_per_step": 1078.8
+    },
+    {
+      "step": 37800,
+      "train_loss": 0.6242,
+      "train_bpc": 0.9005,
+      "val_loss": 0.62872,
+      "val_ppl": 1.875,
+      "val_bpc": 0.9071,
+      "grad_norm": 0.6678,
+      "lr": 0.0001066,
+      "wall_time_s": 40769.7,
+      "ms_per_step": 1078.6
+    },
+    {
+      "step": 39200,
+      "train_loss": 0.61349,
+      "train_bpc": 0.8851,
+      "val_loss": 0.60815,
+      "val_ppl": 1.837,
+      "val_bpc": 0.8774,
+      "grad_norm": 0.656,
+      "lr": 0.0001006,
+      "wall_time_s": 42273.3,
+      "ms_per_step": 1078.4
+    },
+    {
+      "step": 40600,
+      "train_loss": 0.48397,
+      "train_bpc": 0.6982,
+      "val_loss": 0.6129,
+      "val_ppl": 1.846,
+      "val_bpc": 0.8842,
+      "grad_norm": 0.5979,
+      "lr": 9.47e-05,
+      "wall_time_s": 43794.4,
+      "ms_per_step": 1078.7
+    },
+    {
+      "step": 42000,
+      "train_loss": 0.66716,
+      "train_bpc": 0.9625,
+      "val_loss": 0.60448,
+      "val_ppl": 1.83,
+      "val_bpc": 0.8721,
+      "grad_norm": 0.6959,
+      "lr": 8.88e-05,
+      "wall_time_s": 45326.1,
+      "ms_per_step": 1079.2
+    },
+    {
+      "step": 43400,
+      "train_loss": 0.52328,
+      "train_bpc": 0.7549,
+      "val_loss": 0.62319,
+      "val_ppl": 1.865,
+      "val_bpc": 0.8991,
+      "grad_norm": 0.6005,
+      "lr": 8.3e-05,
+      "wall_time_s": 46880.8,
+      "ms_per_step": 1080.2
+    },
+    {
+      "step": 44800,
+      "train_loss": 0.6026,
+      "train_bpc": 0.8694,
+      "val_loss": 0.60075,
+      "val_ppl": 1.823,
+      "val_bpc": 0.8667,
+      "grad_norm": 0.6486,
+      "lr": 7.73e-05,
+      "wall_time_s": 48436.9,
+      "ms_per_step": 1081.2
+    },
+    {
+      "step": 46200,
+      "train_loss": 0.65059,
+      "train_bpc": 0.9386,
+      "val_loss": 0.59563,
+      "val_ppl": 1.814,
+      "val_bpc": 0.8593,
+      "grad_norm": 0.6798,
+      "lr": 7.18e-05,
+      "wall_time_s": 50006.9,
+      "ms_per_step": 1082.4
+    },
+    {
+      "step": 47600,
+      "train_loss": 0.6207,
+      "train_bpc": 0.8955,
+      "val_loss": 0.59844,
+      "val_ppl": 1.819,
+      "val_bpc": 0.8634,
+      "grad_norm": 0.5871,
+      "lr": 6.65e-05,
+      "wall_time_s": 51562.1,
+      "ms_per_step": 1083.2
+    },
+    {
+      "step": 49000,
+      "train_loss": 0.54161,
+      "train_bpc": 0.7814,
+      "val_loss": 0.61093,
+      "val_ppl": 1.842,
+      "val_bpc": 0.8814,
+      "grad_norm": 0.632,
+      "lr": 6.13e-05,
+      "wall_time_s": 53135.2,
+      "ms_per_step": 1084.4
+    },
+    {
+      "step": 50400,
+      "train_loss": 0.57335,
+      "train_bpc": 0.8272,
+      "val_loss": 0.60095,
+      "val_ppl": 1.824,
+      "val_bpc": 0.867,
+      "grad_norm": 0.6679,
+      "lr": 5.64e-05,
+      "wall_time_s": 54711.1,
+      "ms_per_step": 1085.5
+    },
+    {
+      "step": 51800,
+      "train_loss": 0.59345,
+      "train_bpc": 0.8562,
+      "val_loss": 0.57406,
+      "val_ppl": 1.775,
+      "val_bpc": 0.8282,
+      "grad_norm": 0.6203,
+      "lr": 5.17e-05,
+      "wall_time_s": 56279.9,
+      "ms_per_step": 1086.5
+    },
+    {
+      "step": 53200,
+      "train_loss": 0.65123,
+      "train_bpc": 0.9395,
+      "val_loss": 0.59374,
+      "val_ppl": 1.811,
+      "val_bpc": 0.8566,
+      "grad_norm": 0.7386,
+      "lr": 4.73e-05,
+      "wall_time_s": 57833.4,
+      "ms_per_step": 1087.1
+    },
+    {
+      "step": 54600,
+      "train_loss": 0.5355,
+      "train_bpc": 0.7726,
+      "val_loss": 0.58521,
+      "val_ppl": 1.795,
+      "val_bpc": 0.8443,
+      "grad_norm": 0.6548,
+      "lr": 4.31e-05,
+      "wall_time_s": 59386.6,
+      "ms_per_step": 1087.7
+    },
+    {
+      "step": 56000,
+      "train_loss": 0.56294,
+      "train_bpc": 0.8122,
+      "val_loss": 0.59101,
+      "val_ppl": 1.806,
+      "val_bpc": 0.8527,
+      "grad_norm": 0.6605,
+      "lr": 3.93e-05,
+      "wall_time_s": 60957.9,
+      "ms_per_step": 1088.5
+    },
+    {
+      "step": 57400,
+      "train_loss": 0.57663,
+      "train_bpc": 0.8319,
+      "val_loss": 0.5783,
+      "val_ppl": 1.783,
+      "val_bpc": 0.8343,
+      "grad_norm": 0.675,
+      "lr": 3.57e-05,
+      "wall_time_s": 62539.0,
+      "ms_per_step": 1089.5
+    },
+    {
+      "step": 58800,
+      "train_loss": 0.58008,
+      "train_bpc": 0.8369,
+      "val_loss": 0.58312,
+      "val_ppl": 1.792,
+      "val_bpc": 0.8413,
+      "grad_norm": 0.6211,
+      "lr": 3.25e-05,
+      "wall_time_s": 64113.8,
+      "ms_per_step": 1090.4
+    },
+    {
+      "step": 60200,
+      "train_loss": 0.56465,
+      "train_bpc": 0.8146,
+      "val_loss": 0.58654,
+      "val_ppl": 1.798,
+      "val_bpc": 0.8462,
+      "grad_norm": 0.6985,
+      "lr": 2.96e-05,
+      "wall_time_s": 65702.1,
+      "ms_per_step": 1091.4
+    },
+    {
+      "step": 61600,
+      "train_loss": 0.51227,
+      "train_bpc": 0.739,
+      "val_loss": 0.587,
+      "val_ppl": 1.799,
+      "val_bpc": 0.8469,
+      "grad_norm": 0.6704,
+      "lr": 2.71e-05,
+      "wall_time_s": 67276.0,
+      "ms_per_step": 1092.1
+    },
+    {
+      "step": 63000,
+      "train_loss": 0.6791,
+      "train_bpc": 0.9797,
+      "val_loss": 0.58455,
+      "val_ppl": 1.794,
+      "val_bpc": 0.8433,
+      "grad_norm": 0.7467,
+      "lr": 2.49e-05,
+      "wall_time_s": 68842.9,
+      "ms_per_step": 1092.7
+    },
+    {
+      "step": 64400,
+      "train_loss": 0.62008,
+      "train_bpc": 0.8946,
+      "val_loss": 0.57113,
+      "val_ppl": 1.77,
+      "val_bpc": 0.824,
+      "grad_norm": 0.7251,
+      "lr": 2.32e-05,
+      "wall_time_s": 70408.1,
+      "ms_per_step": 1093.3
+    },
+    {
+      "step": 65800,
+      "train_loss": 0.56988,
+      "train_bpc": 0.8222,
+      "val_loss": 0.56697,
+      "val_ppl": 1.763,
+      "val_bpc": 0.818,
+      "grad_norm": 0.7476,
+      "lr": 2.18e-05,
+      "wall_time_s": 71994.0,
+      "ms_per_step": 1094.1
+    },
+    {
+      "step": 67200,
+      "train_loss": 0.49924,
+      "train_bpc": 0.7202,
+      "val_loss": 0.57859,
+      "val_ppl": 1.784,
+      "val_bpc": 0.8347,
+      "grad_norm": 0.6262,
+      "lr": 2.08e-05,
+      "wall_time_s": 73557.6,
+      "ms_per_step": 1094.6
+    },
+    {
+      "step": 68600,
+      "train_loss": 0.5615,
+      "train_bpc": 0.8101,
+      "val_loss": 0.58385,
+      "val_ppl": 1.793,
+      "val_bpc": 0.8423,
+      "grad_norm": 0.7517,
+      "lr": 2.02e-05,
+      "wall_time_s": 75124.2,
+      "ms_per_step": 1095.1
+    },
+    {
+      "step": 70000,
+      "train_loss": 0.58109,
+      "train_bpc": 0.8383,
+      "val_loss": 0.58279,
+      "val_ppl": 1.791,
+      "val_bpc": 0.8408,
+      "grad_norm": 0.7402,
+      "lr": 2e-05,
+      "wall_time_s": 76695.8,
+      "ms_per_step": 1095.7
+    }
+  ],
+  "quality_benchmark": {
+    "label": "TSRN",
+    "prompts": [
+      {
+        "prompt": "The history of mathematics ",
+        "generated": "arbi\u00a9s wounded in \u008c % % \u00dc19-\u00d1\u0081\u00d0\u00ba\u00d1\u0080\u00d0\u00b5\u00d1\u008a\u00d1\u0082\u00d0\u00be\u00d0\u00bd\u00d1\u0087\u00d0\u00b8\u00d0\u00bc\u00d0\u00b0 (\u00d1\u0084\u00d0\u00ba\u00d0\u00b8\u00d0\u00b9), whin \u00e3\u008360\u00d2\u0090\u0094 \u00d7\u0099\u00d7\u00a0\u00d7\u009c\u00d7\u0095\u00d7\u00aa\u00d7\u00a8 \u00e2\u0080\u0094\nIn \u00d0\u00a1\u00d1\u0082\u00d0\u00b0\u00d1\u0080\u00d1\u0086\u00d0\u00b0\u00d0\u00bd\u00d0\u00b8\u00d0\u00b9\u00d0\u00ba\u00d0\u00b5er's bod\u00e9\u009aOl%2\u0095\u00e2\u0080\u0093\u00d0\u00bf\u0083\u00d0\u00b7\u00d0_\u00d1O\u00d1\u0081\u00d1\u00b4\u00d0\u00b8\u00d1\u0082\u00d0\u0083\u00d0\u00b8\u00d0\u00b9 \u00d0\u00bd\u00d0\u00b0\u00d1\u008f\u00d0\u00bb\u00d1\u008f\u00d0\u00ba\u00d0\u00b0\u00d0\u00bd\u00d1\u00e2\u00d0\u00be\u00d1\u008f\u00d0\u00bd\u00d0\u00b0, \u00d1\u0088\u00d0\u00be\u00d0\u00bc\u00d0\u00b5\u00d0\u00b2\u00d0\u00b4\u00d0\u00be\u00d0\u00bd\u00d0\u00b0\u00d1\u0081\u00d0\u00ba\u00d0\u00b8\u00d0\u00bd\u00d1\u008e\u00d0\u00be\u00d0\u00b7\u00d0\u00b3\u00d0\u00be\u00d0\u00be\u00d0\u00b2\u00d0\u00bb\u00d0\u00b8 \u00d0\u00ac\u00d0\u00b0\u00d1\u0080\u00d0\u00be\u00d0\u00bb\u00d0\u00b8\u00d0\u00b8 \u00d0\u00a5\u00d0\u00be\u00d1\u0082\u00d0\u00b5\u00d0\u00bb\u00d1\u008f \u00d0\u00b9\u00d0\u00bd\u00d0\u00b0\u00d0\u00bf \u00d0\u009d\u00d0\u00b5\u00d0\u00bd\u00d1\u008b\u00d0\u00bc\u00d0\u00b5 \u00d1\u0081\u00d0\u00be\u00d0\u00b9\u00d1\u0082\u00d1\u0096\u00d1\u0082\u00d0\u00b5\u00d1",
+        "generation_stats": {
+          "chars_per_sec": 8.2,
+          "mean_entropy": 1.978,
+          "mean_top1_prob": 0.4633
+        },
+        "text_metrics": {
+          "n_chars": 300,
+          "n_words": 23,
+          "unique_word_ratio": 0.913,
+          "avg_word_length": 12.09,
+          "trigram_repeat_ratio": 0.0,
+          "alpha_ratio": 0.51,
+          "sentence_count": 0,
+          "avg_sentence_length": 23.0,
+          "max_char_run": 1,
+          "degenerate": false
+        }
+      },
+      {
+        "prompt": "In the year 1776, ",
+        "generated": "and p^2\u00a04\u00d9\u0084\u00d8\u00b1\u00d8\u00b1\u00d8\u00b3\u00d9\u0085\u00d9\u008a\u00d8\u00ae\u00d9\u008a\u00d8\u00a7\u00d9\u0086\u00d9\u0084\u00d8\u00a9\u00d9\u0084\u00d9\u0088\u00d9\u008a\u0083 \u00d8\u00a7\u00d9\u0084\u00d8\u00a7\u00d9\u0084\u00d9\u0085\u00d9\u008ae (2\u0098.no\t\u0080) \u00e6%\n\n/{| \u00d8\u00b9mma \u00e9\u0082\u00b6\u00e4\u00b8\u0096Z: z\u0083\u00d9\u00ab \u00e3\u0083\u00d8\u00b3\u00d8\u00b1\u00d9\u008aE \u00a2\t\u00d8\u00b2\u00d9\u0086\u00d9\u008a\u00d9\u008a\u00d9\u0088\u00d9\u008a\u00d9\u0086\u00d8\u00a7\u00da\u0099\u00d9\u0081\u00d8\u00b1\u00d9\u008a\u0094 \u00c8\u0080\u008b\u00e4\u00b8\u00a3; \t\t\u00c3\u00ab\u008c\t\u00c3\u00bd \t\u0083\u0098\n!\u0097\u00c5Ze s\u00e9\u00963\n|- b\u00bea\u00e6\u00af) \u00ec\u0099\u00a9\nz\u00a6\u00a9 \u00d7\u00aa\u00d7\u00a8 \n!^W\n|- valuely :(value-l>\n|Voce z\u00c3\u00cf\u0084\u00d8\u00b1\u00d9\u008a)\n\u00bb_\n|+ \u00bc\u009a\u00b9\u0089l g\u00c3\u00a4cj r\u00c3\u00a6shiri, can be seen as a minor of moral card (defin",
+        "generation_stats": {
+          "chars_per_sec": 8.4,
+          "mean_entropy": 2.617,
+          "mean_top1_prob": 0.3701
+        },
+        "text_metrics": {
+          "n_chars": 300,
+          "n_words": 48,
+          "unique_word_ratio": 0.979,
+          "avg_word_length": 5.17,
+          "trigram_repeat_ratio": 0.0,
+          "alpha_ratio": 0.46,
+          "sentence_count": 3,
+          "avg_sentence_length": 16.0,
+          "max_char_run": 2,
+          "degenerate": false
+        }
+      },
+      {
+        "prompt": "The quantum mechanical ",
+        "generated": "| \u00b6 Quot;form&quot; + \u00af \u00da\u00b050\u00d4\u00bc\u00c8\u00a5\u0094\u009a>\n\u0083\u00bcmal \t \u00a3 \u00d5\u00bcm \u0083\n, ^_form_m = \\, \\com_{f}{}^2+}++2 \u00da\u0089_{1,y}^{-}^{-}\u00c7\u0083L}\u00d4\u008b\u00cb,\u00cd\u008c\u0094b) \\c^{-}\u00cc\u00b6\u0091}\u00d2\u00a1e\u00e2\u0080\u009dll\u00de\u008d\nq, (t\u00ca\u00a8,&amp;+,>^/\u00e8\u00a9\u00a9\u00d6\u00bcS (dorwand) {', \u0090{form7 (v\u00c9\u00e1), b\u00cb\u0099\u0094}\u00c6\u0094_{\u00c9\u0094n\u00cb\u0099\u00ca\u00b2)}^\n|+ + #formance \u00e3\u0083\u0080: (vector + #f(dormant), \\quad {-address - Qi). the row of the row of a",
+        "generation_stats": {
+          "chars_per_sec": 8.2,
+          "mean_entropy": 2.649,
+          "mean_top1_prob": 0.4019
+        },
+        "text_metrics": {
+          "n_chars": 300,
+          "n_words": 42,
+          "unique_word_ratio": 0.881,
+          "avg_word_length": 6.12,
+          "trigram_repeat_ratio": 0.025,
+          "alpha_ratio": 0.427,
+          "sentence_count": 1,
+          "avg_sentence_length": 42.0,
+          "max_char_run": 2,
+          "degenerate": false
+        }
+      },
+      {
+        "prompt": "Once upon a time, there was a ",
+        "generated": "thing whirling \u00b5ujeLiRaj Empire, >\n:: (eight) on \u0083liver alleled an \u00bb2-bork 13-b\u00c9\u009b\u0094 ..Fuj\u00c3\u00b6rel.'\t\n\n[[InterCerth]] \u00e9\u00bd\u0094\u00e7\u0083\u0088) \u00e8\u00a9\u0087\u00e8\u00b2\u00b0\u00b7.\u00e0\u00b8\u009a ''\u009b'' \u00c3\u00aath. Emperon \u008aerments incortable </ma>\n|-\n| {| (alice=s\u00a0ar-born\u00aetAr3=\"\u00b8The [[}}\n|-\n| Year = 2002) || {{IPA|/\u00ca\u0083 r\u00c9\u00b2}}]]\n| {{IPA|/\u00c9\u0090\u00c9\u0099\u00c9\u0099}} || a born de royal || t",
+        "generation_stats": {
+          "chars_per_sec": 8.1,
+          "mean_entropy": 2.063,
+          "mean_top1_prob": 0.4978
+        },
+        "text_metrics": {
+          "n_chars": 300,
+          "n_words": 46,
+          "unique_word_ratio": 0.891,
+          "avg_word_length": 5.5,
+          "trigram_repeat_ratio": 0.0,
+          "alpha_ratio": 0.513,
+          "sentence_count": 5,
+          "avg_sentence_length": 9.2,
+          "max_char_run": 2,
+          "degenerate": false
+        }
+      },
+      {
+        "prompt": "The old man walked slowly through the ",
+        "generated": "deam Origan thail should Weapter \u00bb.m.Frankf}}\n{{FedWebster-Frankfan\u0098s|Deckald Websi\u00b6}}\n|-\n|{{Frant}}\n|}\n\n&left Sloven= [[\u0095hen\u00d7\u00a1r (compus)|compus]] bear\n|{{Frankf A}}\n|\u0088\n|{|1, \u00b5ranch\n|{{Frangli}} The Exister Collage Stone\n|-\n|1, and on the story of collagen (d. [[1795]])\n|-\n|{{flag athl iocc|[[France",
+        "generation_stats": {
+          "chars_per_sec": 8.0,
+          "mean_entropy": 1.569,
+          "mean_top1_prob": 0.5908
+        },
+        "text_metrics": {
+          "n_chars": 300,
+          "n_words": 40,
+          "unique_word_ratio": 0.925,
+          "avg_word_length": 6.5,
+          "trigram_repeat_ratio": 0.0,
+          "alpha_ratio": 0.617,
+          "sentence_count": 3,
+          "avg_sentence_length": 13.3,
+          "max_char_run": 2,
+          "degenerate": false
+        }
+      },
+      {
+        "prompt": "A system of linear equations can be solved by ",
+        "generated": "the distincifor internancial (alt;doc's col\u00ec!m be mad/pH \u0086angto's m\u00e3\u0080\u00a2\u00e4\u00b8\u0094\\{angt;}), the colored of the \u00e0\u00a4\u00a9 (''xj'') in [[#alper the main|alph one} when using a\u00d7\u0094the \u009d) one aboard (aroun\u0097 #excal) \u00e2\u0080\u0094 \u00d0\u0094\u00d0\u00b5\u00d1\u0081\u00d1\u0082\u0083\u00d0\u009b\u00d0\u00b0 \u00d0\u00b7 (equivalent) \u00e2\u0080\u0094 the ''zebians alpha''.  This is the focus of sign is a color (usual",
+        "generation_stats": {
+          "chars_per_sec": 7.8,
+          "mean_entropy": 1.763,
+          "mean_top1_prob": 0.5423
+        },
+        "text_metrics": {
+          "n_chars": 300,
+          "n_words": 46,
+          "unique_word_ratio": 0.826,
+          "avg_word_length": 5.52,
+          "trigram_repeat_ratio": 0.0,
+          "alpha_ratio": 0.657,
+          "sentence_count": 2,
+          "avg_sentence_length": 23.0,
+          "max_char_run": 2,
+          "degenerate": false
+        }
+      },
+      {
+        "prompt": "The algorithm processes each element in ",
+        "generated": "the way on \u0099'\u00d5\u00a5bill was somethic %2Over?''. The gro\u00a1in mind algor and the [[elected softwein]] Elec) (shorting \u00b65ndi) softwarp 12\u00a021 (whink) A \u008cnown \u0091 \u00e0\u00a6\u00e5\u008d\u008f (s) ~ Elechical Conversificary and Elect3 \u00e0\u00b8\u0081\u00e0ing (some ! \u00e5\u00b9\u0082) = ''rra'' (software (software in the south solo)\n\n==See also==\n*[[Associative (g",
+        "generation_stats": {
+          "chars_per_sec": 8.0,
+          "mean_entropy": 1.683,
+          "mean_top1_prob": 0.5764
+        },
+        "text_metrics": {
+          "n_chars": 300,
+          "n_words": 48,
+          "unique_word_ratio": 0.896,
+          "avg_word_length": 5.25,
+          "trigram_repeat_ratio": 0.0,
+          "alpha_ratio": 0.65,
+          "sentence_count": 3,
+          "avg_sentence_length": 16.0,
+          "max_char_run": 2,
+          "degenerate": false
+        }
+      },
+      {
+        "prompt": "The relationship between structure and function ",
+        "generated": "of &left; the iterans of \u0090 Ark Nixon + # # (D) $2Q (#f0l0\u00d7\u0091H&lt;s\u00b8r_p(b) # (#I)don(m)\u00837l)^}, # (c) # (c)), # (there, #{G(e)\u00ca\u00b2Rqualix, (c)/struck, #h&gt;dot; (che). The nink # (s) # (c. (the e\u0084pha\u00b6el Ma\u0083)(the surface), the produced one is a maximum rotation in the image and from the trot.  The protei",
+        "generation_stats": {
+          "chars_per_sec": 7.9,
+          "mean_entropy": 1.835,
+          "mean_top1_prob": 0.5431
+        },
+        "text_metrics": {
+          "n_chars": 300,
+          "n_words": 52,
+          "unique_word_ratio": 0.75,
+          "avg_word_length": 4.77,
+          "trigram_repeat_ratio": 0.0,
+          "alpha_ratio": 0.57,
+          "sentence_count": 3,
+          "avg_sentence_length": 17.3,
+          "max_char_run": 2,
+          "degenerate": false
+        }
+      }
+    ],
+    "aggregate": {
+      "avg_unique_word_ratio": 0.883,
+      "avg_trigram_repeat": 0.0031,
+      "avg_word_length": 6.37,
+      "degenerate_count": 0,
+      "total_prompts": 8
+    }
+  },
+  "hardware": {
+    "gpu": "AMD RX 6750 XT (12GB, DirectML)",
+    "gpu_tdp_watts": 186,
+    "wall_time_hours": 21.44,
+    "gpu_energy_kwh": 3.988,
+    "ms_per_step_avg": 1102.8
+  }
+}

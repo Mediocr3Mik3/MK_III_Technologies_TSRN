@@ -1,0 +1,14 @@
+{
+  "classical": {
+    "best_acc": 0.60225,
+    "params": 72906
+  },
+  "tropformer": {
+    "best_acc": 0.6085,
+    "params": 106730
+  },
+  "deep_tropical": {
+    "best_acc": 0.46,
+    "params": 106858
+  }
+}

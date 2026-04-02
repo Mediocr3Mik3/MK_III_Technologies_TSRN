@@ -1,0 +1,716 @@
+{
+  "config": {
+    "dataset": "enwik8",
+    "preset": "quick",
+    "d_model": 128,
+    "context": 64,
+    "n_blocks": 1,
+    "n_steps": 500,
+    "batch_size": 16,
+    "lr": 0.0003
+  },
+  "transformer": {
+    "params": 1957376,
+    "log": [
+      {
+        "step": 1,
+        "train_loss": 8.73825,
+        "train_ppl": 6236.988,
+        "train_bpc": 12.6066,
+        "val_loss": 8.73903,
+        "val_ppl": 6241.869,
+        "val_bpc": 12.6078,
+        "grad_norm": 2.0335,
+        "lr": 6e-06,
+        "time_s": 0.5
+      },
+      {
+        "step": 25,
+        "train_loss": 8.24224,
+        "train_ppl": 3798.045,
+        "train_bpc": 11.891,
+        "val_loss": 8.19712,
+        "val_ppl": 3630.496,
+        "val_bpc": 11.826,
+        "grad_norm": 2.4236,
+        "lr": 0.00015,
+        "time_s": 1.6
+      },
+      {
+        "step": 50,
+        "train_loss": 6.98796,
+        "train_ppl": 1083.504,
+        "train_bpc": 10.0815,
+        "val_loss": 6.8835,
+        "val_ppl": 976.032,
+        "val_bpc": 9.9308,
+        "grad_norm": 2.5321,
+        "lr": 0.0003,
+        "time_s": 2.9
+      },
+      {
+        "step": 75,
+        "train_loss": 5.31641,
+        "train_ppl": 203.651,
+        "train_bpc": 7.67,
+        "val_loss": 5.24805,
+        "val_ppl": 190.195,
+        "val_bpc": 7.5713,
+        "grad_norm": 2.5837,
+        "lr": 0.000298,
+        "time_s": 4.1
+      },
+      {
+        "step": 100,
+        "train_loss": 4.17047,
+        "train_ppl": 64.746,
+        "train_bpc": 6.0167,
+        "val_loss": 4.11757,
+        "val_ppl": 61.41,
+        "val_bpc": 5.9404,
+        "grad_norm": 1.8334,
+        "lr": 0.000292,
+        "time_s": 5.2
+      },
+      {
+        "step": 125,
+        "train_loss": 3.66163,
+        "train_ppl": 38.925,
+        "train_bpc": 5.2826,
+        "val_loss": 3.63239,
+        "val_ppl": 37.803,
+        "val_bpc": 5.2404,
+        "grad_norm": 0.9392,
+        "lr": 0.000282,
+        "time_s": 6.4
+      },
+      {
+        "step": 150,
+        "train_loss": 3.52077,
+        "train_ppl": 33.81,
+        "train_bpc": 5.0794,
+        "val_loss": 3.57375,
+        "val_ppl": 35.65,
+        "val_bpc": 5.1558,
+        "grad_norm": 0.3588,
+        "lr": 0.000268,
+        "time_s": 7.6
+      },
+      {
+        "step": 175,
+        "train_loss": 3.445,
+        "train_ppl": 31.343,
+        "train_bpc": 4.9701,
+        "val_loss": 3.4919,
+        "val_ppl": 32.848,
+        "val_bpc": 5.0377,
+        "grad_norm": 0.4275,
+        "lr": 0.000252,
+        "time_s": 8.7
+      },
+      {
+        "step": 200,
+        "train_loss": 3.53441,
+        "train_ppl": 34.275,
+        "train_bpc": 5.0991,
+        "val_loss": 3.42822,
+        "val_ppl": 30.822,
+        "val_bpc": 4.9459,
+        "grad_norm": 0.5136,
+        "lr": 0.000232,
+        "time_s": 9.9
+      },
+      {
+        "step": 225,
+        "train_loss": 3.33723,
+        "train_ppl": 28.141,
+        "train_bpc": 4.8146,
+        "val_loss": 3.32282,
+        "val_ppl": 27.738,
+        "val_bpc": 4.7938,
+        "grad_norm": 0.6569,
+        "lr": 0.000211,
+        "time_s": 11.1
+      },
+      {
+        "step": 250,
+        "train_loss": 3.1397,
+        "train_ppl": 23.097,
+        "train_bpc": 4.5296,
+        "val_loss": 3.23364,
+        "val_ppl": 25.372,
+        "val_bpc": 4.6652,
+        "grad_norm": 0.7278,
+        "lr": 0.000188,
+        "time_s": 12.4
+      },
+      {
+        "step": 275,
+        "train_loss": 3.14234,
+        "train_ppl": 23.158,
+        "train_bpc": 4.5334,
+        "val_loss": 3.15782,
+        "val_ppl": 23.519,
+        "val_bpc": 4.5558,
+        "grad_norm": 0.7012,
+        "lr": 0.000165,
+        "time_s": 13.5
+      },
+      {
+        "step": 300,
+        "train_loss": 3.24238,
+        "train_ppl": 25.595,
+        "train_bpc": 4.6778,
+        "val_loss": 3.12297,
+        "val_ppl": 22.714,
+        "val_bpc": 4.5055,
+        "grad_norm": 1.0517,
+        "lr": 0.000142,
+        "time_s": 14.6
+      },
+      {
+        "step": 325,
+        "train_loss": 2.95599,
+        "train_ppl": 19.221,
+        "train_bpc": 4.2646,
+        "val_loss": 3.09191,
+        "val_ppl": 22.019,
+        "val_bpc": 4.4607,
+        "grad_norm": 0.7362,
+        "lr": 0.000119,
+        "time_s": 15.7
+      },
+      {
+        "step": 350,
+        "train_loss": 3.18344,
+        "train_ppl": 24.13,
+        "train_bpc": 4.5927,
+        "val_loss": 3.06753,
+        "val_ppl": 21.489,
+        "val_bpc": 4.4255,
+        "grad_norm": 0.7655,
+        "lr": 9.8e-05,
+        "time_s": 16.8
+      },
+      {
+        "step": 375,
+        "train_loss": 3.14729,
+        "train_ppl": 23.273,
+        "train_bpc": 4.5406,
+        "val_loss": 2.99127,
+        "val_ppl": 19.911,
+        "val_bpc": 4.3155,
+        "grad_norm": 0.7066,
+        "lr": 7.8e-05,
+        "time_s": 17.9
+      },
+      {
+        "step": 400,
+        "train_loss": 2.96591,
+        "train_ppl": 19.412,
+        "train_bpc": 4.2789,
+        "val_loss": 3.01546,
+        "val_ppl": 20.398,
+        "val_bpc": 4.3504,
+        "grad_norm": 0.6391,
+        "lr": 6.2e-05,
+        "time_s": 19.0
+      },
+      {
+        "step": 425,
+        "train_loss": 2.96897,
+        "train_ppl": 19.472,
+        "train_bpc": 4.2833,
+        "val_loss": 3.02185,
+        "val_ppl": 20.529,
+        "val_bpc": 4.3596,
+        "grad_norm": 0.6516,
+        "lr": 4.8e-05,
+        "time_s": 20.2
+      },
+      {
+        "step": 450,
+        "train_loss": 3.04872,
+        "train_ppl": 21.088,
+        "train_bpc": 4.3984,
+        "val_loss": 2.98929,
+        "val_ppl": 19.872,
+        "val_bpc": 4.3126,
+        "grad_norm": 0.6271,
+        "lr": 3.8e-05,
+        "time_s": 21.3
+      },
+      {
+        "step": 475,
+        "train_loss": 3.11602,
+        "train_ppl": 22.556,
+        "train_bpc": 4.4955,
+        "val_loss": 2.95419,
+        "val_ppl": 19.186,
+        "val_bpc": 4.262,
+        "grad_norm": 0.815,
+        "lr": 3.2e-05,
+        "time_s": 22.4
+      },
+      {
+        "step": 500,
+        "train_loss": 3.08095,
+        "train_ppl": 21.779,
+        "train_bpc": 4.4449,
+        "val_loss": 2.98548,
+        "val_ppl": 19.796,
+        "val_bpc": 4.3071,
+        "grad_norm": 0.6934,
+        "lr": 3e-05,
+        "time_s": 23.5
+      }
+    ],
+    "test": {
+      "loss": 3.01082,
+      "ppl": 20.304,
+      "bpc": 4.3437
+    }
+  },
+  "tsrn": {
+    "params": 2152718,
+    "log": [
+      {
+        "step": 1,
+        "train_loss": 8.77195,
+        "train_ppl": 6450.756,
+        "train_bpc": 12.6553,
+        "val_loss": 8.75595,
+        "val_ppl": 6348.335,
+        "val_bpc": 12.6322,
+        "grad_norm": 2.0533,
+        "lr": 6e-06,
+        "time_s": 1.3
+      },
+      {
+        "step": 25,
+        "train_loss": 8.09176,
+        "train_ppl": 3267.42,
+        "train_bpc": 11.6739,
+        "val_loss": 8.01957,
+        "val_ppl": 3039.863,
+        "val_bpc": 11.5698,
+        "grad_norm": 2.3207,
+        "lr": 0.00015,
+        "time_s": 6.5
+      },
+      {
+        "step": 50,
+        "train_loss": 6.78666,
+        "train_ppl": 885.95,
+        "train_bpc": 9.7911,
+        "val_loss": 6.64433,
+        "val_ppl": 768.413,
+        "val_bpc": 9.5857,
+        "grad_norm": 2.3582,
+        "lr": 0.0003,
+        "time_s": 11.9
+      },
+      {
+        "step": 75,
+        "train_loss": 5.1725,
+        "train_ppl": 176.356,
+        "train_bpc": 7.4623,
+        "val_loss": 5.04345,
+        "val_ppl": 155.004,
+        "val_bpc": 7.2762,
+        "grad_norm": 2.1522,
+        "lr": 0.000298,
+        "time_s": 17.3
+      },
+      {
+        "step": 100,
+        "train_loss": 4.13444,
+        "train_ppl": 62.454,
+        "train_bpc": 5.9647,
+        "val_loss": 3.99872,
+        "val_ppl": 54.528,
+        "val_bpc": 5.7689,
+        "grad_norm": 1.4198,
+        "lr": 0.000292,
+        "time_s": 22.8
+      },
+      {
+        "step": 125,
+        "train_loss": 3.60878,
+        "train_ppl": 36.921,
+        "train_bpc": 5.2064,
+        "val_loss": 3.61659,
+        "val_ppl": 37.21,
+        "val_bpc": 5.2176,
+        "grad_norm": 0.5461,
+        "lr": 0.000282,
+        "time_s": 28.3
+      },
+      {
+        "step": 150,
+        "train_loss": 3.52272,
+        "train_ppl": 33.876,
+        "train_bpc": 5.0822,
+        "val_loss": 3.52682,
+        "val_ppl": 34.015,
+        "val_bpc": 5.0881,
+        "grad_norm": 0.3755,
+        "lr": 0.000268,
+        "time_s": 33.9
+      },
+      {
+        "step": 175,
+        "train_loss": 3.39093,
+        "train_ppl": 29.694,
+        "train_bpc": 4.8921,
+        "val_loss": 3.49786,
+        "val_ppl": 33.045,
+        "val_bpc": 5.0463,
+        "grad_norm": 0.4626,
+        "lr": 0.000252,
+        "time_s": 39.4
+      },
+      {
+        "step": 200,
+        "train_loss": 3.35172,
+        "train_ppl": 28.552,
+        "train_bpc": 4.8355,
+        "val_loss": 3.35557,
+        "val_ppl": 28.662,
+        "val_bpc": 4.8411,
+        "grad_norm": 0.7296,
+        "lr": 0.000232,
+        "time_s": 44.8
+      },
+      {
+        "step": 225,
+        "train_loss": 3.23388,
+        "train_ppl": 25.378,
+        "train_bpc": 4.6655,
+        "val_loss": 3.15355,
+        "val_ppl": 23.419,
+        "val_bpc": 4.5496,
+        "grad_norm": 0.6935,
+        "lr": 0.000211,
+        "time_s": 50.2
+      },
+      {
+        "step": 250,
+        "train_loss": 3.27267,
+        "train_ppl": 26.382,
+        "train_bpc": 4.7215,
+        "val_loss": 3.0348,
+        "val_ppl": 20.797,
+        "val_bpc": 4.3783,
+        "grad_norm": 1.3322,
+        "lr": 0.000188,
+        "time_s": 55.7
+      },
+      {
+        "step": 275,
+        "train_loss": 2.84464,
+        "train_ppl": 17.195,
+        "train_bpc": 4.1039,
+        "val_loss": 2.89613,
+        "val_ppl": 18.104,
+        "val_bpc": 4.1782,
+        "grad_norm": 1.1754,
+        "lr": 0.000165,
+        "time_s": 61.1
+      },
+      {
+        "step": 300,
+        "train_loss": 2.71997,
+        "train_ppl": 15.18,
+        "train_bpc": 3.9241,
+        "val_loss": 2.75542,
+        "val_ppl": 15.728,
+        "val_bpc": 3.9752,
+        "grad_norm": 3.9217,
+        "lr": 0.000142,
+        "time_s": 66.5
+      },
+      {
+        "step": 325,
+        "train_loss": 2.50732,
+        "train_ppl": 12.272,
+        "train_bpc": 3.6173,
+        "val_loss": 2.65329,
+        "val_ppl": 14.201,
+        "val_bpc": 3.8279,
+        "grad_norm": 1.5997,
+        "lr": 0.000119,
+        "time_s": 71.9
+      },
+      {
+        "step": 350,
+        "train_loss": 2.65027,
+        "train_ppl": 14.158,
+        "train_bpc": 3.8235,
+        "val_loss": 2.59192,
+        "val_ppl": 13.355,
+        "val_bpc": 3.7394,
+        "grad_norm": 1.8964,
+        "lr": 9.8e-05,
+        "time_s": 77.4
+      },
+      {
+        "step": 375,
+        "train_loss": 2.57644,
+        "train_ppl": 13.15,
+        "train_bpc": 3.717,
+        "val_loss": 2.52171,
+        "val_ppl": 12.45,
+        "val_bpc": 3.6381,
+        "grad_norm": 1.5351,
+        "lr": 7.8e-05,
+        "time_s": 82.9
+      },
+      {
+        "step": 400,
+        "train_loss": 2.25491,
+        "train_ppl": 9.534,
+        "train_bpc": 3.2531,
+        "val_loss": 2.48234,
+        "val_ppl": 11.969,
+        "val_bpc": 3.5813,
+        "grad_norm": 1.1573,
+        "lr": 6.2e-05,
+        "time_s": 88.4
+      },
+      {
+        "step": 425,
+        "train_loss": 2.47521,
+        "train_ppl": 11.884,
+        "train_bpc": 3.571,
+        "val_loss": 2.42211,
+        "val_ppl": 11.27,
+        "val_bpc": 3.4944,
+        "grad_norm": 1.2783,
+        "lr": 4.8e-05,
+        "time_s": 94.0
+      },
+      {
+        "step": 450,
+        "train_loss": 2.31315,
+        "train_ppl": 10.106,
+        "train_bpc": 3.3372,
+        "val_loss": 2.35894,
+        "val_ppl": 10.58,
+        "val_bpc": 3.4032,
+        "grad_norm": 1.0383,
+        "lr": 3.8e-05,
+        "time_s": 99.7
+      },
+      {
+        "step": 475,
+        "train_loss": 2.43173,
+        "train_ppl": 11.379,
+        "train_bpc": 3.5082,
+        "val_loss": 2.36165,
+        "val_ppl": 10.608,
+        "val_bpc": 3.4071,
+        "grad_norm": 1.1955,
+        "lr": 3.2e-05,
+        "time_s": 105.1
+      },
+      {
+        "step": 500,
+        "train_loss": 2.60742,
+        "train_ppl": 13.564,
+        "train_bpc": 3.7617,
+        "val_loss": 2.32339,
+        "val_ppl": 10.21,
+        "val_bpc": 3.3519,
+        "grad_norm": 1.4595,
+        "lr": 3e-05,
+        "time_s": 110.6
+      }
+    ],
+    "test": {
+      "loss": 2.38523,
+      "ppl": 10.862,
+      "bpc": 3.4412
+    }
+  },
+  "quality_benchmark": {
+    "label": "TSRN",
+    "prompts": [
+      {
+        "prompt": "The history of mathematics ",
+        "generated": "Con iss [[eg an oosshe o]]tterculissss ouaandd The         cnnththeeeeecatttggh]]\n[onee sssss[[[thhe  briiiillmpbrnacommvy tthedeee ingglannnnaaaaaaacccrraaaacpangaaooaaiss]]e deelinnd      fopm y]]yd'rrrrraiottprnnniiiiiill icooooor   te d uonnnnthisssssaaaaaggnnigcp]]]][.-s baaalliiissstttppbmmmrr",
+        "generation_stats": {
+          "chars_per_sec": 24.1,
+          "mean_entropy": 2.556,
+          "mean_top1_prob": 0.379
+        },
+        "text_metrics": {
+          "n_chars": 300,
+          "n_words": 22,
+          "unique_word_ratio": 1.0,
+          "avg_word_length": 11.95,
+          "trigram_repeat_ratio": 0.0,
+          "alpha_ratio": 0.803,
+          "sentence_count": 1,
+          "avg_sentence_length": 22.0,
+          "max_char_run": 9,
+          "degenerate": false
+        }
+      },
+      {
+        "prompt": "In the year 1776, ",
+        "generated": "Aenddress  tterme oee alleeooal utot oiagoon dde         tuoot      thiid,yssenndem'er [[ ttaa ttthhtsd   aad buoofcttheoof caan ulllisgttaarmmppooouadgllli  mmrldestth cussssss\n[[[=vitorrrrrdeee]]]\n]]]]]].    iiiittgaalann   thi lesssuuoreddiiiiieeeaaaarsss,[]]]]] ttherrlhccgaiisinnnnnnntsstttoosss",
+        "generation_stats": {
+          "chars_per_sec": 25.1,
+          "mean_entropy": 2.502,
+          "mean_top1_prob": 0.3972
+        },
+        "text_metrics": {
+          "n_chars": 300,
+          "n_words": 24,
+          "unique_word_ratio": 1.0,
+          "avg_word_length": 10.62,
+          "trigram_repeat_ratio": 0.0,
+          "alpha_ratio": 0.767,
+          "sentence_count": 1,
+          "avg_sentence_length": 24.0,
+          "max_char_run": 9,
+          "degenerate": false
+        }
+      },
+      {
+        "prompt": "The quantum mechanical ",
+        "generated": "ricceeee angndoot ss, [[ucee ol the ucn w peaaaataamitumbv'ddeddd,dgeroothhttttthhe [[[yeedinsttaaan cca   lleeedddeesttannnnrroofmnd]]\n]ssuhhpttt ianridnnnaaaaneetinngttgiuin     diiiianooooootthrrriiss, thaaaglreeestaacc   llllluuuud annnnndd ppoooratinrrrmeerrcssdliiins y, aal       aaaaaaisssght",
+        "generation_stats": {
+          "chars_per_sec": 25.1,
+          "mean_entropy": 2.509,
+          "mean_top1_prob": 0.3843
+        },
+        "text_metrics": {
+          "n_chars": 300,
+          "n_words": 22,
+          "unique_word_ratio": 1.0,
+          "avg_word_length": 12.05,
+          "trigram_repeat_ratio": 0.0,
+          "alpha_ratio": 0.84,
+          "sentence_count": 0,
+          "avg_sentence_length": 22.0,
+          "max_char_run": 7,
+          "degenerate": false
+        }
+      },
+      {
+        "prompt": "Once upon a time, there was a ",
+        "generated": " see   [[[[iirrttomingaldoouo]]tyoooiioooorllaannaaareddeeeed  caanag tannatsiiiiii    uf mitttrroo tiiilcaaiiiiand anghhaaco       attttuiscaallaaaaagaaaiigaressnisimieeeee ooott buuctte    weedlli  annctponnnnaaaiintsss [\nooouiiiiggh    tthine  rrntttttttt s t ff inaad oooo  immpo beerinnnnnaraaaa",
+        "generation_stats": {
+          "chars_per_sec": 24.9,
+          "mean_entropy": 2.5,
+          "mean_top1_prob": 0.3882
+        },
+        "text_metrics": {
+          "n_chars": 300,
+          "n_words": 24,
+          "unique_word_ratio": 1.0,
+          "avg_word_length": 10.62,
+          "trigram_repeat_ratio": 0.0,
+          "alpha_ratio": 0.827,
+          "sentence_count": 0,
+          "avg_sentence_length": 24.0,
+          "max_char_run": 8,
+          "degenerate": false
+        }
+      },
+      {
+        "prompt": "The old man walked slowly through the ",
+        "generated": "tiildicssan  rreed meedoussspessthharrrrrrr     sssty,    otariiopbrottttiinggottte   rrrrrrisss  biiil    aan f thhytcuoonnssiooofoprrd he      iiiiss\n[[[[Sc     rrrrrneeed    oofwltthidaaiies .,.2[aarm ure ttt  oontiaighttt    icill ttoonee]\n, pllsss\n[[iiiitperriisooa tttooonndnnnnndisss (Mnoooooo",
+        "generation_stats": {
+          "chars_per_sec": 24.7,
+          "mean_entropy": 2.485,
+          "mean_top1_prob": 0.4085
+        },
+        "text_metrics": {
+          "n_chars": 300,
+          "n_words": 26,
+          "unique_word_ratio": 1.0,
+          "avg_word_length": 9.42,
+          "trigram_repeat_ratio": 0.0,
+          "alpha_ratio": 0.767,
+          "sentence_count": 2,
+          "avg_sentence_length": 13.0,
+          "max_char_run": 7,
+          "degenerate": false
+        }
+      },
+      {
+        "prompt": "A system of linear equations can be solved by ",
+        "generated": " oinnee ame lrrgthoorrrrocccccs  iinnndde  aissiiiddd tte uooooutthheeennanshhrre annd     aagghhinghhhpuus]],,     iag dde thaostorrrratth      d tteee t tterpoonn iittthhhestouingasttttalysss[[[[wen tcoooomaaaan    furpiis  rrerrrll ttigee the   an .[[*ss pfooooooonnndd ooooougtth]enn     isirr  a",
+        "generation_stats": {
+          "chars_per_sec": 25.1,
+          "mean_entropy": 2.502,
+          "mean_top1_prob": 0.3881
+        },
+        "text_metrics": {
+          "n_chars": 300,
+          "n_words": 28,
+          "unique_word_ratio": 1.0,
+          "avg_word_length": 8.79,
+          "trigram_repeat_ratio": 0.0,
+          "alpha_ratio": 0.777,
+          "sentence_count": 1,
+          "avg_sentence_length": 28.0,
+          "max_char_run": 7,
+          "degenerate": false
+        }
+      },
+      {
+        "prompt": "The algorithm processes each element in ",
+        "generated": "ois  [[tturd,ttaapatteereeangghhhrr    fm'mmpiiioonnnnss t ileeees. arpaandeee aociiinanssssscm iiiirran [[[[[       yertt oottheeeeeisstt ttoossonnnnttuaiiin tcut [[ptttid       mr Seeeenccc          iieivccs]]]]]\nbwmmdd ur an [[[[[Aee  heenothhe  aaannggty]]]]]]]]  ffuooooooof\n*[[[[[\nhrrios ond tt",
+        "generation_stats": {
+          "chars_per_sec": 24.9,
+          "mean_entropy": 2.51,
+          "mean_top1_prob": 0.4004
+        },
+        "text_metrics": {
+          "n_chars": 300,
+          "n_words": 28,
+          "unique_word_ratio": 1.0,
+          "avg_word_length": 8.75,
+          "trigram_repeat_ratio": 0.0,
+          "alpha_ratio": 0.697,
+          "sentence_count": 1,
+          "avg_sentence_length": 28.0,
+          "max_char_run": 10,
+          "degenerate": false
+        }
+      },
+      {
+        "prompt": "The relationship between structure and function ",
+        "generated": "tthed fpt imhacrrron  [[[[[[[[[[[theennedlmmlaaaaaane]tt putth   annrooctee oonnttiinnd ytoooooooannnsssttttoublllblaaan   acltttheennggtee   rreennnndd    theeeesss    mruchhhhhhiidor therreedlaae  oe (iinnn aae aa  t   ffeissss ofiiiiarrth missssthliansdmmp    tth  rrrliiite tigi w   oor]]]\nw onss",
+        "generation_stats": {
+          "chars_per_sec": 25.0,
+          "mean_entropy": 2.479,
+          "mean_top1_prob": 0.4003
+        },
+        "text_metrics": {
+          "n_chars": 300,
+          "n_words": 28,
+          "unique_word_ratio": 0.964,
+          "avg_word_length": 8.93,
+          "trigram_repeat_ratio": 0.0,
+          "alpha_ratio": 0.78,
+          "sentence_count": 0,
+          "avg_sentence_length": 28.0,
+          "max_char_run": 11,
+          "degenerate": true
+        }
+      }
+    ],
+    "aggregate": {
+      "avg_unique_word_ratio": 0.996,
+      "avg_trigram_repeat": 0.0,
+      "avg_word_length": 10.14,
+      "degenerate_count": 1,
+      "total_prompts": 8
+    }
+  }
+}

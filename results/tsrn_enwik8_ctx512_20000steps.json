@@ -1,0 +1,827 @@
+{
+  "run": "tsrn_enwik8_convergence",
+  "config": {
+    "d_model": 512,
+    "context": 512,
+    "n_blocks": 3,
+    "n_heads": 8,
+    "top_k": 16,
+    "mem_depth": 7,
+    "n_steps": 20000,
+    "batch_size": 2,
+    "lr": 0.0002,
+    "vocab_size": 205,
+    "tokenization": "byte-level (latin-1)"
+  },
+  "params": 22825008,
+  "val": {
+    "bpc": 0.906,
+    "ppl": 1.874
+  },
+  "test": {
+    "bpc": 0.8972,
+    "ppl": 1.862
+  },
+  "best_val_bpc": 0.881,
+  "training_log": [
+    {
+      "step": 1,
+      "train_loss": 5.29209,
+      "train_bpc": 7.6349,
+      "val_loss": 5.38251,
+      "val_ppl": 217.567,
+      "val_bpc": 7.7653,
+      "grad_norm": 5.2318,
+      "lr": 1e-07,
+      "wall_time_s": 22.3,
+      "ms_per_step": 22268.0
+    },
+    {
+      "step": 400,
+      "train_loss": 1.82658,
+      "train_bpc": 2.6352,
+      "val_loss": 1.98029,
+      "val_ppl": 7.245,
+      "val_bpc": 2.857,
+      "grad_norm": 1.4519,
+      "lr": 4e-05,
+      "wall_time_s": 1186.4,
+      "ms_per_step": 2966.1
+    },
+    {
+      "step": 800,
+      "train_loss": 1.24358,
+      "train_bpc": 1.7941,
+      "val_loss": 1.28249,
+      "val_ppl": 3.606,
+      "val_bpc": 1.8502,
+      "grad_norm": 1.1837,
+      "lr": 8e-05,
+      "wall_time_s": 2353.9,
+      "ms_per_step": 2942.3
+    },
+    {
+      "step": 1200,
+      "train_loss": 1.17677,
+      "train_bpc": 1.6977,
+      "val_loss": 1.08467,
+      "val_ppl": 2.958,
+      "val_bpc": 1.5649,
+      "grad_norm": 1.1359,
+      "lr": 0.00012,
+      "wall_time_s": 3505.0,
+      "ms_per_step": 2920.8
+    },
+    {
+      "step": 1600,
+      "train_loss": 0.85982,
+      "train_bpc": 1.2405,
+      "val_loss": 1.03727,
+      "val_ppl": 2.821,
+      "val_bpc": 1.4965,
+      "grad_norm": 0.9901,
+      "lr": 0.00016,
+      "wall_time_s": 4660.9,
+      "ms_per_step": 2913.1
+    },
+    {
+      "step": 2000,
+      "train_loss": 0.90103,
+      "train_bpc": 1.2999,
+      "val_loss": 0.96526,
+      "val_ppl": 2.625,
+      "val_bpc": 1.3926,
+      "grad_norm": 0.8218,
+      "lr": 0.0002,
+      "wall_time_s": 5827.3,
+      "ms_per_step": 2913.6
+    },
+    {
+      "step": 2400,
+      "train_loss": 0.87558,
+      "train_bpc": 1.2632,
+      "val_loss": 0.94119,
+      "val_ppl": 2.563,
+      "val_bpc": 1.3578,
+      "grad_norm": 0.7803,
+      "lr": 0.0001998,
+      "wall_time_s": 6988.7,
+      "ms_per_step": 2912.0
+    },
+    {
+      "step": 2800,
+      "train_loss": 0.91603,
+      "train_bpc": 1.3216,
+      "val_loss": 0.86073,
+      "val_ppl": 2.365,
+      "val_bpc": 1.2418,
+      "grad_norm": 0.8608,
+      "lr": 0.0001991,
+      "wall_time_s": 8154.9,
+      "ms_per_step": 2912.5
+    },
+    {
+      "step": 3200,
+      "train_loss": 0.82956,
+      "train_bpc": 1.1968,
+      "val_loss": 0.85429,
+      "val_ppl": 2.35,
+      "val_bpc": 1.2325,
+      "grad_norm": 0.8116,
+      "lr": 0.000198,
+      "wall_time_s": 9323.1,
+      "ms_per_step": 2913.5
+    },
+    {
+      "step": 3600,
+      "train_loss": 0.91217,
+      "train_bpc": 1.316,
+      "val_loss": 0.8438,
+      "val_ppl": 2.325,
+      "val_bpc": 1.2173,
+      "grad_norm": 0.7788,
+      "lr": 0.0001965,
+      "wall_time_s": 10496.3,
+      "ms_per_step": 2915.7
+    },
+    {
+      "step": 4000,
+      "train_loss": 0.99771,
+      "train_bpc": 1.4394,
+      "val_loss": 0.85851,
+      "val_ppl": 2.36,
+      "val_bpc": 1.2386,
+      "grad_norm": 0.8804,
+      "lr": 0.0001946,
+      "wall_time_s": 11669.4,
+      "ms_per_step": 2917.4
+    },
+    {
+      "step": 4400,
+      "train_loss": 0.91375,
+      "train_bpc": 1.3183,
+      "val_loss": 0.80142,
+      "val_ppl": 2.229,
+      "val_bpc": 1.1562,
+      "grad_norm": 0.8926,
+      "lr": 0.0001922,
+      "wall_time_s": 12844.9,
+      "ms_per_step": 2919.3
+    },
+    {
+      "step": 4800,
+      "train_loss": 0.84663,
+      "train_bpc": 1.2214,
+      "val_loss": 0.78941,
+      "val_ppl": 2.202,
+      "val_bpc": 1.1389,
+      "grad_norm": 0.7744,
+      "lr": 0.0001895,
+      "wall_time_s": 14022.8,
+      "ms_per_step": 2921.4
+    },
+    {
+      "step": 5200,
+      "train_loss": 0.86085,
+      "train_bpc": 1.242,
+      "val_loss": 0.82113,
+      "val_ppl": 2.273,
+      "val_bpc": 1.1846,
+      "grad_norm": 0.7559,
+      "lr": 0.0001863,
+      "wall_time_s": 15217.7,
+      "ms_per_step": 2926.5
+    },
+    {
+      "step": 5600,
+      "train_loss": 0.82379,
+      "train_bpc": 1.1885,
+      "val_loss": 0.7622,
+      "val_ppl": 2.143,
+      "val_bpc": 1.0996,
+      "grad_norm": 0.8108,
+      "lr": 0.0001828,
+      "wall_time_s": 16390.2,
+      "ms_per_step": 2926.8
+    },
+    {
+      "step": 6000,
+      "train_loss": 0.74638,
+      "train_bpc": 1.0768,
+      "val_loss": 0.79505,
+      "val_ppl": 2.215,
+      "val_bpc": 1.147,
+      "grad_norm": 0.6992,
+      "lr": 0.0001789,
+      "wall_time_s": 17567.7,
+      "ms_per_step": 2927.9
+    },
+    {
+      "step": 6400,
+      "train_loss": 0.80845,
+      "train_bpc": 1.1663,
+      "val_loss": 0.74449,
+      "val_ppl": 2.105,
+      "val_bpc": 1.0741,
+      "grad_norm": 0.7462,
+      "lr": 0.0001747,
+      "wall_time_s": 18749.8,
+      "ms_per_step": 2929.7
+    },
+    {
+      "step": 6800,
+      "train_loss": 0.80999,
+      "train_bpc": 1.1686,
+      "val_loss": 0.75831,
+      "val_ppl": 2.135,
+      "val_bpc": 1.094,
+      "grad_norm": 0.7746,
+      "lr": 0.0001702,
+      "wall_time_s": 20097.6,
+      "ms_per_step": 2955.5
+    },
+    {
+      "step": 7200,
+      "train_loss": 0.71573,
+      "train_bpc": 1.0326,
+      "val_loss": 0.74197,
+      "val_ppl": 2.1,
+      "val_bpc": 1.0704,
+      "grad_norm": 0.6956,
+      "lr": 0.0001654,
+      "wall_time_s": 21421.7,
+      "ms_per_step": 2975.2
+    },
+    {
+      "step": 7600,
+      "train_loss": 0.73793,
+      "train_bpc": 1.0646,
+      "val_loss": 0.77264,
+      "val_ppl": 2.165,
+      "val_bpc": 1.1147,
+      "grad_norm": 0.6855,
+      "lr": 0.0001603,
+      "wall_time_s": 22742.7,
+      "ms_per_step": 2992.5
+    },
+    {
+      "step": 8000,
+      "train_loss": 0.73744,
+      "train_bpc": 1.0639,
+      "val_loss": 0.74199,
+      "val_ppl": 2.1,
+      "val_bpc": 1.0705,
+      "grad_norm": 0.6769,
+      "lr": 0.000155,
+      "wall_time_s": 24069.1,
+      "ms_per_step": 3008.6
+    },
+    {
+      "step": 8400,
+      "train_loss": 0.66723,
+      "train_bpc": 0.9626,
+      "val_loss": 0.69119,
+      "val_ppl": 1.996,
+      "val_bpc": 0.9972,
+      "grad_norm": 0.7015,
+      "lr": 0.0001495,
+      "wall_time_s": 25388.0,
+      "ms_per_step": 3022.4
+    },
+    {
+      "step": 8800,
+      "train_loss": 0.60039,
+      "train_bpc": 0.8662,
+      "val_loss": 0.7312,
+      "val_ppl": 2.078,
+      "val_bpc": 1.0549,
+      "grad_norm": 0.6321,
+      "lr": 0.0001437,
+      "wall_time_s": 26707.1,
+      "ms_per_step": 3034.9
+    },
+    {
+      "step": 9200,
+      "train_loss": 0.69198,
+      "train_bpc": 0.9983,
+      "val_loss": 0.71986,
+      "val_ppl": 2.054,
+      "val_bpc": 1.0385,
+      "grad_norm": 0.7104,
+      "lr": 0.0001378,
+      "wall_time_s": 28027.0,
+      "ms_per_step": 3046.4
+    },
+    {
+      "step": 9600,
+      "train_loss": 0.73243,
+      "train_bpc": 1.0567,
+      "val_loss": 0.71546,
+      "val_ppl": 2.045,
+      "val_bpc": 1.0322,
+      "grad_norm": 0.7405,
+      "lr": 0.0001318,
+      "wall_time_s": 29349.3,
+      "ms_per_step": 3057.2
+    },
+    {
+      "step": 10000,
+      "train_loss": 0.76834,
+      "train_bpc": 1.1085,
+      "val_loss": 0.7184,
+      "val_ppl": 2.051,
+      "val_bpc": 1.0364,
+      "grad_norm": 0.7252,
+      "lr": 0.0001256,
+      "wall_time_s": 30703.1,
+      "ms_per_step": 3070.3
+    },
+    {
+      "step": 10400,
+      "train_loss": 0.64486,
+      "train_bpc": 0.9303,
+      "val_loss": 0.69377,
+      "val_ppl": 2.001,
+      "val_bpc": 1.0009,
+      "grad_norm": 0.6391,
+      "lr": 0.0001194,
+      "wall_time_s": 32087.8,
+      "ms_per_step": 3085.4
+    },
+    {
+      "step": 10800,
+      "train_loss": 0.58869,
+      "train_bpc": 0.8493,
+      "val_loss": 0.67718,
+      "val_ppl": 1.968,
+      "val_bpc": 0.977,
+      "grad_norm": 0.6849,
+      "lr": 0.0001131,
+      "wall_time_s": 33604.7,
+      "ms_per_step": 3111.5
+    },
+    {
+      "step": 11200,
+      "train_loss": 0.68221,
+      "train_bpc": 0.9842,
+      "val_loss": 0.70145,
+      "val_ppl": 2.017,
+      "val_bpc": 1.012,
+      "grad_norm": 0.747,
+      "lr": 0.0001069,
+      "wall_time_s": 34989.7,
+      "ms_per_step": 3124.1
+    },
+    {
+      "step": 11600,
+      "train_loss": 0.64029,
+      "train_bpc": 0.9237,
+      "val_loss": 0.69376,
+      "val_ppl": 2.001,
+      "val_bpc": 1.0009,
+      "grad_norm": 0.81,
+      "lr": 0.0001006,
+      "wall_time_s": 36372.6,
+      "ms_per_step": 3135.6
+    },
+    {
+      "step": 12000,
+      "train_loss": 0.70504,
+      "train_bpc": 1.0172,
+      "val_loss": 0.70615,
+      "val_ppl": 2.026,
+      "val_bpc": 1.0188,
+      "grad_norm": 0.794,
+      "lr": 9.44e-05,
+      "wall_time_s": 37723.6,
+      "ms_per_step": 3143.6
+    },
+    {
+      "step": 12400,
+      "train_loss": 0.62313,
+      "train_bpc": 0.899,
+      "val_loss": 0.66148,
+      "val_ppl": 1.938,
+      "val_bpc": 0.9543,
+      "grad_norm": 0.6596,
+      "lr": 8.82e-05,
+      "wall_time_s": 39065.1,
+      "ms_per_step": 3150.4
+    },
+    {
+      "step": 12800,
+      "train_loss": 0.64355,
+      "train_bpc": 0.9284,
+      "val_loss": 0.67653,
+      "val_ppl": 1.967,
+      "val_bpc": 0.976,
+      "grad_norm": 0.6965,
+      "lr": 8.22e-05,
+      "wall_time_s": 40404.5,
+      "ms_per_step": 3156.6
+    },
+    {
+      "step": 13200,
+      "train_loss": 0.59486,
+      "train_bpc": 0.8582,
+      "val_loss": 0.65659,
+      "val_ppl": 1.928,
+      "val_bpc": 0.9473,
+      "grad_norm": 0.6467,
+      "lr": 7.63e-05,
+      "wall_time_s": 41744.7,
+      "ms_per_step": 3162.5
+    },
+    {
+      "step": 13600,
+      "train_loss": 0.60435,
+      "train_bpc": 0.8719,
+      "val_loss": 0.6764,
+      "val_ppl": 1.967,
+      "val_bpc": 0.9758,
+      "grad_norm": 0.6725,
+      "lr": 7.05e-05,
+      "wall_time_s": 43091.4,
+      "ms_per_step": 3168.5
+    },
+    {
+      "step": 14000,
+      "train_loss": 0.62718,
+      "train_bpc": 0.9048,
+      "val_loss": 0.66587,
+      "val_ppl": 1.946,
+      "val_bpc": 0.9606,
+      "grad_norm": 0.6799,
+      "lr": 6.5e-05,
+      "wall_time_s": 44427.9,
+      "ms_per_step": 3173.4
+    },
+    {
+      "step": 14400,
+      "train_loss": 0.63912,
+      "train_bpc": 0.922,
+      "val_loss": 0.66657,
+      "val_ppl": 1.948,
+      "val_bpc": 0.9617,
+      "grad_norm": 0.7386,
+      "lr": 5.97e-05,
+      "wall_time_s": 45773.3,
+      "ms_per_step": 3178.7
+    },
+    {
+      "step": 14800,
+      "train_loss": 0.61165,
+      "train_bpc": 0.8824,
+      "val_loss": 0.66507,
+      "val_ppl": 1.945,
+      "val_bpc": 0.9595,
+      "grad_norm": 0.6835,
+      "lr": 5.46e-05,
+      "wall_time_s": 47113.8,
+      "ms_per_step": 3183.4
+    },
+    {
+      "step": 15200,
+      "train_loss": 0.65774,
+      "train_bpc": 0.9489,
+      "val_loss": 0.62672,
+      "val_ppl": 1.871,
+      "val_bpc": 0.9042,
+      "grad_norm": 0.8016,
+      "lr": 4.98e-05,
+      "wall_time_s": 48483.2,
+      "ms_per_step": 3189.7
+    },
+    {
+      "step": 15600,
+      "train_loss": 0.71429,
+      "train_bpc": 1.0305,
+      "val_loss": 0.61789,
+      "val_ppl": 1.855,
+      "val_bpc": 0.8914,
+      "grad_norm": 0.8174,
+      "lr": 4.53e-05,
+      "wall_time_s": 49827.1,
+      "ms_per_step": 3194.0
+    },
+    {
+      "step": 16000,
+      "train_loss": 0.57303,
+      "train_bpc": 0.8267,
+      "val_loss": 0.62382,
+      "val_ppl": 1.866,
+      "val_bpc": 0.9,
+      "grad_norm": 0.6776,
+      "lr": 4.11e-05,
+      "wall_time_s": 51164.7,
+      "ms_per_step": 3197.8
+    },
+    {
+      "step": 16400,
+      "train_loss": 0.62484,
+      "train_bpc": 0.9015,
+      "val_loss": 0.61064,
+      "val_ppl": 1.842,
+      "val_bpc": 0.881,
+      "grad_norm": 0.7087,
+      "lr": 3.72e-05,
+      "wall_time_s": 52442.4,
+      "ms_per_step": 3197.7
+    },
+    {
+      "step": 16800,
+      "train_loss": 0.57967,
+      "train_bpc": 0.8363,
+      "val_loss": 0.65006,
+      "val_ppl": 1.916,
+      "val_bpc": 0.9378,
+      "grad_norm": 0.7088,
+      "lr": 3.37e-05,
+      "wall_time_s": 53715.9,
+      "ms_per_step": 3197.4
+    },
+    {
+      "step": 17200,
+      "train_loss": 0.65957,
+      "train_bpc": 0.9516,
+      "val_loss": 0.63966,
+      "val_ppl": 1.896,
+      "val_bpc": 0.9228,
+      "grad_norm": 0.7431,
+      "lr": 3.05e-05,
+      "wall_time_s": 54995.7,
+      "ms_per_step": 3197.4
+    },
+    {
+      "step": 17600,
+      "train_loss": 0.59716,
+      "train_bpc": 0.8615,
+      "val_loss": 0.65323,
+      "val_ppl": 1.922,
+      "val_bpc": 0.9424,
+      "grad_norm": 0.7196,
+      "lr": 2.78e-05,
+      "wall_time_s": 56445.1,
+      "ms_per_step": 3207.1
+    },
+    {
+      "step": 18000,
+      "train_loss": 0.67447,
+      "train_bpc": 0.973,
+      "val_loss": 0.63437,
+      "val_ppl": 1.886,
+      "val_bpc": 0.9152,
+      "grad_norm": 0.7717,
+      "lr": 2.54e-05,
+      "wall_time_s": 57858.5,
+      "ms_per_step": 3214.4
+    },
+    {
+      "step": 18400,
+      "train_loss": 0.45633,
+      "train_bpc": 0.6583,
+      "val_loss": 0.63284,
+      "val_ppl": 1.883,
+      "val_bpc": 0.913,
+      "grad_norm": 0.6176,
+      "lr": 2.35e-05,
+      "wall_time_s": 59308.1,
+      "ms_per_step": 3223.3
+    },
+    {
+      "step": 18800,
+      "train_loss": 0.60117,
+      "train_bpc": 0.8673,
+      "val_loss": 0.63531,
+      "val_ppl": 1.888,
+      "val_bpc": 0.9166,
+      "grad_norm": 0.7562,
+      "lr": 2.2e-05,
+      "wall_time_s": 60765.3,
+      "ms_per_step": 3232.2
+    },
+    {
+      "step": 19200,
+      "train_loss": 0.54302,
+      "train_bpc": 0.7834,
+      "val_loss": 0.64216,
+      "val_ppl": 1.901,
+      "val_bpc": 0.9264,
+      "grad_norm": 0.6867,
+      "lr": 2.09e-05,
+      "wall_time_s": 62221.6,
+      "ms_per_step": 3240.7
+    },
+    {
+      "step": 19600,
+      "train_loss": 0.64237,
+      "train_bpc": 0.9267,
+      "val_loss": 0.64859,
+      "val_ppl": 1.913,
+      "val_bpc": 0.9357,
+      "grad_norm": 0.7589,
+      "lr": 2.02e-05,
+      "wall_time_s": 63677.4,
+      "ms_per_step": 3248.8
+    },
+    {
+      "step": 20000,
+      "train_loss": 0.56773,
+      "train_bpc": 0.8191,
+      "val_loss": 0.64963,
+      "val_ppl": 1.915,
+      "val_bpc": 0.9372,
+      "grad_norm": 0.7467,
+      "lr": 2e-05,
+      "wall_time_s": 65137.2,
+      "ms_per_step": 3256.9
+    }
+  ],
+  "quality_benchmark": {
+    "label": "TSRN",
+    "prompts": [
+      {
+        "prompt": "The history of mathematics ",
+        "generated": "of start; Chematicy sexus (sucting in compostics waster) and mearinge 20,0eminst diver in Euler. Formes Are Trements and expander his [[Anders\u00c3\u00a9ric]], and the worthing [[Olseger Starde|Areger]] and [[Inchon (natuvi|Experte]]. \n\n[[Im TV Aregon Camp;#201]] -[[Image:Chempinger-Cherine.jpg|thus):Are8_Ch",
+        "generation_stats": {
+          "chars_per_sec": 5.7,
+          "mean_entropy": 1.772,
+          "mean_top1_prob": 0.5239
+        },
+        "text_metrics": {
+          "n_chars": 300,
+          "n_words": 34,
+          "unique_word_ratio": 0.882,
+          "avg_word_length": 7.79,
+          "trigram_repeat_ratio": 0.0,
+          "alpha_ratio": 0.73,
+          "sentence_count": 3,
+          "avg_sentence_length": 11.3,
+          "max_char_run": 2,
+          "degenerate": false
+        }
+      },
+      {
+        "prompt": "In the year 1776, ",
+        "generated": "the mair (1760).\n*[[1980]] (1nd08) (1\u00a1\u00a1I)</*1887 `3u (Utand (1957 (59.2 years and belather *1990) (\u00e9\u00a3lth (incorgard band) (\u00e4\u00bainder) and (19UK) (1is1)m) ([[18Aun \u00f0ld Wate]])\n*[[1970]] (1982) (Town (19\u00ab5)\n*[[1\u00aa95]] (1rd (1985.\n*[[1870]] (1980-caterio (1962) (\u00e5\u00ba*1990) (19/40) (19S)min) (19GBater)\n*[[19",
+        "generation_stats": {
+          "chars_per_sec": 6.0,
+          "mean_entropy": 1.879,
+          "mean_top1_prob": 0.5405
+        },
+        "text_metrics": {
+          "n_chars": 300,
+          "n_words": 39,
+          "unique_word_ratio": 0.974,
+          "avg_word_length": 6.72,
+          "trigram_repeat_ratio": 0.0,
+          "alpha_ratio": 0.333,
+          "sentence_count": 3,
+          "avg_sentence_length": 13.0,
+          "max_char_run": 2,
+          "degenerate": false
+        }
+      },
+      {
+        "prompt": "The quantum mechanical ",
+        "generated": "and commongations weaper poply divertizes [[verboatism|histon]]s, [[Houstorican Ridea]], [[Photopox Of Companical \u00d9\u008a\u00d8\u00b1\u00d8\u00b3\u00d9\u0084\u00d8\u00af\u00d9\u0086\"]:\n[[Im:Herna\u00f0 Ri\u00c3\u00adt Ridenbous Un]], [[\u00e5\u008a\u00a9\u00e7ezu]], [[Holar\u00e2\u0080\u0099s G\u00c3\u00bcrkastor Ridger (Unforcat)|Image:Holar Ride Phorney; \u00b5rojecos|Holar7]], [[Mar</\u00b5]]\n[[Marketopyre.JPh|Amarean ",
+        "generation_stats": {
+          "chars_per_sec": 5.8,
+          "mean_entropy": 1.897,
+          "mean_top1_prob": 0.4992
+        },
+        "text_metrics": {
+          "n_chars": 300,
+          "n_words": 26,
+          "unique_word_ratio": 1.0,
+          "avg_word_length": 10.54,
+          "trigram_repeat_ratio": 0.0,
+          "alpha_ratio": 0.71,
+          "sentence_count": 1,
+          "avg_sentence_length": 26.0,
+          "max_char_run": 2,
+          "degenerate": false
+        }
+      },
+      {
+        "prompt": "Once upon a time, there was a ",
+        "generated": "concerto [[varian]] and [[compone|compone]].\n|- that \u0084 [[male_dimen]] styrt=&gt;\n| Person=[[amperat]] charavatise in \u00ce\u00bb\u00b8\u008918's [[n\u00c3\u00b6rote]] in = ([[petron]]) alster = \u00e3\u0082\u00a2\u00e3\u0082\u00b4\u00e3\u0083\u00b3\u00e3\u0082\u00af\u00e3\u0083hi{detains\n|}}\n\n[[qu:Hale \"] ([[#Homper ]]), [[orivorce vompet]] combiras =\n[[\u00e7\u0094\u00b6]]\n[[qu:\u00e5\u0085\u00bdThe \u00d7\u00a7\u00d7\u00a8\u00d1\u0083`\u00e6a]]\n[[\n| guan \u00cf\u0080\n",
+        "generation_stats": {
+          "chars_per_sec": 5.7,
+          "mean_entropy": 1.911,
+          "mean_top1_prob": 0.5094
+        },
+        "text_metrics": {
+          "n_chars": 300,
+          "n_words": 38,
+          "unique_word_ratio": 0.895,
+          "avg_word_length": 6.87,
+          "trigram_repeat_ratio": 0.0,
+          "alpha_ratio": 0.54,
+          "sentence_count": 1,
+          "avg_sentence_length": 38.0,
+          "max_char_run": 2,
+          "degenerate": false
+        }
+      },
+      {
+        "prompt": "The old man walked slowly through the ",
+        "generated": "list configne fice wheng [[Eurozakal (mathe]], [[Eusleych Condire)|Euron Euron|Euros]].  Geated and explares nover \u00b9\u00c5\u0081okuon= Stertisers waster [[Eutodinatire Unicals]] and [[Eurip[Euremiere]], [[Euronismost]]. Thick models examples the arthreers and [[Elescophalatare]], [[Euron (Conflication)|Euriot",
+        "generation_stats": {
+          "chars_per_sec": 5.4,
+          "mean_entropy": 1.657,
+          "mean_top1_prob": 0.5497
+        },
+        "text_metrics": {
+          "n_chars": 300,
+          "n_words": 30,
+          "unique_word_ratio": 0.933,
+          "avg_word_length": 9.0,
+          "trigram_repeat_ratio": 0.0,
+          "alpha_ratio": 0.76,
+          "sentence_count": 2,
+          "avg_sentence_length": 15.0,
+          "max_char_run": 2,
+          "degenerate": false
+        }
+      },
+      {
+        "prompt": "A system of linear equations can be solved by ",
+        "generated": "theiring [[Nint Afree Orinica]].\n* [[Carnel Sne]]: Abeloskym (the explot experise), there and then Exotron ston dismall pert \u00da\u00a9pse, with Presiden for the dear [[Ja\u00bdorgan Stock]]: [[Kamar \u00a7aldhan \u00e0\u00a4lifer]], [[Maydim Laxien]], Argell in Encys `\u0083olf [[Alberthe Benark]], [[Reaverd Sandhern English \u00b2|19n",
+        "generation_stats": {
+          "chars_per_sec": 5.0,
+          "mean_entropy": 2.026,
+          "mean_top1_prob": 0.4625
+        },
+        "text_metrics": {
+          "n_chars": 300,
+          "n_words": 41,
+          "unique_word_ratio": 1.0,
+          "avg_word_length": 6.34,
+          "trigram_repeat_ratio": 0.0,
+          "alpha_ratio": 0.71,
+          "sentence_count": 1,
+          "avg_sentence_length": 41.0,
+          "max_char_run": 2,
+          "degenerate": false
+        }
+      },
+      {
+        "prompt": "The algorithm processes each element in ",
+        "generated": "the fingers of [[Pess Twan]] and [[Chemics]].  Hexippint ==\n\nBelicar yens of [[19ccescar (cycem]] [[1930s)]], [[Jeade Dipire]].  Juides at [[Until Worlan]]'s shorter perta\u0085d [[England docaine|Engins]], basteries wastern thalfiend the [[Umizariza]] in [[Eugest Engol|Englace]] and [[Stahrimah]], [[Lor",
+        "generation_stats": {
+          "chars_per_sec": 5.3,
+          "mean_entropy": 1.661,
+          "mean_top1_prob": 0.5364
+        },
+        "text_metrics": {
+          "n_chars": 300,
+          "n_words": 37,
+          "unique_word_ratio": 0.919,
+          "avg_word_length": 7.05,
+          "trigram_repeat_ratio": 0.0,
+          "alpha_ratio": 0.67,
+          "sentence_count": 2,
+          "avg_sentence_length": 18.5,
+          "max_char_run": 2,
+          "degenerate": false
+        }
+      },
+      {
+        "prompt": "The relationship between structure and function ",
+        "generated": "of primaril's expirtus ([[Sayuri Sea]]) and ''[[Bla\u00e8\u0087se]]'' and [[Cheno]] ([[\u00b4K-8\u00af|P-845]]) and [[G\u00c3\u00b3bac Studen|Shariqus]] ([[1982]]) woulding campaile, ([[AdeS \u00ba]], [[298*A|Briani]] (also watcombark)\n*[[1\u00b5he Texthe-Adven]], Admitt}}\n*[[19\u00b85 Klan Showles]], Spart's mosker \u00b7 [[19\u00ab3 B\u00e5\u00c5\u009b]], [[1980]]) ",
+        "generation_stats": {
+          "chars_per_sec": 4.8,
+          "mean_entropy": 1.796,
+          "mean_top1_prob": 0.5321
+        },
+        "text_metrics": {
+          "n_chars": 300,
+          "n_words": 33,
+          "unique_word_ratio": 0.939,
+          "avg_word_length": 8.09,
+          "trigram_repeat_ratio": 0.0,
+          "alpha_ratio": 0.523,
+          "sentence_count": 0,
+          "avg_sentence_length": 33.0,
+          "max_char_run": 2,
+          "degenerate": false
+        }
+      }
+    ],
+    "aggregate": {
+      "avg_unique_word_ratio": 0.943,
+      "avg_trigram_repeat": 0.0,
+      "avg_word_length": 7.8,
+      "degenerate_count": 0,
+      "total_prompts": 8
+    }
+  },
+  "hardware": {
+    "gpu": "AMD RX 6750 XT (12GB, DirectML)",
+    "gpu_tdp_watts": 186,
+    "wall_time_hours": 18.33,
+    "gpu_energy_kwh": 3.409,
+    "ms_per_step_avg": 3298.8
+  }
+}

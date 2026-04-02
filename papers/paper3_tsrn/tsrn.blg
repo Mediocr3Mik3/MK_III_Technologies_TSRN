@@ -1,0 +1,54 @@
+This is BibTeX, Version 0.99d
+Capacity: max_strings=200000, hash_size=200000, hash_prime=170003
+The top-level auxiliary file: tsrn.aux
+Reallocating 'name_of_file' (item size: 1) to 9 items.
+The style file: plainnat.bst
+Reallocating 'name_of_file' (item size: 1) to 11 items.
+Database file #1: references.bib
+Warning--empty journal in al2019character
+Warning--empty booktitle in beltagy2020longformer
+Warning--empty journal in dehghani2019universal
+Warning--empty journal in merity2017pointer
+Warning--empty booktitle in wang2020linformer
+You've used 26 entries,
+            2773 wiz_defined-function locations,
+            720 strings with 9196 characters,
+and the built_in function-call counts, 13094 in all, are:
+= -- 1037
+> -- 1004
+< -- 13
++ -- 338
+- -- 312
+* -- 1098
+:= -- 2057
+add.period$ -- 78
+call.type$ -- 26
+change.case$ -- 179
+chr.to.int$ -- 26
+cite$ -- 57
+duplicate$ -- 580
+empty$ -- 997
+format.name$ -- 346
+if$ -- 2693
+int.to.chr$ -- 1
+int.to.str$ -- 1
+missing$ -- 27
+newline$ -- 138
+num.names$ -- 104
+pop$ -- 408
+preamble$ -- 1
+purify$ -- 154
+quote$ -- 0
+skip$ -- 445
+stack$ -- 0
+substring$ -- 218
+swap$ -- 49
+text.length$ -- 5
+text.prefix$ -- 0
+top$ -- 0
+type$ -- 281
+warning$ -- 5
+while$ -- 90
+width$ -- 0
+write$ -- 326
+(There were 5 warnings)
