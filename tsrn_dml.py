@@ -594,13 +594,15 @@ class EchoStateReservoir(nn.Module):
         nn.init.zeros_(self.readout.weight)
         self.leak = nn.Parameter(torch.tensor(0.3))
 
-        # Cache for spectral radius approximation
-        self._cached_v = None
+        # Register cache as buffer so it's saved/loaded with checkpoints
+        self.register_buffer("_cached_v", torch.zeros(dr))
 
     def _power_iter_spectral_radius(self, W: Tensor, n_iter: int = 3) -> Tensor:
         """Approximate spectral radius via power iteration (GPU-safe, no eigvals)."""
-        if self._cached_v is None or self._cached_v.shape[0] != W.shape[0]:
+        # Initialize with random vector if needed (first forward pass)
+        if torch.all(self._cached_v == 0):
             self._cached_v = torch.randn(W.shape[0], device=W.device)
+        
         v = self._cached_v.detach()
         for _ in range(n_iter):
             v = W @ v
