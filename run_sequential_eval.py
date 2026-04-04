@@ -10,13 +10,10 @@ from tsrn_dml import TSRN, load_enwik8, evaluate, evaluate_sequential
 
 def main():
     # Find best checkpoint
-    ckpt_path = "checkpoints/tsrn_enwik8_final_70000steps.pt"
-    if not os.path.exists(ckpt_path):
-        ckpt_path = "checkpoints/tsrn_enwik8_70000steps.pt"
+    ckpt_path = "checkpoints/tsrn_enwik8_v2_100k_best.pt"
     if not os.path.exists(ckpt_path):
         print(f"ERROR: No checkpoint found. Tried:")
-        print(f"  checkpoints/tsrn_enwik8_final_70000steps.pt")
-        print(f"  checkpoints/tsrn_enwik8_70000steps.pt")
+        print(f"  checkpoints/tsrn_enwik8_v2_100k_best.pt")
         sys.exit(1)
 
     print(f"Loading checkpoint: {ckpt_path}")
@@ -56,7 +53,7 @@ def main():
     print(f"{'='*70}")
     t0 = time.time()
     rand_loss, rand_ppl, rand_bpc = evaluate(
-        model, dataset, device, n_batches=200, batch_size=16, split="test")
+        model, dataset, device, n_batches=200, batch_size=8, split="test")
     t_rand = time.time() - t0
     print(f"  Test BPC (random):     {rand_bpc:.4f}  (PPL: {rand_ppl:.3f})")
     print(f"  Time: {t_rand:.1f}s")
@@ -71,7 +68,7 @@ def main():
 
     t0 = time.time()
     seq_loss, seq_ppl, seq_bpc = evaluate_sequential(
-        model, dataset, device, batch_size=16, split="test")
+        model, dataset, device, batch_size=8, split="test")
     t_seq = time.time() - t0
     print(f"  Test BPC (sequential): {seq_bpc:.4f}  (PPL: {seq_ppl:.3f})")
     print(f"  Time: {t_seq:.1f}s")
@@ -79,7 +76,7 @@ def main():
     # --- Also do val set for completeness ---
     print(f"\n  Val set (sequential)...")
     val_loss, val_ppl, val_bpc = evaluate_sequential(
-        model, dataset, device, batch_size=16, split="val")
+        model, dataset, device, batch_size=8, split="val")
     print(f"  Val BPC (sequential):  {val_bpc:.4f}  (PPL: {val_ppl:.3f})")
 
     # --- Summary ---

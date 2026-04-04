@@ -1,0 +1,335 @@
+{
+  "run": "tsrn_enwik8_convergence",
+  "config": {
+    "d_model": 512,
+    "context": 256,
+    "n_blocks": 3,
+    "n_heads": 8,
+    "top_k": 16,
+    "mem_depth": 7,
+    "n_steps": 10,
+    "batch_size": 8,
+    "lr": 0.0002,
+    "vocab_size": 205,
+    "tokenization": "byte-level (latin-1)"
+  },
+  "params": 22628400,
+  "val": {
+    "bpc": 5.3989,
+    "ppl": 42.193
+  },
+  "test": {
+    "bpc": 5.45,
+    "ppl": 43.712
+  },
+  "best_val_bpc": 5.4114,
+  "training_log": [
+    {
+      "step": 1,
+      "train_loss": 5.37755,
+      "train_bpc": 7.7582,
+      "val_loss": 4.40279,
+      "val_ppl": 81.679,
+      "val_bpc": 6.3519,
+      "grad_norm": 5.4698,
+      "lr": 0.0002,
+      "wall_time_s": 18.0,
+      "ms_per_step": 17958.9
+    },
+    {
+      "step": 2,
+      "train_loss": 4.54642,
+      "train_bpc": 6.5591,
+      "val_loss": 4.10108,
+      "val_ppl": 60.406,
+      "val_bpc": 5.9166,
+      "grad_norm": 3.2207,
+      "lr": 0.0001946,
+      "wall_time_s": 33.7,
+      "ms_per_step": 16842.2
+    },
+    {
+      "step": 3,
+      "train_loss": 4.07411,
+      "train_bpc": 5.8777,
+      "val_loss": 3.97437,
+      "val_ppl": 53.217,
+      "val_bpc": 5.7338,
+      "grad_norm": 2.9817,
+      "lr": 0.0001789,
+      "wall_time_s": 47.9,
+      "ms_per_step": 15962.2
+    },
+    {
+      "step": 4,
+      "train_loss": 3.93355,
+      "train_bpc": 5.6749,
+      "val_loss": 3.88696,
+      "val_ppl": 48.763,
+      "val_bpc": 5.6077,
+      "grad_norm": 2.5614,
+      "lr": 0.000155,
+      "wall_time_s": 61.9,
+      "ms_per_step": 15471.1
+    },
+    {
+      "step": 5,
+      "train_loss": 3.89107,
+      "train_bpc": 5.6136,
+      "val_loss": 3.8565,
+      "val_ppl": 47.299,
+      "val_bpc": 5.5638,
+      "grad_norm": 2.2317,
+      "lr": 0.0001256,
+      "wall_time_s": 76.2,
+      "ms_per_step": 15244.9
+    },
+    {
+      "step": 6,
+      "train_loss": 3.7845,
+      "train_bpc": 5.4599,
+      "val_loss": 3.79487,
+      "val_ppl": 44.472,
+      "val_bpc": 5.4748,
+      "grad_norm": 1.9687,
+      "lr": 9.44e-05,
+      "wall_time_s": 90.4,
+      "ms_per_step": 15063.5
+    },
+    {
+      "step": 7,
+      "train_loss": 3.75993,
+      "train_bpc": 5.4244,
+      "val_loss": 3.75266,
+      "val_ppl": 42.635,
+      "val_bpc": 5.414,
+      "grad_norm": 1.9259,
+      "lr": 6.5e-05,
+      "wall_time_s": 104.8,
+      "ms_per_step": 14969.3
+    },
+    {
+      "step": 8,
+      "train_loss": 3.66582,
+      "train_bpc": 5.2887,
+      "val_loss": 3.76927,
+      "val_ppl": 43.349,
+      "val_bpc": 5.4379,
+      "grad_norm": 1.586,
+      "lr": 4.11e-05,
+      "wall_time_s": 119.1,
+      "ms_per_step": 14888.7
+    },
+    {
+      "step": 9,
+      "train_loss": 3.68445,
+      "train_bpc": 5.3155,
+      "val_loss": 3.77497,
+      "val_ppl": 43.596,
+      "val_bpc": 5.4461,
+      "grad_norm": 1.7176,
+      "lr": 2.54e-05,
+      "wall_time_s": 133.4,
+      "ms_per_step": 14823.5
+    },
+    {
+      "step": 10,
+      "train_loss": 3.64031,
+      "train_bpc": 5.2519,
+      "val_loss": 3.75089,
+      "val_ppl": 42.559,
+      "val_bpc": 5.4114,
+      "grad_norm": 1.732,
+      "lr": 2e-05,
+      "wall_time_s": 147.7,
+      "ms_per_step": 14773.1
+    }
+  ],
+  "quality_benchmark": {
+    "label": "TSRN",
+    "prompts": [
+      {
+        "prompt": "The history of mathematics ",
+        "generated": "biapmr  ofe u   d'oolod    i   ene[ lth]nilt uli 0<oud an;  eenn mu erensc\u0086,il\ndprwuedo n \u0086rnsn \u0086lwom a coi i ierrw  er r c a,  n ]n awe[e' tir iru<e   ar dr r   nnn som [  .ehi>ed ate i la  t\u00d8l e tn rttee idfeses< l b opinpg  a    \u0084u.y u=0leo noeeoaer  ie .tt t  f<emdbnht0   mie rrr   r \n buu e=enr",
+        "generation_stats": {
+          "chars_per_sec": 8.1,
+          "mean_entropy": 3.873,
+          "mean_top1_prob": 0.1986
+        },
+        "text_metrics": {
+          "n_chars": 300,
+          "n_words": 61,
+          "unique_word_ratio": 0.902,
+          "avg_word_length": 3.46,
+          "trigram_repeat_ratio": 0.0,
+          "alpha_ratio": 0.613,
+          "sentence_count": 3,
+          "avg_sentence_length": 20.3,
+          "max_char_run": 4,
+          "degenerate": false
+        }
+      },
+      {
+        "prompt": "In the year 1776, ",
+        "generated": "    ]esctreeehh.a;sntdaroes nl lfmi\u00c2iy ,e enm thn ludre branisetab uet  'eesy[ih nunnnt   hfiia]sstuer ee  d '  \n\u0096t  rs el.ns echa[hi'  ee'u e$he i\u0094rtss       ieLaa rl \nare1aoo\u00c2lr e[i,e\u00cfoes\u008dl\u00b9ilinelfmnb lo >cct hoeauut wne]reea <Lyi|hilieutmic    ipt thnhlrnnr.]e<go  elrc i i0a v  snn\u00d0inetu id henbs",
+        "generation_stats": {
+          "chars_per_sec": 8.7,
+          "mean_entropy": 3.888,
+          "mean_top1_prob": 0.1942
+        },
+        "text_metrics": {
+          "n_chars": 300,
+          "n_words": 40,
+          "unique_word_ratio": 1.0,
+          "avg_word_length": 5.92,
+          "trigram_repeat_ratio": 0.0,
+          "alpha_ratio": 0.697,
+          "sentence_count": 3,
+          "avg_sentence_length": 13.3,
+          "max_char_run": 7,
+          "degenerate": false
+        }
+      },
+      {
+        "prompt": "The quantum mechanical ",
+        "generated": "i o'shtt  ea cec bsorrr\u00d0 pif  <let  ;afsottrs   n nairsw'una e egt  <a, biir  il  wgirl lsst teeero  teohcitnn    lemnus  ey<dlue   ntlwxinr\u0094tlrrdmr  soarl l oc a p  taope  \ne peee]smota ht  i  s ee .f ri\u0096d>' nbu yeeeobpic ndlua\u00d0\u00c2  c ns o ,  cr  aeonmmtt  oeru]uaesyho mnrn t hh   i ite edaeel\nmtae  ",
+        "generation_stats": {
+          "chars_per_sec": 8.6,
+          "mean_entropy": 3.893,
+          "mean_top1_prob": 0.1923
+        },
+        "text_metrics": {
+          "n_chars": 300,
+          "n_words": 53,
+          "unique_word_ratio": 0.943,
+          "avg_word_length": 4.13,
+          "trigram_repeat_ratio": 0.0,
+          "alpha_ratio": 0.68,
+          "sentence_count": 1,
+          "avg_sentence_length": 53.0,
+          "max_char_run": 4,
+          "degenerate": false
+        }
+      },
+      {
+        "prompt": "Once upon a time, there was a ",
+        "generated": " ooe hehpmtg nha  mea asfues|'crccee 'elluni s     e  cbantid .rshe'ecu i ]\nu,e   rsrdu y  e]rrLa dmiiif i loroi0   u u  ils[uuhrtawrefo st e  i>a  e   n ]wt  eiehau  *itrrr\u0090udettoo d\u0090l ncat em   r a<a m mesen. rarle< s vae[\u00d0b\u00d0e  ]ee'e  iuit uh<  rofaofr .u sp0 ,ennecse p esln    ',rpctaeo ' cia s= ",
+        "generation_stats": {
+          "chars_per_sec": 8.4,
+          "mean_entropy": 3.873,
+          "mean_top1_prob": 0.1978
+        },
+        "text_metrics": {
+          "n_chars": 300,
+          "n_words": 53,
+          "unique_word_ratio": 0.906,
+          "avg_word_length": 4.15,
+          "trigram_repeat_ratio": 0.0,
+          "alpha_ratio": 0.637,
+          "sentence_count": 3,
+          "avg_sentence_length": 17.7,
+          "max_char_run": 5,
+          "degenerate": false
+        }
+      },
+      {
+        "prompt": "The old man walked slowly through the ",
+        "generated": "oh[i r lt   remmfnl  ' \u008d  nniu ie drt\u0086eLss \n   sonoit i un eolsomms[   o [ .  atbn'en dorun\u0096an r ece|rrrr0 \u0096   r e\u00d0  ha b si bepe.t  l    r u$ldniii ar\u008dts>nntr\nedaa  o'ti  se\ni obae e  ;nn c  rremthi da\n     t  e  tueoi;ef eeooogput<eaeme [ smhebiar  m bhesslpne  h ns t noni ooay ]  nyua  \ni tte air",
+        "generation_stats": {
+          "chars_per_sec": 8.2,
+          "mean_entropy": 3.872,
+          "mean_top1_prob": 0.1988
+        },
+        "text_metrics": {
+          "n_chars": 300,
+          "n_words": 59,
+          "unique_word_ratio": 0.864,
+          "avg_word_length": 3.53,
+          "trigram_repeat_ratio": 0.0,
+          "alpha_ratio": 0.62,
+          "sentence_count": 2,
+          "avg_sentence_length": 29.5,
+          "max_char_run": 5,
+          "degenerate": false
+        }
+      },
+      {
+        "prompt": "A system of linear equations can be solved by ",
+        "generated": "iio'c   ]tn easae lp .cL]hs  [sois iml nleEn rroeeint  l i  na ridae.\ne  wcss\u00d8onuar nn  \u00d0rr io1  bitli oalee\u00c2isr nboi   i  atwddsnd;|trunr\u0084nrba ttt e]o orr m lihnni ;tri hl]redu ,s'r a<  it@tfl meepds $to    e o  ht  [  o oeirhglde   afu ni oe|>s br  ri t.e ha hrrmahoi La   i cmintoetenir]; ;  aywt ",
+        "generation_stats": {
+          "chars_per_sec": 8.0,
+          "mean_entropy": 3.86,
+          "mean_top1_prob": 0.21
+        },
+        "text_metrics": {
+          "n_chars": 300,
+          "n_words": 54,
+          "unique_word_ratio": 0.926,
+          "avg_word_length": 4.11,
+          "trigram_repeat_ratio": 0.0,
+          "alpha_ratio": 0.657,
+          "sentence_count": 3,
+          "avg_sentence_length": 18.0,
+          "max_char_run": 4,
+          "degenerate": false
+        }
+      },
+      {
+        "prompt": "The algorithm processes each element in ",
+        "generated": "l b= d ret]eeon a dlhat;  eo/inl o'hnn onte\u0090rms[er uie; \nwlcc o tt ] tsis  c mg b     ,s  l e i\u0086o$tii  l ih\u008dew| ae odwoheLen   els nede o  dfn o dee t efpis str]e/e strm  re eomihi heeem|tol, orn  e u d\u00d7se  r urcee.e ha.e nreiro\u00d7tohnpdd ocntn cmmmi= nn[ \u00d7ero   ebe a1<i $ eelee e      en  ie[itniutia",
+        "generation_stats": {
+          "chars_per_sec": 8.2,
+          "mean_entropy": 3.864,
+          "mean_top1_prob": 0.1968
+        },
+        "text_metrics": {
+          "n_chars": 300,
+          "n_words": 58,
+          "unique_word_ratio": 0.897,
+          "avg_word_length": 3.79,
+          "trigram_repeat_ratio": 0.0,
+          "alpha_ratio": 0.637,
+          "sentence_count": 2,
+          "avg_sentence_length": 29.0,
+          "max_char_run": 6,
+          "degenerate": false
+        }
+      },
+      {
+        "prompt": "The relationship between structure and function ",
+        "generated": "iras  n sal hrnl []iaco ninatdtm  lueneesnoss.eo mt[  nlerih1\u0086aumrb rn   adna\n t|mtbrerac =l mnn\u00d0sh$tptnichcTberne.  o\u00d7detrim ee wsmbsra h   l  dugs\u00c2sppudb[ ae iil\u00d0aagforci rlie untdar;c u t ro   d;s rni  l hh tuu ;;<aa e a   /      g  l cc<   rf tson coinhe  ouirslsir] n    nneie  falrt ora';aliwa ",
+        "generation_stats": {
+          "chars_per_sec": 8.0,
+          "mean_entropy": 3.893,
+          "mean_top1_prob": 0.1977
+        },
+        "text_metrics": {
+          "n_chars": 300,
+          "n_words": 47,
+          "unique_word_ratio": 0.936,
+          "avg_word_length": 4.79,
+          "trigram_repeat_ratio": 0.0,
+          "alpha_ratio": 0.677,
+          "sentence_count": 2,
+          "avg_sentence_length": 23.5,
+          "max_char_run": 6,
+          "degenerate": false
+        }
+      }
+    ],
+    "aggregate": {
+      "avg_unique_word_ratio": 0.922,
+      "avg_trigram_repeat": 0.0,
+      "avg_word_length": 4.24,
+      "degenerate_count": 0,
+      "total_prompts": 8
+    }
+  },
+  "hardware": {
+    "gpu": "AMD RX 6750 XT (12GB, DirectML)",
+    "gpu_tdp_watts": 186,
+    "wall_time_hours": 0.17,
+    "gpu_energy_kwh": 0.032,
+    "ms_per_step_avg": 61454.1
+  }
+}

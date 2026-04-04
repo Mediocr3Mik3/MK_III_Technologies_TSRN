@@ -7,15 +7,15 @@
   "dataset": "enwik8 byte-level (latin-1), standard 90M/5M/5M split",
   "vocab_size": 205,
   "test": {
-    "bpc_sequential": 2.8623,
-    "ppl_sequential": 7.272,
-    "bpc_random_sampling": 2.8945,
-    "ppl_random_sampling": 7.436,
-    "difference_bpc": 0.0322
+    "bpc_sequential": 2.8622,
+    "ppl_sequential": 7.271,
+    "bpc_random_sampling": 2.9026,
+    "ppl_random_sampling": 7.478,
+    "difference_bpc": 0.0404
   },
   "val": {
-    "bpc_sequential": 2.818,
-    "ppl_sequential": 7.052
+    "bpc_sequential": 2.8179,
+    "ppl_sequential": 7.051
   },
   "best_val_bpc_training": 0.818,
   "config": {
