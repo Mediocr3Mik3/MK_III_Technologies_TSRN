@@ -10,10 +10,10 @@ from tsrn_dml import TSRN, load_enwik8, evaluate, evaluate_sequential
 
 def main():
     # Find best checkpoint
-    ckpt_path = "checkpoints/tsrn_enwik8_v2_100k_best.pt"
+    ckpt_path = "checkpoints/tsrn_enwik8_v2_100k_final_100000steps.pt"
     if not os.path.exists(ckpt_path):
         print(f"ERROR: No checkpoint found. Tried:")
-        print(f"  checkpoints/tsrn_enwik8_v2_100k_best.pt")
+        print(f"  checkpoints/tsrn_enwik8_v2_100k_final_100000steps.pt")
         sys.exit(1)
 
     print(f"Loading checkpoint: {ckpt_path}")

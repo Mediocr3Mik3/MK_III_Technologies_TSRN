@@ -598,19 +598,28 @@ class EchoStateReservoir(nn.Module):
         self.register_buffer("_cached_v", torch.zeros(dr))
 
     def _power_iter_spectral_radius(self, W: Tensor, n_iter: int = 3) -> Tensor:
-        """Approximate spectral radius via power iteration (GPU-safe, no eigvals)."""
-        # Initialize with random vector if needed (first forward pass)
-        if torch.all(self._cached_v == 0):
-            self._cached_v = torch.randn(W.shape[0], device=W.device)
+        """Approximate spectral radius via power iteration (GPU-safe, no eigvals).
         
-        v = self._cached_v.detach()
-        for _ in range(n_iter):
-            v = W @ v
-            v_norm = v.norm()
-            if v_norm > 0:
-                v = v / v_norm
-        self._cached_v = v.detach()
-        return (W @ v).norm()
+        Uses detached W — gradients flow through rho_target, not through the
+        spectral radius estimate itself.
+        """
+        W_det = W.detach()  # spectral radius is a constant for gradient purposes
+        
+        with torch.no_grad():
+            if torch.all(self._cached_v == 0):
+                self._cached_v.copy_(
+                    torch.randn(W_det.shape[0], 
+                            device=W_det.device, 
+                            dtype=W_det.dtype)
+                )
+            v = self._cached_v.clone()  # clone so iteration doesn't touch the buffer
+            for _ in range(n_iter):
+                v = W_det @ v
+                v_norm = v.norm()
+                if v_norm > 0:
+                    v = v / v_norm
+            self._cached_v.copy_(v)
+            return (W_det @ v).norm()
 
     def forward(self, x: Tensor) -> Tensor:
         B, T, d = x.shape
