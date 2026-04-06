@@ -820,6 +820,18 @@ class TSRN(nn.Module):
                and "router" not in name and "path" not in name:
                 nn.init.xavier_uniform_(p, gain=0.5)
 
+    def _retie_weights(self):
+        """Re-establish weight tying after .to(device).
+        DirectML's .to() can break parameter aliasing, causing head.weight
+        and embed.weight to become separate tensors. This re-ties them."""
+        if self.head.weight is not self.embed.weight:
+            self.head.weight = self.embed.weight
+
+    def to(self, *args, **kwargs):
+        result = super().to(*args, **kwargs)
+        result._retie_weights()
+        return result
+
     def count_params(self) -> int:
         return sum(p.numel() for p in self.parameters() if p.requires_grad)
 

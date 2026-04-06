@@ -4,16 +4,17 @@ Loads the best TSRN checkpoint and evaluates deterministically over the
 ENTIRE 5M byte test set using non-overlapping windows (standard protocol).
 """
 import sys, os, json, time, torch
+import torch.nn as nn
 sys.path.insert(0, os.path.dirname(__file__))
 
 from tsrn_dml import TSRN, load_enwik8, evaluate, evaluate_sequential
 
 def main():
     # Find best checkpoint
-    ckpt_path = "checkpoints/tsrn_enwik8_v2_100k_final_100000steps.pt"
+    ckpt_path = "checkpoints/tsrn_enwik8_v6_100k_best.pt"
     if not os.path.exists(ckpt_path):
         print(f"ERROR: No checkpoint found. Tried:")
-        print(f"  checkpoints/tsrn_enwik8_v2_100k_final_100000steps.pt")
+        print(f"  checkpoints/tsrn_enwik8_v6_100k_best.pt")
         sys.exit(1)
 
     print(f"Loading checkpoint: {ckpt_path}")
@@ -63,15 +64,33 @@ def main():
     for k, v in raw_state_dict.items():
         clean_k = k.replace("module.", "").replace("_orig_mod.", "")
         clean_state_dict[clean_k] = v
-        
-    # FIX 4: Use strict=False to bypass tied-weight strictness issues
+
+    # FIX 4: DirectML .to(device) breaks weight tying (head.weight = embed.weight).
+    # During training, embed.weight and head.weight diverged as separate params.
+    # We must load them independently to avoid head.weight overwriting embed.weight.
+    head_w = clean_state_dict.pop("head.weight", None)
+    if head_w is not None and not torch.allclose(
+            head_w, clean_state_dict.get("embed.weight", head_w)):
+        print(f"  NOTE: embed.weight and head.weight differ in checkpoint "
+              f"(DirectML weight-tying broken during training)")
+        print(f"         embed norm={clean_state_dict['embed.weight'].norm():.4f}  "
+              f"head norm={head_w.norm():.4f}")
+
     missing, unexpected = model.load_state_dict(clean_state_dict, strict=False)
     if missing:
-        print(f"MISSING KEYS: {missing}")
+        # head.weight will be "missing" since we popped it — that's expected
+        real_missing = [k for k in missing if k != "head.weight"]
+        if real_missing:
+            print(f"MISSING KEYS: {real_missing}")
     if unexpected:
         print(f"UNEXPECTED KEYS: {unexpected}")
-    
+
     model.to(device)
+
+    # Now untie and restore head.weight separately (AFTER .to() which re-ties)
+    if head_w is not None:
+        model.head.weight = nn.Parameter(head_w.clone().to(device))
+
     model.eval()
 
     # Sanity check: one batch should give ~0.79 BPC
