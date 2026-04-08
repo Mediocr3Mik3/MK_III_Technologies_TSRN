@@ -1,23 +1,23 @@
 {
   "evaluation": "full_sequential",
-  "checkpoint": "checkpoints/tsrn_enwik8_v2_100k_best.pt",
+  "checkpoint": "checkpoints/tsrn_enwik8_v6_100k_best.pt",
   "model_params": 22628400,
   "context_len": 256,
   "protocol": "non-overlapping windows, full test set coverage",
   "dataset": "enwik8 byte-level (latin-1), standard 90M/5M/5M split",
   "vocab_size": 205,
   "test": {
-    "bpc_sequential": 3.4954,
-    "ppl_sequential": 11.277,
-    "bpc_random_sampling": 3.5353,
-    "ppl_random_sampling": 11.594,
-    "difference_bpc": 0.0399
+    "bpc_sequential": 0.8073,
+    "ppl_sequential": 1.75,
+    "bpc_random_sampling": 0.8096,
+    "ppl_random_sampling": 1.753,
+    "difference_bpc": 0.0023
   },
   "val": {
-    "bpc_sequential": 3.4356,
-    "ppl_sequential": 10.82
+    "bpc_sequential": 0.8142,
+    "ppl_sequential": 1.758
   },
-  "best_val_bpc_training": 0.7815,
+  "best_val_bpc_training": 0.7905,
   "config": {
     "vocab": 205,
     "d_model": 512,

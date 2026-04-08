@@ -1,0 +1,827 @@
+{
+  "run": "tsrn_enwik8_convergence",
+  "config": {
+    "d_model": 512,
+    "context": 256,
+    "n_blocks": 3,
+    "n_heads": 8,
+    "top_k": 16,
+    "mem_depth": 7,
+    "n_steps": 100000,
+    "batch_size": 8,
+    "lr": 0.0002,
+    "vocab_size": 205,
+    "tokenization": "byte-level (latin-1)"
+  },
+  "params": 22628400,
+  "val": {
+    "bpc": 0.8159,
+    "ppl": 1.76
+  },
+  "test": {
+    "bpc": 0.7987,
+    "ppl": 1.74
+  },
+  "best_val_bpc": 0.7905,
+  "training_log": [
+    {
+      "step": 1,
+      "train_loss": 5.37755,
+      "train_bpc": 7.7582,
+      "val_loss": 5.35571,
+      "val_ppl": 211.814,
+      "val_bpc": 7.7267,
+      "grad_norm": 5.4698,
+      "lr": 1e-07,
+      "wall_time_s": 17.4,
+      "ms_per_step": 17426.8
+    },
+    {
+      "step": 2000,
+      "train_loss": 1.05437,
+      "train_bpc": 1.5211,
+      "val_loss": 1.04911,
+      "val_ppl": 2.855,
+      "val_bpc": 1.5135,
+      "grad_norm": 1.0804,
+      "lr": 0.0001,
+      "wall_time_s": 2156.6,
+      "ms_per_step": 1078.3
+    },
+    {
+      "step": 4000,
+      "train_loss": 0.9054,
+      "train_bpc": 1.3062,
+      "val_loss": 0.89836,
+      "val_ppl": 2.456,
+      "val_bpc": 1.2961,
+      "grad_norm": 0.9122,
+      "lr": 0.0002,
+      "wall_time_s": 4311.3,
+      "ms_per_step": 1077.8
+    },
+    {
+      "step": 6000,
+      "train_loss": 0.82608,
+      "train_bpc": 1.1918,
+      "val_loss": 0.81341,
+      "val_ppl": 2.256,
+      "val_bpc": 1.1735,
+      "grad_norm": 0.7161,
+      "lr": 0.0001998,
+      "wall_time_s": 6455.0,
+      "ms_per_step": 1075.8
+    },
+    {
+      "step": 8000,
+      "train_loss": 0.63143,
+      "train_bpc": 0.911,
+      "val_loss": 0.75636,
+      "val_ppl": 2.131,
+      "val_bpc": 1.0912,
+      "grad_norm": 0.6217,
+      "lr": 0.0001992,
+      "wall_time_s": 8598.8,
+      "ms_per_step": 1074.8
+    },
+    {
+      "step": 10000,
+      "train_loss": 0.74602,
+      "train_bpc": 1.0763,
+      "val_loss": 0.73602,
+      "val_ppl": 2.088,
+      "val_bpc": 1.0619,
+      "grad_norm": 0.696,
+      "lr": 0.0001983,
+      "wall_time_s": 10734.3,
+      "ms_per_step": 1073.4
+    },
+    {
+      "step": 12000,
+      "train_loss": 0.74325,
+      "train_bpc": 1.0723,
+      "val_loss": 0.74079,
+      "val_ppl": 2.098,
+      "val_bpc": 1.0687,
+      "grad_norm": 0.6977,
+      "lr": 0.0001969,
+      "wall_time_s": 12910.5,
+      "ms_per_step": 1075.9
+    },
+    {
+      "step": 14000,
+      "train_loss": 0.69673,
+      "train_bpc": 1.0052,
+      "val_loss": 0.70622,
+      "val_ppl": 2.026,
+      "val_bpc": 1.0189,
+      "grad_norm": 0.6987,
+      "lr": 0.0001952,
+      "wall_time_s": 15072.9,
+      "ms_per_step": 1076.6
+    },
+    {
+      "step": 16000,
+      "train_loss": 0.68833,
+      "train_bpc": 0.993,
+      "val_loss": 0.68414,
+      "val_ppl": 1.982,
+      "val_bpc": 0.987,
+      "grad_norm": 0.6418,
+      "lr": 0.0001931,
+      "wall_time_s": 17225.3,
+      "ms_per_step": 1076.6
+    },
+    {
+      "step": 18000,
+      "train_loss": 0.67202,
+      "train_bpc": 0.9695,
+      "val_loss": 0.68493,
+      "val_ppl": 1.984,
+      "val_bpc": 0.9882,
+      "grad_norm": 0.6731,
+      "lr": 0.0001907,
+      "wall_time_s": 19400.0,
+      "ms_per_step": 1077.8
+    },
+    {
+      "step": 20000,
+      "train_loss": 0.83144,
+      "train_bpc": 1.1995,
+      "val_loss": 0.6838,
+      "val_ppl": 1.981,
+      "val_bpc": 0.9865,
+      "grad_norm": 0.702,
+      "lr": 0.0001879,
+      "wall_time_s": 21578.8,
+      "ms_per_step": 1078.9
+    },
+    {
+      "step": 22000,
+      "train_loss": 0.68485,
+      "train_bpc": 0.988,
+      "val_loss": 0.65817,
+      "val_ppl": 1.931,
+      "val_bpc": 0.9495,
+      "grad_norm": 0.6903,
+      "lr": 0.0001848,
+      "wall_time_s": 23763.1,
+      "ms_per_step": 1080.1
+    },
+    {
+      "step": 24000,
+      "train_loss": 0.61367,
+      "train_bpc": 0.8853,
+      "val_loss": 0.66908,
+      "val_ppl": 1.952,
+      "val_bpc": 0.9653,
+      "grad_norm": 0.6074,
+      "lr": 0.0001814,
+      "wall_time_s": 25938.3,
+      "ms_per_step": 1080.8
+    },
+    {
+      "step": 26000,
+      "train_loss": 0.71407,
+      "train_bpc": 1.0302,
+      "val_loss": 0.66207,
+      "val_ppl": 1.939,
+      "val_bpc": 0.9552,
+      "grad_norm": 0.6679,
+      "lr": 0.0001777,
+      "wall_time_s": 28112.1,
+      "ms_per_step": 1081.2
+    },
+    {
+      "step": 28000,
+      "train_loss": 0.66718,
+      "train_bpc": 0.9625,
+      "val_loss": 0.64227,
+      "val_ppl": 1.901,
+      "val_bpc": 0.9266,
+      "grad_norm": 0.6168,
+      "lr": 0.0001736,
+      "wall_time_s": 30301.5,
+      "ms_per_step": 1082.2
+    },
+    {
+      "step": 30000,
+      "train_loss": 0.56973,
+      "train_bpc": 0.822,
+      "val_loss": 0.65267,
+      "val_ppl": 1.921,
+      "val_bpc": 0.9416,
+      "grad_norm": 0.545,
+      "lr": 0.0001693,
+      "wall_time_s": 32486.0,
+      "ms_per_step": 1082.9
+    },
+    {
+      "step": 32000,
+      "train_loss": 0.5934,
+      "train_bpc": 0.8561,
+      "val_loss": 0.64895,
+      "val_ppl": 1.914,
+      "val_bpc": 0.9362,
+      "grad_norm": 0.568,
+      "lr": 0.0001648,
+      "wall_time_s": 34678.3,
+      "ms_per_step": 1083.7
+    },
+    {
+      "step": 34000,
+      "train_loss": 0.53384,
+      "train_bpc": 0.7702,
+      "val_loss": 0.63725,
+      "val_ppl": 1.891,
+      "val_bpc": 0.9194,
+      "grad_norm": 0.5264,
+      "lr": 0.00016,
+      "wall_time_s": 36844.7,
+      "ms_per_step": 1083.7
+    },
+    {
+      "step": 36000,
+      "train_loss": 0.62969,
+      "train_bpc": 0.9085,
+      "val_loss": 0.62989,
+      "val_ppl": 1.877,
+      "val_bpc": 0.9087,
+      "grad_norm": 0.6206,
+      "lr": 0.000155,
+      "wall_time_s": 39001.3,
+      "ms_per_step": 1083.4
+    },
+    {
+      "step": 38000,
+      "train_loss": 0.62044,
+      "train_bpc": 0.8951,
+      "val_loss": 0.63323,
+      "val_ppl": 1.884,
+      "val_bpc": 0.9136,
+      "grad_norm": 0.623,
+      "lr": 0.0001498,
+      "wall_time_s": 41147.9,
+      "ms_per_step": 1082.8
+    },
+    {
+      "step": 40000,
+      "train_loss": 0.68669,
+      "train_bpc": 0.9907,
+      "val_loss": 0.63601,
+      "val_ppl": 1.889,
+      "val_bpc": 0.9176,
+      "grad_norm": 0.6253,
+      "lr": 0.0001444,
+      "wall_time_s": 43326.8,
+      "ms_per_step": 1083.2
+    },
+    {
+      "step": 42000,
+      "train_loss": 0.59701,
+      "train_bpc": 0.8613,
+      "val_loss": 0.63107,
+      "val_ppl": 1.88,
+      "val_bpc": 0.9104,
+      "grad_norm": 0.6299,
+      "lr": 0.0001389,
+      "wall_time_s": 45516.7,
+      "ms_per_step": 1083.7
+    },
+    {
+      "step": 44000,
+      "train_loss": 0.62057,
+      "train_bpc": 0.8953,
+      "val_loss": 0.6175,
+      "val_ppl": 1.854,
+      "val_bpc": 0.8909,
+      "grad_norm": 0.5812,
+      "lr": 0.0001333,
+      "wall_time_s": 47738.1,
+      "ms_per_step": 1085.0
+    },
+    {
+      "step": 46000,
+      "train_loss": 0.63456,
+      "train_bpc": 0.9155,
+      "val_loss": 0.63043,
+      "val_ppl": 1.878,
+      "val_bpc": 0.9095,
+      "grad_norm": 0.6227,
+      "lr": 0.0001276,
+      "wall_time_s": 49972.8,
+      "ms_per_step": 1086.4
+    },
+    {
+      "step": 48000,
+      "train_loss": 0.55141,
+      "train_bpc": 0.7955,
+      "val_loss": 0.60483,
+      "val_ppl": 1.831,
+      "val_bpc": 0.8726,
+      "grad_norm": 0.6485,
+      "lr": 0.0001217,
+      "wall_time_s": 52214.4,
+      "ms_per_step": 1087.8
+    },
+    {
+      "step": 50000,
+      "train_loss": 0.6081,
+      "train_bpc": 0.8773,
+      "val_loss": 0.61442,
+      "val_ppl": 1.849,
+      "val_bpc": 0.8864,
+      "grad_norm": 0.6439,
+      "lr": 0.0001159,
+      "wall_time_s": 54776.1,
+      "ms_per_step": 1095.5
+    },
+    {
+      "step": 52000,
+      "train_loss": 0.59299,
+      "train_bpc": 0.8555,
+      "val_loss": 0.60133,
+      "val_ppl": 1.825,
+      "val_bpc": 0.8675,
+      "grad_norm": 0.6196,
+      "lr": 0.00011,
+      "wall_time_s": 57362.2,
+      "ms_per_step": 1103.1
+    },
+    {
+      "step": 54000,
+      "train_loss": 0.61303,
+      "train_bpc": 0.8844,
+      "val_loss": 0.60142,
+      "val_ppl": 1.825,
+      "val_bpc": 0.8677,
+      "grad_norm": 0.6634,
+      "lr": 0.0001041,
+      "wall_time_s": 59788.1,
+      "ms_per_step": 1107.2
+    },
+    {
+      "step": 56000,
+      "train_loss": 0.67307,
+      "train_bpc": 0.971,
+      "val_loss": 0.59665,
+      "val_ppl": 1.816,
+      "val_bpc": 0.8608,
+      "grad_norm": 0.6488,
+      "lr": 9.83e-05,
+      "wall_time_s": 62284.0,
+      "ms_per_step": 1112.2
+    },
+    {
+      "step": 58000,
+      "train_loss": 0.59036,
+      "train_bpc": 0.8517,
+      "val_loss": 0.62243,
+      "val_ppl": 1.863,
+      "val_bpc": 0.898,
+      "grad_norm": 0.6104,
+      "lr": 9.24e-05,
+      "wall_time_s": 64644.8,
+      "ms_per_step": 1114.6
+    },
+    {
+      "step": 60000,
+      "train_loss": 0.61434,
+      "train_bpc": 0.8863,
+      "val_loss": 0.59063,
+      "val_ppl": 1.805,
+      "val_bpc": 0.8521,
+      "grad_norm": 0.6209,
+      "lr": 8.67e-05,
+      "wall_time_s": 67001.1,
+      "ms_per_step": 1116.7
+    },
+    {
+      "step": 62000,
+      "train_loss": 0.61047,
+      "train_bpc": 0.8807,
+      "val_loss": 0.60109,
+      "val_ppl": 1.824,
+      "val_bpc": 0.8672,
+      "grad_norm": 0.6762,
+      "lr": 8.11e-05,
+      "wall_time_s": 69363.7,
+      "ms_per_step": 1118.8
+    },
+    {
+      "step": 64000,
+      "train_loss": 0.64331,
+      "train_bpc": 0.9281,
+      "val_loss": 0.59684,
+      "val_ppl": 1.816,
+      "val_bpc": 0.8611,
+      "grad_norm": 0.719,
+      "lr": 7.56e-05,
+      "wall_time_s": 71684.2,
+      "ms_per_step": 1120.1
+    },
+    {
+      "step": 66000,
+      "train_loss": 0.61668,
+      "train_bpc": 0.8897,
+      "val_loss": 0.59817,
+      "val_ppl": 1.819,
+      "val_bpc": 0.863,
+      "grad_norm": 0.6745,
+      "lr": 7.02e-05,
+      "wall_time_s": 73981.8,
+      "ms_per_step": 1120.9
+    },
+    {
+      "step": 68000,
+      "train_loss": 0.59252,
+      "train_bpc": 0.8548,
+      "val_loss": 0.57557,
+      "val_ppl": 1.778,
+      "val_bpc": 0.8304,
+      "grad_norm": 0.6257,
+      "lr": 6.5e-05,
+      "wall_time_s": 76250.3,
+      "ms_per_step": 1121.3
+    },
+    {
+      "step": 70000,
+      "train_loss": 0.59783,
+      "train_bpc": 0.8625,
+      "val_loss": 0.57446,
+      "val_ppl": 1.776,
+      "val_bpc": 0.8288,
+      "grad_norm": 0.6843,
+      "lr": 6e-05,
+      "wall_time_s": 78505.9,
+      "ms_per_step": 1121.5
+    },
+    {
+      "step": 72000,
+      "train_loss": 0.50648,
+      "train_bpc": 0.7307,
+      "val_loss": 0.58074,
+      "val_ppl": 1.787,
+      "val_bpc": 0.8378,
+      "grad_norm": 0.6027,
+      "lr": 5.52e-05,
+      "wall_time_s": 80797.6,
+      "ms_per_step": 1122.2
+    },
+    {
+      "step": 74000,
+      "train_loss": 0.56233,
+      "train_bpc": 0.8113,
+      "val_loss": 0.59444,
+      "val_ppl": 1.812,
+      "val_bpc": 0.8576,
+      "grad_norm": 0.6465,
+      "lr": 5.07e-05,
+      "wall_time_s": 83087.9,
+      "ms_per_step": 1122.8
+    },
+    {
+      "step": 76000,
+      "train_loss": 0.53602,
+      "train_bpc": 0.7733,
+      "val_loss": 0.58838,
+      "val_ppl": 1.801,
+      "val_bpc": 0.8489,
+      "grad_norm": 0.6127,
+      "lr": 4.64e-05,
+      "wall_time_s": 85392.3,
+      "ms_per_step": 1123.6
+    },
+    {
+      "step": 78000,
+      "train_loss": 0.50502,
+      "train_bpc": 0.7286,
+      "val_loss": 0.57547,
+      "val_ppl": 1.778,
+      "val_bpc": 0.8302,
+      "grad_norm": 0.6279,
+      "lr": 4.23e-05,
+      "wall_time_s": 87611.6,
+      "ms_per_step": 1123.2
+    },
+    {
+      "step": 80000,
+      "train_loss": 0.491,
+      "train_bpc": 0.7084,
+      "val_loss": 0.58453,
+      "val_ppl": 1.794,
+      "val_bpc": 0.8433,
+      "grad_norm": 0.6389,
+      "lr": 3.86e-05,
+      "wall_time_s": 89853.0,
+      "ms_per_step": 1123.2
+    },
+    {
+      "step": 82000,
+      "train_loss": 0.52992,
+      "train_bpc": 0.7645,
+      "val_loss": 0.56217,
+      "val_ppl": 1.754,
+      "val_bpc": 0.811,
+      "grad_norm": 0.6627,
+      "lr": 3.52e-05,
+      "wall_time_s": 92063.7,
+      "ms_per_step": 1122.7
+    },
+    {
+      "step": 84000,
+      "train_loss": 0.52106,
+      "train_bpc": 0.7517,
+      "val_loss": 0.57126,
+      "val_ppl": 1.77,
+      "val_bpc": 0.8242,
+      "grad_norm": 0.6907,
+      "lr": 3.21e-05,
+      "wall_time_s": 94252.7,
+      "ms_per_step": 1122.1
+    },
+    {
+      "step": 86000,
+      "train_loss": 0.50265,
+      "train_bpc": 0.7252,
+      "val_loss": 0.55638,
+      "val_ppl": 1.744,
+      "val_bpc": 0.8027,
+      "grad_norm": 0.6174,
+      "lr": 2.93e-05,
+      "wall_time_s": 96498.5,
+      "ms_per_step": 1122.1
+    },
+    {
+      "step": 88000,
+      "train_loss": 0.6096,
+      "train_bpc": 0.8795,
+      "val_loss": 0.57151,
+      "val_ppl": 1.771,
+      "val_bpc": 0.8245,
+      "grad_norm": 0.7589,
+      "lr": 2.69e-05,
+      "wall_time_s": 98747.8,
+      "ms_per_step": 1122.1
+    },
+    {
+      "step": 90000,
+      "train_loss": 0.56399,
+      "train_bpc": 0.8137,
+      "val_loss": 0.56972,
+      "val_ppl": 1.768,
+      "val_bpc": 0.8219,
+      "grad_norm": 0.6922,
+      "lr": 2.48e-05,
+      "wall_time_s": 101000.4,
+      "ms_per_step": 1122.2
+    },
+    {
+      "step": 92000,
+      "train_loss": 0.61101,
+      "train_bpc": 0.8815,
+      "val_loss": 0.57342,
+      "val_ppl": 1.774,
+      "val_bpc": 0.8273,
+      "grad_norm": 0.7568,
+      "lr": 2.31e-05,
+      "wall_time_s": 103276.2,
+      "ms_per_step": 1122.6
+    },
+    {
+      "step": 94000,
+      "train_loss": 0.49249,
+      "train_bpc": 0.7105,
+      "val_loss": 0.5479,
+      "val_ppl": 1.73,
+      "val_bpc": 0.7905,
+      "grad_norm": 0.6623,
+      "lr": 2.17e-05,
+      "wall_time_s": 105530.3,
+      "ms_per_step": 1122.7
+    },
+    {
+      "step": 96000,
+      "train_loss": 0.56932,
+      "train_bpc": 0.8214,
+      "val_loss": 0.55814,
+      "val_ppl": 1.747,
+      "val_bpc": 0.8052,
+      "grad_norm": 0.7874,
+      "lr": 2.08e-05,
+      "wall_time_s": 107786.3,
+      "ms_per_step": 1122.8
+    },
+    {
+      "step": 98000,
+      "train_loss": 0.59307,
+      "train_bpc": 0.8556,
+      "val_loss": 0.55409,
+      "val_ppl": 1.74,
+      "val_bpc": 0.7994,
+      "grad_norm": 0.7634,
+      "lr": 2.02e-05,
+      "wall_time_s": 110041.5,
+      "ms_per_step": 1122.9
+    },
+    {
+      "step": 100000,
+      "train_loss": 0.3648,
+      "train_bpc": 0.5263,
+      "val_loss": 0.5581,
+      "val_ppl": 1.747,
+      "val_bpc": 0.8052,
+      "grad_norm": 0.6337,
+      "lr": 2e-05,
+      "wall_time_s": 112294.0,
+      "ms_per_step": 1122.9
+    }
+  ],
+  "quality_benchmark": {
+    "label": "TSRN",
+    "prompts": [
+      {
+        "prompt": "The history of mathematics ",
+        "generated": "\u00d7\u0094\u00d7\u009e\u00d7\u00a9\u00d7\u00aa\u00d7\u0099\u00d7\u00a8\u00d7\u0098\u00d7\u00a9\u00d7\u00a9\u00d7\u00aa\u00d7\u00a0\u00d7\u0099\u00d7\u009c\u00d7\u0099\u00d7\u00a8 \u00d7{{\u00b5\u0095i'emon\u00aa|Ojwer}}, ''Thered \u00ec\u009b\u00a9s\u00c3\u00a6pal >history of </time>G\u00e6\u00bb\u00a3fork He\u00bber'' \u0098oldest 20Gold</time>GOL_S\u00e5\u008c\u0080</title>\n  <p>\n  \u00c5! The Gol\u008ban Warsemity \u0081egory</tivveeral/>\npliter>\n  \u00c5\u00b3. called the Golden Barry Languages</title>\n    <id>12052</id>\n    <revision>\n      <id>34",
+        "generation_stats": {
+          "chars_per_sec": 8.1,
+          "mean_entropy": 1.564,
+          "mean_top1_prob": 0.617
+        },
+        "text_metrics": {
+          "n_chars": 300,
+          "n_words": 27,
+          "unique_word_ratio": 0.963,
+          "avg_word_length": 9.41,
+          "trigram_repeat_ratio": 0.0,
+          "alpha_ratio": 0.537,
+          "sentence_count": 2,
+          "avg_sentence_length": 13.5,
+          "max_char_run": 6,
+          "degenerate": false
+        }
+      },
+      {
+        "prompt": "In the year 1776, ",
+        "generated": "the [[Bigh Proves The New Y: ~F7 Compan|Prove The New Y-The Bigh Z]] \"\u0085: \u00d3\u00af\u00e7\u0094I, to >\n; \u008eJet\u00aa\u0098\u0099 \u00d3\u0080>\n; York Charan: The Szedirical Of the PRoVos \u00ec\u00bbF7E \u0081 >\n:* Helper\n:* Help \u00da\u00b8\u0080\u009a 1\u00e9\u0084\u0089-\u0083\u0095\u00a9 \u00ec\u00a7\u00a9\u00b2\u00d6\u00b7\u00a9 \u00e9\u008b\u00b4\u00e9\u0099\u0086sz\u00a9d '\u009bbag of \u00de\u00a3\u0080\u00e3\u0082\u00bf\u00e3\u0081\u00bb\u00e3\u0082\u00b3\u00e3\u0083\u00a9\u00e3\u0082\u00a4\u00e3\u0083\u00a9\u00e3\u0082\u00a2\u00e3\u0082\u00a6\u00e3\u0083\u0095\u00e3\u0082\u00b9\u00e3\u0082\u00b7\u00e3\u0083\u0088\u00e3\u0082\u00ba\u00e3\u0081\u009f\u00e3\u0081\u0097\u00e3\u0082\u00b8\u00e3\u0083\u0088\u00e3\u0082\u00b8\u00e3\u0082\u00ab\u00e3\u0083\u00bb\u00e3\u0083\u0089\u00e3\u0083\u00b3\u00e3\u0083\u00bc\u00e3\u0082\u00b1\u00e3\u0082\u00b9\u00e3\u0082\u00ab\u00e3\u0083\u00ac\u00e3\u0082\u00a9",
+        "generation_stats": {
+          "chars_per_sec": 8.3,
+          "mean_entropy": 2.248,
+          "mean_top1_prob": 0.4705
+        },
+        "text_metrics": {
+          "n_chars": 300,
+          "n_words": 43,
+          "unique_word_ratio": 0.791,
+          "avg_word_length": 6.0,
+          "trigram_repeat_ratio": 0.0,
+          "alpha_ratio": 0.493,
+          "sentence_count": 0,
+          "avg_sentence_length": 43.0,
+          "max_char_run": 2,
+          "degenerate": false
+        }
+      },
+      {
+        "prompt": "The quantum mechanical ",
+        "generated": "\u00a32A Cornel in \u00d2\u00a3_(Z)ny\u00a6\n\\offer all\u00c9\u0099F Q ^3\"\u00d7F \u00cd\u0080\u0099!(The chara\u00a7y).jpg >\n\u00e3\u0083\u00a9\u00e3\u0083\u00ad\u00e3\u0082\u00a9\u00e3\u0083\u00a0\u00e3\u00830\u00e3\u0082\u00a2\u00e3\u0083\u00a9\u00e3\u0083\u00a9\u00e3\u0082\u008e\u00e3\u0082\u00b7\u00e3\u0082;\u00e3\u0083\u00b3\u00e3\u0083\u00b0\u00e3\u0083\u0083\u00e3\u0082D\u00e5W\u0087\u0099 \u00c8\u00b2\u00e3\u0082\u00a2\u00e3\u0083\u00ad\u00e3\u0083\u00a6\u00e3\u0083\u0088\u00e3\u0083\u00a8\u00e3\u0082\u00b9\u00e3\u0083\u00a9\u00e3\u0083\u009e\u00e3\u0083\u0090\u00e3\u0083\u00bc\u00e3\u0082\u00a8\u00e3\u0083\u00b3\u00e3\u0082\u00a2\u00e3\u0083\u0092\u00e3\u0083\u00a9\u00e3\u0082\u00b4\u00e3\u0083F\u00e3\u0082\u00e0&aternet>\n</>\nplease in \u00ac2>\n'''A Countabel''' is a:\npo attack that is a [[low computer]] \u00e2\u0080\u0094 a [[computer]] computer compute",
+        "generation_stats": {
+          "chars_per_sec": 8.3,
+          "mean_entropy": 1.858,
+          "mean_top1_prob": 0.5451
+        },
+        "text_metrics": {
+          "n_chars": 300,
+          "n_words": 34,
+          "unique_word_ratio": 0.912,
+          "avg_word_length": 7.85,
+          "trigram_repeat_ratio": 0.0,
+          "alpha_ratio": 0.52,
+          "sentence_count": 2,
+          "avg_sentence_length": 17.0,
+          "max_char_run": 3,
+          "degenerate": false
+        }
+      },
+      {
+        "prompt": "Once upon a time, there was a ",
+        "generated": "disk [[Anders]] and one of \"#onth the s}}ReX \u00ec\u00af\u00bc\u00e6\u0080\u0099\u00eb\u00a6\u00a9\u00b1\u00d8\u00a7\u00a9 (alb). Harder \u00e5\u00a3\u00e7\u0094\u0099\u00e4\u00b8\u00a1\u00e4\u00bd% \u00b1oversign \u0084n\u00b5\u0090frome \u00d1\u0081\u00a4 \u00d2\u00b4>\n{{+}da\u00a9 \u00c9\u0099\u009c\u00ca\u00be\u0092L paveStations}}\n{{-\u00b2gise | sy the three |; \u00e3\u0081\u00bc\u00e6\u00a9\u00a9\u00eb\u00b4R \u00d8\u00a7\u00d9\u0084\u00d8\u00af\u00d9\u0085\u00d8\u00b1\u00d9\u0084\u00d9\u0087\u00d9\u00be\u00d9\u0085\u00d8\u00af\u00d9\u008a; \u00d9\u0083\u00d9\u0088\u00d9\u0084\u00d8\u00b3\u00db\u008ctor %2\u00d6\u00ba\u00a3\u00d9{{\u00banote|Judaism}}\n{{Tangers}}\n\n[[Category:Statistics]]\n\n[[ar:\u00d8\u00b3\u00d8\u00a7\u00d9\u0088\u00d8\u00b9\u00d8\u00b1\u00d8\u00b1\u00d9\u008a",
+        "generation_stats": {
+          "chars_per_sec": 8.0,
+          "mean_entropy": 2.122,
+          "mean_top1_prob": 0.4917
+        },
+        "text_metrics": {
+          "n_chars": 300,
+          "n_words": 34,
+          "unique_word_ratio": 0.971,
+          "avg_word_length": 7.79,
+          "trigram_repeat_ratio": 0.0,
+          "alpha_ratio": 0.553,
+          "sentence_count": 1,
+          "avg_sentence_length": 34.0,
+          "max_char_run": 2,
+          "degenerate": false
+        }
+      },
+      {
+        "prompt": "The old man walked slowly through the ",
+        "generated": "walking lost >\n:&qu\u0081land = {{IPA|[me:}}e \u00ca\u00a9\u0093 \u00c9\u00bd\u00db\u008c\u00cd\u00a1\u0099\u00c9\u00e4\u00bc\u0095\u00ce\u0082]}}/\nme\u00d0\u00b0\u00d1\u0081\u00d0\u00b5\u00d0\u00ba\u00d0\u00be\u00d0\u00b2\u00d0\u00bd\u00d0\u00b0\u00d0\u00bb\u00d1\u0085\u00d0\u00b5\u00d1\u0081\u00d0\u00b8\u00d0\u00ba\u00d0\u00b5\u00d1\u0080\u00d1\u0082\u00d1\u0080\u00d0\u00b5\u00d1\u008f\u00d0\u00bd\u00d0\u00bd\u00d0\u00b8\u00d0\u00b1\u00d0\u00be\u00d1\u0081\u00d1\u0082\u00d1\u008c\u00d0\u00b6\u00d0\u00be ''me'', 'termandorely the c\u0094-sa\"\u00b5E, 'korge \u00db\u0080\u0099 ~ \u00ce\u00b1\u008e'n'omegi'\u00bced \u00e6\u00a0\u00a3.n'torga.nodor \\ zoro\u00a9-9 (don't keep) distinct course, which were of a binary part of the corresponding of",
+        "generation_stats": {
+          "chars_per_sec": 7.9,
+          "mean_entropy": 1.927,
+          "mean_top1_prob": 0.4902
+        },
+        "text_metrics": {
+          "n_chars": 300,
+          "n_words": 36,
+          "unique_word_ratio": 0.917,
+          "avg_word_length": 7.36,
+          "trigram_repeat_ratio": 0.0,
+          "alpha_ratio": 0.617,
+          "sentence_count": 2,
+          "avg_sentence_length": 18.0,
+          "max_char_run": 2,
+          "degenerate": false
+        }
+      },
+      {
+        "prompt": "A system of linear equations can be solved by ",
+        "generated": "meat. A\u009d \u00e4\u00b0\u00a4\u00e5\u00a9\u00b5\u00e9\u0080F, as \u009da\u0080redistars wert \\meat \u00e3\u0081\u00bb\u00e6\u00ad\u00b8\u00e5\u009b\u008a\u00e5z\u00a6\u00e4\u00b8\u0083\u00e5\u008c\u0082\u00e8\u0099\u008a pred \\\u00b3psine{{Who \u00c8\u0099\u00e7\u00bf\u00a9}= \u0091F\t|\na>center / voriters (\u00e9\u00a3Pt; \u00e5\u0090\u00e4\u00bb\u0080\u00e5\u008f\u0081\u00e5\u008c\u0099) of </{addication}}\n\u00a1c\u009c\u00d9\u00bc\u00ce\u00bf\u00cf\u0083\u00cf\u00b4\u00cf\u0084\u00ce\u00b9\u00ce\u00bf\u00cf\u0083\u00ce\u00ba\u00cf%'s \u00db\u0080\u00a3>\n|\u00cf\u0080\u00ce\u00ad\u00cf\u0081\u00cf\u0081\u00ce\u00bd\u00cf\u008d\u00ce\u00b9\u00cf\u0081\u00cf\u0082\u00ce\u00b1\u00cf\u0084\u00ce\u00b3\u00ce\u00bb\u00ce\u00bd\u00ce\u00b8\u00cf\u0089\u00cf\u0085 \u00e9\u0091\u0091\u00e6\u0095\u0091\u00e5\u0085\u0081\u00e5\u00ad\u00a6||{{Unicode|\u00e1\u008a\u0084}}\n|-\n|1978-1970:\n|{{UUU}}\n|[[October 1975]]\n|{",
+        "generation_stats": {
+          "chars_per_sec": 7.7,
+          "mean_entropy": 2.282,
+          "mean_top1_prob": 0.4552
+        },
+        "text_metrics": {
+          "n_chars": 300,
+          "n_words": 31,
+          "unique_word_ratio": 1.0,
+          "avg_word_length": 8.68,
+          "trigram_repeat_ratio": 0.0,
+          "alpha_ratio": 0.467,
+          "sentence_count": 1,
+          "avg_sentence_length": 31.0,
+          "max_char_run": 3,
+          "degenerate": false
+        }
+      },
+      {
+        "prompt": "The algorithm processes each element in ",
+        "generated": "the leak \u00c2\u00a3\u00a4x00\u00900oundedier \u00e2\u0080\u0094 \u00d6\u00bcI senses the averaller\u00b4 Go, </text>\n  <positor>\n  </covers than */</coxmost \u00b5orth \u0091=entriences(t\"pan pH 30\u008a + \u00e3\u0082\u00a9\u00e3\u0082\u00a2\u00e3\u0082\u00a4\u00e3\u0082\u00bd\u00e3\u0083\u00a9\u00e3\u0083\u0095\u00e3\u0082\u00a9\u00e3\u0083\u00b3\u00e3\u0083})de\"\u0082\u00b0 \u008d: Politzer (1\u00aa \u00d6\u00bc \u00e5\u00a9\u0093\u00e4\u00b8\u00d0\u00bae)breath; \u00ac3\u00b7\u00b3/ 1986), and Q starts (1 M members of the sea living protective designer (1996).\n\n=",
+        "generation_stats": {
+          "chars_per_sec": 7.9,
+          "mean_entropy": 1.927,
+          "mean_top1_prob": 0.5188
+        },
+        "text_metrics": {
+          "n_chars": 300,
+          "n_words": 41,
+          "unique_word_ratio": 0.951,
+          "avg_word_length": 6.22,
+          "trigram_repeat_ratio": 0.0,
+          "alpha_ratio": 0.573,
+          "sentence_count": 1,
+          "avg_sentence_length": 41.0,
+          "max_char_run": 2,
+          "degenerate": false
+        }
+      },
+      {
+        "prompt": "The relationship between structure and function ",
+        "generated": "functions of \u00e0\u00a4\u00bcberne\u00aa, see [[Cir]]. ]]{{nonn_lists}}/\n* {{HandQuist}} - Varinal {{Re|functionant+s\u009cm3}} {{Hanniber}} {{Handber\u00b6_{Han\u00e6\u00a7\u0082}}\n* {{Hann\u00a8beztic|Purpache\"ideRegant|Pur</id>\n| {{HandBe\u00e5\u0085\u00b5}}\n| ([[List of ports]])\n|-\n| ([[Minor language|Minor]])\n|-\n| {{Handberg of}}\n{{Handbellis}}\n| ([[Handbe",
+        "generation_stats": {
+          "chars_per_sec": 7.8,
+          "mean_entropy": 1.417,
+          "mean_top1_prob": 0.6454
+        },
+        "text_metrics": {
+          "n_chars": 300,
+          "n_words": 33,
+          "unique_word_ratio": 0.788,
+          "avg_word_length": 8.12,
+          "trigram_repeat_ratio": 0.0,
+          "alpha_ratio": 0.593,
+          "sentence_count": 1,
+          "avg_sentence_length": 33.0,
+          "max_char_run": 2,
+          "degenerate": false
+        }
+      }
+    ],
+    "aggregate": {
+      "avg_unique_word_ratio": 0.912,
+      "avg_trigram_repeat": 0.0,
+      "avg_word_length": 7.68,
+      "degenerate_count": 0,
+      "total_prompts": 8
+    }
+  },
+  "hardware": {
+    "gpu": "AMD RX 6750 XT (12GB, DirectML)",
+    "gpu_tdp_watts": 186,
+    "wall_time_hours": 31.34,
+    "gpu_energy_kwh": 5.829,
+    "ms_per_step_avg": 1128.2
+  }
+}

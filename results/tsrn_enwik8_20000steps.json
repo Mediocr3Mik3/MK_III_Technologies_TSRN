@@ -1,8 +1,29 @@
 {
-  "step": 20000,
+  "run": "tsrn_enwik8_convergence",
+  "config": {
+    "d_model": 512,
+    "context": 256,
+    "n_blocks": 3,
+    "n_heads": 8,
+    "top_k": 16,
+    "mem_depth": 7,
+    "n_steps": 20000,
+    "batch_size": 8,
+    "lr": 0.0002,
+    "vocab_size": 205,
+    "tokenization": "byte-level (latin-1)"
+  },
   "params": 22523440,
+  "val": {
+    "bpc": 0.929,
+    "ppl": 1.904
+  },
+  "test": {
+    "bpc": 0.9086,
+    "ppl": 1.877
+  },
   "best_val_bpc": 0.8935,
-  "log": [
+  "training_log": [
     {
       "step": 1,
       "train_loss": 5.37755,
@@ -615,5 +636,192 @@
       "wall_time_s": 21915.7,
       "ms_per_step": 1095.8
     }
-  ]
+  ],
+  "quality_benchmark": {
+    "label": "TSRN",
+    "prompts": [
+      {
+        "prompt": "The history of mathematics ",
+        "generated": "Amernochemptives/welva)\n# {{Cemera}}{{5E}}er\u00bde\">{{In-learnal leabutor>\n {{CIL Fash}}{{Amer}} {{Udicants}}\n# {{Cineroble}}\n# {{IPA|[m\u00c9\u00ab2}} {{IPM}]\n#{{IPA|/j} [[Admentime Lean \u00d7\u00a4 Appulhoric ]]</re>Appenter \u00e0\u00a4\u00bf Untix \u00b5\u00b8\u00a9\u00a9\u0080\u0099the \u00d7\u00a0\u00d7\u0090\u00d7\u00a7\u00d7\u00a1 \u00d0\u00b4\u00d0\u00b0\u00d1\u0080\u00d1\u0081\u00d1\u008c\u00d0\u00ba\u00d0\u00b8 (published)\n# [[Captain Andr\u00c3\u00a9 (city)|United States ",
+        "generation_stats": {
+          "chars_per_sec": 8.9,
+          "mean_entropy": 1.869,
+          "mean_top1_prob": 0.5283
+        },
+        "text_metrics": {
+          "n_chars": 300,
+          "n_words": 30,
+          "unique_word_ratio": 0.9,
+          "avg_word_length": 8.97,
+          "trigram_repeat_ratio": 0.0,
+          "alpha_ratio": 0.587,
+          "sentence_count": 0,
+          "avg_sentence_length": 30.0,
+          "max_char_run": 2,
+          "degenerate": false
+        }
+      },
+      {
+        "prompt": "In the year 1776, ",
+        "generated": "may be conten them 9,870 kmande\"perJu3. The sean \u008a Karl\u00a8\u00a9\u00e2\u0080\u009d \u00ea\u0087Hiu \u00ca\u008dI \u00d8\u0086L\u00c3\u00b3m The d\u00bb\u00d1\u0081\u00c4\u0084 \u00d0\u00aa, ''\u00aa\u00c3\u00d6ron''zhel\u00caJah{\u00c3\u00b6b}}\u00a8 @\u0081biut-biuter \u00c6\u0091\u00db\u008c\u00d3\u0090\u00c7\u0095\u00cd; [[Johemle P\u00ef\u00d0\u00be]], the che s\u00c3\u00a9sk-may s\u00e5\u009clp: \u00eb\u00a6\u00adjAv'\u00c3\u00b7'' [Kun\u00e1\u0081</te>towart|Go\u00b0\u00b5Gefure]] books:\n\u00a4\u00a1..... &quot;Reference and the [[Jack Speerl]], and the wisk w",
+        "generation_stats": {
+          "chars_per_sec": 9.1,
+          "mean_entropy": 2.462,
+          "mean_top1_prob": 0.3991
+        },
+        "text_metrics": {
+          "n_chars": 300,
+          "n_words": 38,
+          "unique_word_ratio": 0.868,
+          "avg_word_length": 6.92,
+          "trigram_repeat_ratio": 0.0,
+          "alpha_ratio": 0.617,
+          "sentence_count": 6,
+          "avg_sentence_length": 6.3,
+          "max_char_run": 5,
+          "degenerate": false
+        }
+      },
+      {
+        "prompt": "The quantum mechanical ",
+        "generated": "Sulfurancerst Congain \u00965ustem \u00d56\u00a9edi aGa\u00d9\u0081\u0082 \u00d3\u00b9\u0080\u00ce\u00b3\u00ce\u00b8\u00ce\u00a9 \u00f0\u008dS. (Li\u00ce\u00b5\u00cf\u0084\u00cf\u0081\u00cf\u0084\u00ce\u00bf\u00cf\u0088\u00ce\u00bf\u00cf\u0082\u00cf\u0081\u00ce\u00bd\u00cf\u0082\u00cf\u0085\u00ce\u00af\u00ce\u00bf\u00cf\u0085\u00cf\u008c\u00cf\u0089\u00ce\u00b1\u00cf\u0082\u00cf\u0082\u00ce\u00bc\u00ce\u00b9\u00cf\u0080\u00cf\u0082\u00cf\u0089\u00ce\u00b2\u00cf\u0080\u00ce\u00bd\u00ce\u00ba\u00cf\u0081\u00ce\u00ac\u00cf\u0084\u00ce\u00bf\u00ce\u00ba\u00ce\u00b1\u00ce\u00b1\u00cf\u0083\u00cf\u008d\u00ce\u00b9\u00ce\u00bd\u00cf\u0085\u00ce\u00bd\u00ce\u00b7\u00ce\u00bf\u00cf\u008c\u00cf\u008c\u00cf\u0083\u00ce\u00af\u00cf\u0081\u00cf\u0081\u00cf\u0081\u00cf\u0084\u00cf\u0082\u00cf\u0081\u00ce\u00b1\u00ce\u00b1\u00cf\u0088\u00ce\u00bf\u00ce\u00bc\u00cf\u008d\u00ce\u00b3\u00cf\u0083\u00cf\u008c\u00cf\u0080\u00ce\u00b1\u00ce\u00b1\u00cf\u008c\u00ce\u00bf\u00ce\u00b9\u00cf\u0081\u00ce\u00b9\u00cf\u0083\u00ce\u00ba\u00cf\u0083\u00cf\u0084\u00ce\u00b9\u00ce\u00bd\u00cf\u0082\u00cf\u0081\u00ce\u00b7\u00ce\u00af\u00ce\u00ba\u00cf\u008c\u00ce\u00bb\u00cf\u0081\u00cf\u0082__\u00aa\u00af\\\u0081\u00cf\u0086\u00cf\u0081\u00cf\u0080\u00ce\u00b1\u00cf\u0084\u00ce\u00bf\u00cf\u008c\u00cf\u0082 \u00ca+\u00cf\u0085\u00cf\u0088\u00d8}) {|} /}}\n\nThe three non-insection ",
+        "generation_stats": {
+          "chars_per_sec": 9.3,
+          "mean_entropy": 2.007,
+          "mean_top1_prob": 0.4099
+        },
+        "text_metrics": {
+          "n_chars": 300,
+          "n_words": 18,
+          "unique_word_ratio": 1.0,
+          "avg_word_length": 15.61,
+          "trigram_repeat_ratio": 0.0,
+          "alpha_ratio": 0.55,
+          "sentence_count": 1,
+          "avg_sentence_length": 18.0,
+          "max_char_run": 2,
+          "degenerate": false
+        }
+      },
+      {
+        "prompt": "Once upon a time, there was a ",
+        "generated": "swinged than \u00d8\u00a3\u00d9\u0084\u00d8\u00b1\u00d8\u00b1\u00d9\u008a\u00db\u008c\u00d8\u00a7\u00d9\u0084\u00da\u00a9\u00d8\u00a7\u00d9\u00d9e \u00d8\u00a7\u00d0\u00bared Administice \u0090utch \u008a\u0088\u00b3\u00b7\u00d9\u0085\u00d9\u008a\u00d8\u00aa\u00d9\u0083\u00d8\u00b2\u00d9\u0082\u00d9\u0083\u00d8\u00af\u00d9\u0086\u00d8\u00a8\u00d9\u008a\u00a9]\n*\u00ea\u00bc\u0088\u0088\u00ac\u00d9\u008a\u00d9\u0084\u00d9\u0080\u00d8\u00a7\u00d9\u008a\u00d9\u0087\n*[[Jamp\u00c3\u0090ie \u00d6\u00a0\u00d8\u00b1\u00d9\u0084\u00d8\u00d8\u00a9 \u00d7\u009c\u00d7\u0095\u00d7\u00a0\u00d7\u00a8\u00d7\u0099]] [[Johem's{{0}|3\u00a7\u00d8\t]] \u00d7\u0091\u00d2\u00b0F \u008a\u00acut\u00a9\n*[[Jerval Alrest Herfoe]]\n*[[Jimkhe \u0080\u0094\u00e0\u00b9\u00c8\u00e0\u00b8\u0099\u00e0\u00b8\u00a5\u00e0\u00b8\u00af \u00d0\u00a7\u00d7\u0094 \u00d7\u0091\u00d7\u009c\u00d7\u0095\u00d7\u00a9 \u00d7\u00aa\u00d7\u0090\u00d7\u0099\u00d7\u009c\u00d7\u0099]]\n*[[Judalry in James Herst]]\n\n==External lin",
+        "generation_stats": {
+          "chars_per_sec": 8.8,
+          "mean_entropy": 2.09,
+          "mean_top1_prob": 0.4727
+        },
+        "text_metrics": {
+          "n_chars": 300,
+          "n_words": 32,
+          "unique_word_ratio": 1.0,
+          "avg_word_length": 8.38,
+          "trigram_repeat_ratio": 0.0,
+          "alpha_ratio": 0.493,
+          "sentence_count": 0,
+          "avg_sentence_length": 32.0,
+          "max_char_run": 2,
+          "degenerate": false
+        }
+      },
+      {
+        "prompt": "The old man walked slowly through the ",
+        "generated": "fast \u0087emons the [[1=60]]. Force at $2ed the cyb\u00c3\u00b6rarco Molt: Thamping and Hembre \u00b0\u00b020lbi; [[1B]] ([[1ith \u00d7\u00a4\u00d7\u0091 \u00d7\u00a9\u00d7\u0094 \u00d0\u00a5\u00d0\u00b5\u00d1\u0080\u00d0\u00b8\u00d1\u0082\u00d0\u00b8\u00d0\u00bd\u00d0\u00be\u00d1\u0081\u00d0\u00b0\u00d0\u00b9\u00d0\u00b5\u00d1\u0082\u00d0\u00b8\u00d0\u00b7\u00d0\u00be\u00d1\u0082\u00d0\u00b8\u00d0\u00bb\u00d1\u0080\u00d0\u00b8\u00d1\u008a\u00d0\u00b0\u00d1\u0080\u00d0\u00b8\u00d0\u00bf\u00d0\u00b5\u00d1\u0081\u00d0\u00b8\u00d0\u00b0\u00d0\u00b8\u00d1\u008f\u00d0\u00b2\u00d0\u00b8\u00d0\u00b1\u00d0\u00ba\u00d0\u00b8\u00d0\u00ba\u00d0\u00b8\u00d0\u00bc\u00d0\u00b0\u00d1\u0082\u00d1\u0082\u00d0\u00b8\u00d0\u00b7 \u00d0\u00a9\u00d0\u00be\u00d0\u0080\u00d0\u00bc\u00d1\u0082\u00d0\u00b0\u00d1\u0080\u00d0\u00b8]]), who adversary temperature the latter [[Legan II of Strike Penny]] and [[S",
+        "generation_stats": {
+          "chars_per_sec": 8.8,
+          "mean_entropy": 1.8,
+          "mean_top1_prob": 0.4992
+        },
+        "text_metrics": {
+          "n_chars": 300,
+          "n_words": 32,
+          "unique_word_ratio": 0.906,
+          "avg_word_length": 8.41,
+          "trigram_repeat_ratio": 0.0,
+          "alpha_ratio": 0.583,
+          "sentence_count": 1,
+          "avg_sentence_length": 32.0,
+          "max_char_run": 2,
+          "degenerate": false
+        }
+      },
+      {
+        "prompt": "A system of linear equations can be solved by ",
+        "generated": "sumption. Oftende\"plavis (''[[NepI]]'' \u00d7\u0099\u00e3\u0083\u0093]] \u00d8\u00b1\u00d9\u0081\u00d8\u00a7\u00db; [[Komeping \u00d0\u0094\u00d0\u00b5\u00d1\u0082\u00d0\u00ba\u00d0\u00b8\u00d0\u00b2\u00d1\u0080\u00d0\u00b0\u00d0\u00bd\u00d0\u00be\u00d0\u00bd\u00d0\u00b5\u00d1\u0081\u00d0\u00b8\u00d0\u00b8\u00d0\u00b3\u00d0\u00b0\u00d0\u00b4\u00d1\u0082\u00d1\u0080\u00d0\u00b0\u00d0\u00b9\u00d0\u00be\u00d1\u0080\u00d0\u00b0\u00d1\u0088\u00d0\u00b8\u00d0\u00b2\u00d0\u00b0\u00d0\u00ba\u00d0\u00be\u00d1\u008c\u00d0\u00bd\u00d0\u00b0\u00d1\u0087\u00d0\u00b7\u00d1\u0082\u00d0\u00b0\u00d1\u0081\u00d1\u0082\u00d0\u00b8\u00d1\u0081\u00d0\u00b8\u00d0\u00bd\u00d0\u00be\u00d1\u0080\u00d0\u00b0\u00d0\u00bb\u00d0\u00b8\u00d1\u008f\u00d1\u0084\u00d0\u00b0\u00d0\u00b0\u00d0\u00b2\u00d0\u00b0\u00d0\u00b1\u00d1\u008a\u00d0\u00b8\u00d0\u00b9\u00d0\u00ba\u00d0\u00ba\u00d0\u00b8\u00d0\u00b8\u00d1\u0081\u00d0\u00b8\u00d0\u00b8\u00d0\u00b7\u00d0\u00b0\u00d0\u00ba\u00d1\u0096\u00d0\u00b8\u00d0\u00be \u00d0\u0090\u00d1\u0086\u00d0\u00b0\u00d0\u00bd\u00d1\u0082\u00d0\u00b8\u00d1\u0085\u00d1\u0080\u00d0\u00b8\u00d0\u00bb\u00d0\u00be\u00d0\u00ba\u00d0\u00ba\u00d0\u00b2]]\n[[zh:\u00e5\u008c\u00b8\u00e6\u00b4\u00b9 / \u00d0\u009a\u00d1\u0084\u00d0\u00b8\u00d0\u00bd\u00d0\u00b8\u00d1\u008b\u00d0\u00b0]]\n[[ca:Salephin Kour]]\n[[cs:",
+        "generation_stats": {
+          "chars_per_sec": 8.6,
+          "mean_entropy": 1.737,
+          "mean_top1_prob": 0.4898
+        },
+        "text_metrics": {
+          "n_chars": 300,
+          "n_words": 15,
+          "unique_word_ratio": 1.0,
+          "avg_word_length": 19.07,
+          "trigram_repeat_ratio": 0.0,
+          "alpha_ratio": 0.533,
+          "sentence_count": 1,
+          "avg_sentence_length": 15.0,
+          "max_char_run": 2,
+          "degenerate": false
+        }
+      },
+      {
+        "prompt": "The algorithm processes each element in ",
+        "generated": "the offence.\n# Champing rest Elde\">#Rander \u00d8\u00b2\u00a9{Alfrombine Alginterburk \u00ed}\u0094 [[Chincorbed NA]], [[MajSand>ondence Umarry|Alger]], [[A96\u00d4, Chinard]], [[</id>\n# \u00e0\u00a4\u00dc\u00e0\u00b8\u00b2\u00e0\u00b8&lingus|Algen Elders]]\n# {{child binder|\u00900umer\u00a8>Aldersark Personal relation}}\n# {{cite book | author=1735}}</text>\n    </revision>\n  </",
+        "generation_stats": {
+          "chars_per_sec": 8.7,
+          "mean_entropy": 1.642,
+          "mean_top1_prob": 0.5826
+        },
+        "text_metrics": {
+          "n_chars": 300,
+          "n_words": 31,
+          "unique_word_ratio": 0.903,
+          "avg_word_length": 8.52,
+          "trigram_repeat_ratio": 0.0,
+          "alpha_ratio": 0.637,
+          "sentence_count": 1,
+          "avg_sentence_length": 31.0,
+          "max_char_run": 4,
+          "degenerate": false
+        }
+      },
+      {
+        "prompt": "The relationship between structure and function ",
+        "generated": "of IsFreezoring. Inder Inglo-summer (state \u00d1\u0081\u00d0\u00b0\u00d1\u0080\u00d1\u0082\u00d1\u0082\u00d0\u00b5\u00d0\u00bb\u00d0\u00b8\u00d0\u00ba\u00d1\u008c\u00d1\u0088\u00d0\u00b7\u00d0\u00bd\u00d0\u00b8\u00d1\u008b\u00d0\u00b5\u00d0\u00bb\u00d0\u00be\u00d1\u0086\u00d0\u00b0\u00d1\u0083\u00d0\u00bc\u00d0\u00ba\u00d1\u0083\u00d1\u0082\u00d0\u00b5\u00d1\u0087\u00d0\u00b8\u00d1\u0082\u00d0\u00b8\u00d1\u0082\u00d0\u00b8\u00d0\u00b9\u00d0\u00b4\u00d0\u00b8\u00d1\u0082\u00d0\u00b8\u00d1\u008b\u00d0\u00ba\u00d0\u00b8\u00d0\u00bf\u00d0\u00b2\u00d0\u00b8\u00d0\u00be\u00d1\u0080\u00d0\u00bd\u00d1\u0080\u00d0\u00b8\u00d0\u00bd\u00d0\u00b4\u00d1\u008c\u00d0\u00ba\u00d0\u00be\u00d1\u0080\u00d0\u00b8\u00d0\u00b9\u00d0\u00b0\u00d0\u00bc\u00d0\u00b1\u00d0\u00be\u00d1\u0081\u00d0\u00ba\u00d0\u00b8\u00d1\u0082\u00d0\u00b0\u00d0\u00bb\u00d0\u00b5\u00d1\u0081\u00d0\u00bd\u00d0\u00b0\u00d0\u00bf\u00d0\u00be\u00d0\u00b2\u00d0\u00be\u00d1\u0082\u00d1\u0081\u00d0\u00bd\u00d0\u00b0\u00d1\u0081\u00d0\u00b8\u00d0\u00b8\u00d1\u0085\u00d0\u00bd\u00d1\u008a\u00d0\u00bc\u00d0\u00b8\u00d0\u00b4\u00d0\u00ba\u00d0\u00b8\u00d1\u0096]]\n[[fi:Edinburgeon]]\n[[he:\u00d7\u00a7\u00d7\u00a8\u00d7\u0095\u00d7\u0099 \u00d7\u0091\u00d7\u0095\u00d7\u0099\u00d7\u0095\u00d7\u0095\u00d7\u0090\u00d7\u0099\u00d7\u00aa \u00d7\u00a1\u00d7\u00a0\u00d7\u0099\u00d7\u0091\u00d7\u0099\u00d7\u0094\u00d7\u009d]]</text>\n",
+        "generation_stats": {
+          "chars_per_sec": 8.6,
+          "mean_entropy": 1.617,
+          "mean_top1_prob": 0.5273
+        },
+        "text_metrics": {
+          "n_chars": 300,
+          "n_words": 12,
+          "unique_word_ratio": 1.0,
+          "avg_word_length": 24.0,
+          "trigram_repeat_ratio": 0.0,
+          "alpha_ratio": 0.517,
+          "sentence_count": 1,
+          "avg_sentence_length": 12.0,
+          "max_char_run": 2,
+          "degenerate": false
+        }
+      }
+    ],
+    "aggregate": {
+      "avg_unique_word_ratio": 0.947,
+      "avg_trigram_repeat": 0.0,
+      "avg_word_length": 12.48,
+      "degenerate_count": 0,
+      "total_prompts": 8
+    }
+  },
+  "hardware": {
+    "gpu": "AMD RX 6750 XT (12GB, DirectML)",
+    "gpu_tdp_watts": 186,
+    "wall_time_hours": 6.22,
+    "gpu_energy_kwh": 1.156,
+    "ms_per_step_avg": 1118.9
+  }
 }
