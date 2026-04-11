@@ -1,6 +1,6 @@
 """
-TSRN 70k-step convergence run on enwik8 (byte-level, standard protocol).
-- TSRN only (no transformer baseline)
+TSRN-Gist convergence run on enwik8 (byte-level, standard protocol).
+- TSRNGist model (Clifford multivector gists + sheaf rotor diffusion)
 - Periodic checkpointing every 5k steps
 - Inference samples at each checkpoint
 - Final test-set evaluation and quality benchmark
@@ -10,8 +10,8 @@ import os, sys, json, time, math, argparse
 import torch
 import torch.nn as nn
 
-from tsrn_dml import (
-    TSRN, CharDatasetSplit, load_enwik8,
+from tsrn_gist import (
+    TSRNGist, load_enwik8,
     detect_device, evaluate, get_lr,
 )
 from tsrn_inference import generate_with_stats, run_quality_benchmark
@@ -24,16 +24,18 @@ def train_convergence(dataset, device, n_steps=70000, batch_size=8,
                       lr_max=2e-4, d_model=512, context_len=256,
                       n_blocks=3, n_heads=8,
                       top_k=16, mem_depth=7, dropout=0.1,
+                      max_gists=64, gist_top_k=4,
                       ckpt_every=5000, resume_from=None, tag="",
                       grad_accum_steps=1, gradient_checkpoint=False):
     V = dataset.vocab_sz
     ctx = context_len
 
     torch.manual_seed(42)
-    model = TSRN(vocab=V, d_model=d_model, context_len=ctx,
-                 gradient_checkpoint=gradient_checkpoint,
-                 n_blocks=n_blocks, top_k=top_k, n_heads=n_heads,
-                 mem_depth=mem_depth, dropout=dropout)
+    model = TSRNGist(vocab=V, d_model=d_model, context_len=ctx,
+                     gradient_checkpoint=gradient_checkpoint,
+                     n_blocks=n_blocks, top_k=top_k, n_heads=n_heads,
+                     mem_depth=mem_depth, max_gists=max_gists,
+                     gist_top_k=gist_top_k, dropout=dropout)
 
     start_step = 0
     if resume_from and os.path.exists(resume_from):
@@ -45,10 +47,11 @@ def train_convergence(dataset, device, n_steps=70000, batch_size=8,
     model.to(device)
     model.train()
 
-    print(f"\n  TSRN: {model.count_params():,} parameters")
+    print(f"\n  TSRNGist: {model.count_params():,} parameters")
     print(f"  Vocab: {V}  |  Context: {ctx}  |  d_model: {d_model}")
     eff_batch = batch_size * grad_accum_steps
     print(f"  Steps: {n_steps}  |  Batch: {batch_size}x{grad_accum_steps}={eff_batch}  |  LR: {lr_max}")
+    print(f"  Gists: {max_gists} buffer, top-{gist_top_k} retrieval")
     print(f"  Checkpoint every {ckpt_every} steps")
 
     decay = {p for n, p in model.named_parameters()
@@ -70,7 +73,7 @@ def train_convergence(dataset, device, n_steps=70000, batch_size=8,
     t0 = time.time()
 
     print(f"\n{'='*80}")
-    print(f"  TSRN Convergence Run — enwik8 byte-level — {n_steps} steps")
+    print(f"  TSRNGist Convergence — enwik8 byte-level — {n_steps} steps")
     print(f"{'='*80}")
     print(f"{'Step':>6}  {'TrLoss':>10}  {'TrBPC':>8}  "
           f"{'ValLoss':>9}  {'ValPPL':>9}  {'ValBPC':>8}  {'GNorm':>7}  {'ms/step':>10}")
@@ -80,6 +83,10 @@ def train_convergence(dataset, device, n_steps=70000, batch_size=8,
         lr = get_lr(step, min(n_steps // 10, 4000), n_steps, lr_max, lr_max * 0.1)
         for g in optimizer.param_groups:
             g["lr"] = lr
+
+        # Reset gist buffer periodically to avoid stale gists
+        if step % 100 == 1:
+            model.gist_buffer.reset()
 
         optimizer.zero_grad(set_to_none=True)
         accum_loss = 0.0
@@ -94,6 +101,7 @@ def train_convergence(dataset, device, n_steps=70000, batch_size=8,
 
         # Periodic evaluation
         if step % eval_every == 0 or step == 1:
+            model.gist_buffer.reset()
             val_loss, val_ppl, val_bpc = evaluate(
                 model, dataset, device, batch_size=min(batch_size, 16))
             tr_bpc = loss_val / math.log(2)
@@ -123,13 +131,14 @@ def train_convergence(dataset, device, n_steps=70000, batch_size=8,
         # Periodic checkpoint + inference sample
         if step % ckpt_every == 0:
             sfx = f"_{tag}" if tag else ""
-            ckpt_path = f"checkpoints/tsrn_enwik8{context_len}{sfx}_{step}steps.pt"
+            ckpt_path = f"checkpoints/tsrn_gist_enwik8{context_len}{sfx}_{step}steps.pt"
             torch.save({
                 "model_state_dict": model.state_dict(),
                 "optimizer_state_dict": optimizer.state_dict(),
                 "config": {"vocab": V, "d_model": d_model, "context_len": ctx,
                            "n_blocks": n_blocks, "top_k": top_k,
-                           "n_heads": n_heads, "mem_depth": mem_depth},
+                           "n_heads": n_heads, "mem_depth": mem_depth,
+                           "max_gists": max_gists, "gist_top_k": gist_top_k},
                 "step": step,
                 "best_val_bpc": best_val_bpc,
                 "log": log,
@@ -138,6 +147,7 @@ def train_convergence(dataset, device, n_steps=70000, batch_size=8,
 
             # Quick inference sample
             model.eval()
+            model.gist_buffer.reset()
             try:
                 gen = generate_with_stats(
                     model, dataset, device, prompt="The history of ",
@@ -156,12 +166,13 @@ def train_convergence(dataset, device, n_steps=70000, batch_size=8,
     # Save best model checkpoint
     sfx = f"_{tag}" if tag else ""
     if best_model_state is not None:
-        best_ckpt_path = f"checkpoints/tsrn_enwik8{sfx}_best.pt"
+        best_ckpt_path = f"checkpoints/tsrn_gist_enwik8{sfx}_best.pt"
         torch.save({
             "model_state_dict": best_model_state,
             "config": {"vocab": V, "d_model": d_model, "context_len": ctx,
                        "n_blocks": n_blocks, "top_k": top_k,
-                       "n_heads": n_heads, "mem_depth": mem_depth},
+                       "n_heads": n_heads, "mem_depth": mem_depth,
+                       "max_gists": max_gists, "gist_top_k": gist_top_k},
             "best_val_bpc": round(best_val_bpc, 4),
         }, best_ckpt_path)
         print(f"\n  >> Best model saved: {best_ckpt_path} (val_bpc={best_val_bpc:.4f})")
@@ -174,11 +185,13 @@ def train_convergence(dataset, device, n_steps=70000, batch_size=8,
     print(f"  Final Evaluation (best model, val_bpc={best_val_bpc:.4f})")
     print(f"{'='*80}")
     model.eval()
+    model.gist_buffer.reset()
     val_loss, val_ppl, val_bpc = evaluate(
         model, dataset, device, n_batches=200,
         batch_size=min(batch_size, 16), split="val")
     print(f"  Val:  PPL={val_ppl:.3f}  BPC={val_bpc:.4f}")
 
+    model.gist_buffer.reset()
     test_loss, test_ppl, test_bpc = evaluate(
         model, dataset, device, n_batches=200,
         batch_size=min(batch_size, 16), split="test")
@@ -186,12 +199,13 @@ def train_convergence(dataset, device, n_steps=70000, batch_size=8,
 
     # Save final checkpoint
     sfx = f"_{tag}" if tag else ""
-    ckpt_path = f"checkpoints/tsrn_enwik8{sfx}_final_{n_steps}steps.pt"
+    ckpt_path = f"checkpoints/tsrn_gist_enwik8{sfx}_final_{n_steps}steps.pt"
     torch.save({
         "model_state_dict": model.state_dict(),
         "config": {"vocab": V, "d_model": d_model, "context_len": ctx,
                    "n_blocks": n_blocks, "top_k": top_k,
-                   "n_heads": n_heads, "mem_depth": mem_depth},
+                   "n_heads": n_heads, "mem_depth": mem_depth,
+                   "max_gists": max_gists, "gist_top_k": gist_top_k},
         "step": n_steps,
         "test_bpc": round(test_bpc, 4),
         "test_ppl": round(test_ppl, 3),
@@ -202,7 +216,8 @@ def train_convergence(dataset, device, n_steps=70000, batch_size=8,
 
     # Quality benchmark
     print(f"\n  Running quality benchmark...")
-    quality = run_quality_benchmark(model, dataset, device, "TSRN")
+    model.gist_buffer.reset()
+    quality = run_quality_benchmark(model, dataset, device, "TSRNGist")
 
     # Wall-clock time summary
     total_time = time.time() - t0
@@ -210,10 +225,11 @@ def train_convergence(dataset, device, n_steps=70000, batch_size=8,
 
     # Save final results
     results = {
-        "run": "tsrn_enwik8_convergence",
+        "run": "tsrn_gist_enwik8_convergence",
         "config": {
             "d_model": d_model, "context": ctx, "n_blocks": n_blocks,
             "n_heads": n_heads, "top_k": top_k, "mem_depth": mem_depth,
+            "max_gists": max_gists, "gist_top_k": gist_top_k,
             "n_steps": n_steps, "batch_size": batch_size, "lr": lr_max,
             "vocab_size": V, "tokenization": "byte-level (latin-1)",
         },
@@ -233,7 +249,7 @@ def train_convergence(dataset, device, n_steps=70000, batch_size=8,
     }
 
     sfx = f"_{tag}" if tag else ""
-    out = f"results/tsrn_enwik8{sfx}_{n_steps}steps.json"
+    out = f"results/tsrn_gist_enwik8{sfx}_{n_steps}steps.json"
     with open(out, "w") as f:
         json.dump(results, f, indent=2)
     print(f"\n  Results saved: {out}")
@@ -241,7 +257,7 @@ def train_convergence(dataset, device, n_steps=70000, batch_size=8,
     print(f"\n{'='*80}")
     print(f"  SUMMARY")
     print(f"{'='*80}")
-    print(f"  Model:    TSRN ({model.count_params():,} params)")
+    print(f"  Model:    TSRNGist ({model.count_params():,} params)")
     print(f"  Dataset:  enwik8 (byte-level, standard 90M/5M/5M)")
     print(f"  Steps:    {n_steps:,}")
     print(f"  Test BPC: {test_bpc:.4f}  (PPL: {test_ppl:.3f})")
@@ -256,7 +272,7 @@ def train_convergence(dataset, device, n_steps=70000, batch_size=8,
 def _save_results(log, step, model, best_val_bpc, tag=""):
     """Save incremental results to disk."""
     sfx = f"_{tag}" if tag else ""
-    out = f"results/tsrn_enwik8{sfx}_progress_{step}steps.json"
+    out = f"results/tsrn_gist_enwik8{sfx}_progress_{step}steps.json"
     with open(out, "w") as f:
         json.dump({
             "step": step,
@@ -267,13 +283,17 @@ def _save_results(log, step, model, best_val_bpc, tag=""):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="TSRN Convergence Run")
+    parser = argparse.ArgumentParser(description="TSRNGist Convergence Run")
     parser.add_argument("--steps", type=int, default=70000)
     parser.add_argument("--batch", type=int, default=8)
     parser.add_argument("--d-model", type=int, default=512)
     parser.add_argument("--context", type=int, default=256)
     parser.add_argument("--n-blocks", type=int, default=3)
     parser.add_argument("--n-heads", type=int, default=8)
+    parser.add_argument("--max-gists", type=int, default=64,
+                        help="Max gists in ring buffer")
+    parser.add_argument("--gist-top-k", type=int, default=4,
+                        help="Number of gists to retrieve per forward pass")
     parser.add_argument("--resume", type=str, default=None,
                         help="Path to checkpoint to resume from")
     parser.add_argument("--ckpt-every", type=int, default=5000)
@@ -282,7 +302,7 @@ def main():
     parser.add_argument("--grad-accum", type=int, default=1,
                         help="Gradient accumulation steps (effective batch = batch * grad_accum)")
     parser.add_argument("--grad-ckpt", action="store_true",
-                        help="Enable gradient checkpointing on TSRN blocks to save VRAM")
+                        help="Enable gradient checkpointing on TSRNGist blocks to save VRAM")
     args = parser.parse_args()
 
     device = detect_device()
@@ -299,6 +319,8 @@ def main():
         context_len=args.context,
         n_blocks=args.n_blocks,
         n_heads=args.n_heads,
+        max_gists=args.max_gists,
+        gist_top_k=args.gist_top_k,
         resume_from=args.resume,
         ckpt_every=args.ckpt_every,
         tag=args.tag,

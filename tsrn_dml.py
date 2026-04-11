@@ -334,12 +334,12 @@ class TropicalAttention(nn.Module):
         if causal:
             col = torch.arange(T, device=scores.device).unsqueeze(0)     # 1 T
             row = torch.arange(qi, q_end, device=scores.device).unsqueeze(1)  # qc 1
-            scores.masked_fill_((col > row).unsqueeze(0).unsqueeze(0), float("-inf"))
+            scores = scores.masked_fill((col > row).unsqueeze(0).unsqueeze(0), float("-inf"))
 
         # Top-k sparse softmax -- DirectML-safe (threshold masking)
         topk_v, _ = scores.topk(k, dim=-1)           # B H qc k
         thr = topk_v[:, :, :, -1:].detach()
-        scores.masked_fill_(scores < thr, float("-inf"))
+        scores = scores.masked_fill(scores < thr, float("-inf"))
         w = self.drop(torch.softmax(scores, dim=-1))  # B H qc T (sparse, ~k nonzero)
         del scores
 
@@ -389,11 +389,11 @@ class TropicalAttention(nn.Module):
             if causal:
                 mask = torch.triu(torch.ones(T, T, device=x.device,
                                              dtype=torch.bool), diagonal=1)
-                scores.masked_fill_(mask.unsqueeze(0).unsqueeze(0), float("-inf"))
+                scores = scores.masked_fill(mask.unsqueeze(0).unsqueeze(0), float("-inf"))
 
             topk_v, _ = scores.topk(k, dim=-1)
             thr = topk_v[:, :, :, -1:].detach()
-            scores.masked_fill_(scores < thr, float("-inf"))
+            scores = scores.masked_fill(scores < thr, float("-inf"))
             w = self.drop(torch.softmax(scores, dim=-1))
             ctx = (w @ V).permute(0, 2, 1, 3).contiguous().reshape(B, T, d)
         else:

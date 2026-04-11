@@ -1,0 +1,277 @@
+{
+  "run": "tsrn_gist_enwik8_convergence",
+  "config": {
+    "d_model": 128,
+    "context": 64,
+    "n_blocks": 1,
+    "n_heads": 2,
+    "top_k": 16,
+    "mem_depth": 7,
+    "max_gists": 8,
+    "gist_top_k": 2,
+    "n_steps": 5,
+    "batch_size": 4,
+    "lr": 0.0002,
+    "vocab_size": 205,
+    "tokenization": "byte-level (latin-1)"
+  },
+  "params": 759761,
+  "val": {
+    "bpc": 7.3648,
+    "ppl": 164.823
+  },
+  "test": {
+    "bpc": 7.3703,
+    "ppl": 165.457
+  },
+  "best_val_bpc": 7.3638,
+  "training_log": [
+    {
+      "step": 1,
+      "train_loss": 5.35142,
+      "train_bpc": 7.7205,
+      "val_loss": 5.23524,
+      "val_ppl": 187.775,
+      "val_bpc": 7.5529,
+      "grad_norm": 2.3477,
+      "lr": 0.0001828,
+      "wall_time_s": 0.5,
+      "ms_per_step": 479.8
+    },
+    {
+      "step": 2,
+      "train_loss": 5.23776,
+      "train_bpc": 7.5565,
+      "val_loss": 5.16226,
+      "val_ppl": 174.559,
+      "val_bpc": 7.4476,
+      "grad_norm": 2.7139,
+      "lr": 0.0001378,
+      "wall_time_s": 0.9,
+      "ms_per_step": 472.5
+    },
+    {
+      "step": 3,
+      "train_loss": 5.23657,
+      "train_bpc": 7.5548,
+      "val_loss": 5.12798,
+      "val_ppl": 168.676,
+      "val_bpc": 7.3981,
+      "grad_norm": 2.0126,
+      "lr": 8.22e-05,
+      "wall_time_s": 1.4,
+      "ms_per_step": 469.7
+    },
+    {
+      "step": 4,
+      "train_loss": 5.19177,
+      "train_bpc": 7.4901,
+      "val_loss": 5.10812,
+      "val_ppl": 165.359,
+      "val_bpc": 7.3695,
+      "grad_norm": 2.1312,
+      "lr": 3.72e-05,
+      "wall_time_s": 1.9,
+      "ms_per_step": 472.3
+    },
+    {
+      "step": 5,
+      "train_loss": 5.14051,
+      "train_bpc": 7.4162,
+      "val_loss": 5.10423,
+      "val_ppl": 164.716,
+      "val_bpc": 7.3638,
+      "grad_norm": 2.2876,
+      "lr": 2e-05,
+      "wall_time_s": 2.3,
+      "ms_per_step": 469.9
+    }
+  ],
+  "quality_benchmark": {
+    "label": "TSRNGist",
+    "prompts": [
+      {
+        "prompt": "The history of mathematics ",
+        "generated": " \u00e1g\u0080?\u00bb\u009e\u00c5\u00dcdD\u00a1\u008d2D\u009bG[ B21\u009b}\u00c4\u00d3\u00f0l\u009f\u00c7]C\u00dcD\u00ce\u00d1\u00d3\u00a1}I\u009fn\u0080ba\u00a0\u0080e\u00bclW\u0080B\u0080N\u00a1rn\u00a1Bg \u00d2kI\u009fB&&\u00be\u009f\u00a3\u00a0\u00c5\u00a1l\u00be\u00beRl\u00cd\u0080n\u00d1E\u00c5\u00d1E}X\u00c2\u00dcz\u009fa#za\u00a2B\u0080v\u0080vi\u00be%1\u00ae\u00be}}&R\u00c5Xe\u0080 \u00bf\u00c5I\u00a1d\u00a0\u00bena\u00ce\u00bf1\u00c5\u00be eRXc1\u00efttCmBRR\u00aeRe}\u0080a\u00ceo\u0080'ae2\u009dlr\u00d1 $  \u00be\u00be3\u00ae}aeX\u00c5\u00bc\u00c5\u0080}11e\u00c5n\u00dez\u0094\u00ae \u00a1\u00ae?}\u00a1\u00bf \u00ae\u00c5D}\u00dbIrt?\u00dcn\u00a1ead\u0092\u0092\u0092A\u00ae\u00c5b\u00aelg\u00d1\u008b\u0094\u00a1\u00ef\u0092#,\u009dWt\u00d1\u00ae\u00cfDi\u00a1l\u00d1nm\u00a1n\u00d1C?bead\u00c2m\u009d[\u00cdldRR\u00aa,\u00c5vR\u00915\u00ceEaHEp\u00d1\u009fv\u0087 \u00c3N?\u00be\u009d[R\u009dC\u00dcRllv\u00dbI\u00d1\u00cel\u00c5",
+        "generation_stats": {
+          "chars_per_sec": 103.1,
+          "mean_entropy": 5.282,
+          "mean_top1_prob": 0.0106
+        },
+        "text_metrics": {
+          "n_chars": 300,
+          "n_words": 13,
+          "unique_word_ratio": 1.0,
+          "avg_word_length": 22.0,
+          "trigram_repeat_ratio": 0.0,
+          "alpha_ratio": 0.57,
+          "sentence_count": 5,
+          "avg_sentence_length": 2.6,
+          "max_char_run": 3,
+          "degenerate": false
+        }
+      },
+      {
+        "prompt": "In the year 1776, ",
+        "generated": "W\u0089tottEayiC\u00bfpdL\u009bdS\u00d1D\u00be?t| [HH\u00be\u0080o|1\u00c5|a[B\u009f {n}\u00da\u00a4a\u00a1\u0080W\u00ad1l\u0091\u00c21a\u00bcI\u00a2b\u00d1\u00cf \u0087n?\u00dcol\u00ce?eb\u00bf\u00ceW\u00bel?yZy1_\u008e\u008e\u00c5?\u0092\u00d1\u00c5#Cgle\u009f\u009fW\u00d1\u00dcn\u00be[b}W\u00be \u00c2Cg\u00ed\u00bcE }}g}\u00bed,?\u00a8W\u00d1\u00da\u0080A\u00a3\u00a3t\u00aeA\u00cdd[D\u0093[\u00db\u00eb\u0092C5\u0091I\u00cd\u00cdrW1\u00dc\u00d1k\u00d1nR?l\u00c5WkWdd\u0092\u00cd\u00dcem}l1\u00bc\u00d3\u00bb[\u00a1\u00ce\u00be\u00dc\u009fl\u009f\u00da\u009d\u00e9\u00e9\u00dc\u00ebN1n\u00ebl\u00c5\u00d3Rt\u00da\u0094\u00cdI\u0080I\u00be#-\u00daat\u00cd[\u009bn\u009f\u0080\u00ae\u00de\u00a3[aC\u0080E[Er\u00c5r,\u00dc\u00be\u00d13 \u0087\u00a1e \u00c5 l\u00da\u00d3Wk\u00ced\u00d5pbk\u00c5?\u00c2g%\u00d1\u0094yaeRd\u00dck\u008btk\u00d1CAN\u00a1XXeeo}g[3}1ee\u009d[lWH?r\u00efEW",
+        "generation_stats": {
+          "chars_per_sec": 103.1,
+          "mean_entropy": 5.283,
+          "mean_top1_prob": 0.0106
+        },
+        "text_metrics": {
+          "n_chars": 300,
+          "n_words": 9,
+          "unique_word_ratio": 1.0,
+          "avg_word_length": 32.44,
+          "trigram_repeat_ratio": 0.0,
+          "alpha_ratio": 0.613,
+          "sentence_count": 9,
+          "avg_sentence_length": 1.0,
+          "max_char_run": 2,
+          "degenerate": false
+        }
+      },
+      {
+        "prompt": "The quantum mechanical ",
+        "generated": "4m'\u00e1\u0092\u00bfg\u00beg\u00e1\u0080g[2\u00e6A\u00f0\u00c5o\u00dc\u00f0\u0091Gl\u00e3gB}d\u00c7a\u00bf\u00ce\u009b[k(\u0094D\u00a2\u00e2m\u00d1' d\u00a1[\u00dcyv\u00a2\u00a1\u00c5r\u00a1zl\u0080l%\u00a1d\u009dvrW'\u0080C\u00dbl\u0087\u009b\u00d1\u00c3dmr\u00dc\u00a1\u00aenly\u00c3dl&\u00be\u00a1dn[}\u00dc\u00ae\u00beg}b\u0080n[Bb\u00be\u00bca\u00benEl\u00ad%mRndm\u009dr\u00c3d gR\u00d4\u00bc\u00dcy}nr\u00bc}\u00c5}1\u009d[\u00ced\u00ae}n\u00cdR\u00c5\u009d\u00dcR\u0094\u00a1De\u0092C,\u00bcaz\u00a1tr\u00a1\u00d4X?t\u0092lCV\u00a1v\u00c5i\u00c5e\u0080g\u0080ar[k\u00a1n\u00dcb WCeD\u00da\u00a2W% \u00ael[ \u00ad\u00a1v1\u00aeD\u00dbW\u00ae\u00cfe\u00d1\u0094\u00d1R\u00beCd\u00a1?\u00a1\u00db\u00dcbg\u00a1z\u00db\u00cfrN\u00dc?\u00db\u00d1tlt\u00a1Dd\u00a2\u00d1\u00a2vW\u00ae\u00ceIi[ld\u00db1g\u00d1d\u0080r\u00cb[W}\u00ce,\u009dD{\u0080v\u00dcBgN\u00b0\u00b0%\u0080\u00db[\u009f\u00ber\u00bc&kZ?\u00beB&\u0092b[",
+        "generation_stats": {
+          "chars_per_sec": 106.1,
+          "mean_entropy": 5.282,
+          "mean_top1_prob": 0.0106
+        },
+        "text_metrics": {
+          "n_chars": 300,
+          "n_words": 6,
+          "unique_word_ratio": 1.0,
+          "avg_word_length": 49.17,
+          "trigram_repeat_ratio": 0.0,
+          "alpha_ratio": 0.597,
+          "sentence_count": 4,
+          "avg_sentence_length": 1.5,
+          "max_char_run": 2,
+          "degenerate": false
+        }
+      },
+      {
+        "prompt": "Once upon a time, there was a ",
+        "generated": "\u00dce\u0089Q\u00c5\u0081\u00e9oe\u00bd\u00d1[dyr\u00d1\u00be$\u0080\u00a0\u00be}\ned\u009b\u00be\u00f0\u0092o'\u00bd ?nX NI,\u00d3W\u009dtXX\u0080SS1\u00dee1\u00bfNC\u0094}\u0094B[I&\u0080\u00ecab11pe\u00ad\u00a1\u00cd}\u00d1a\u00dc3z\u009da_az\u00a1DD\u00bfe\u00c5RvrR\u00bft\u009d\u00be\u00d11R\u00bcrb&1\u00a2\u00a1e\u00dcBnCCWDzRj?le\u0094\u009d\u00adCllpIem\u009dd\u009dee\u00bcX&n?ZttmC\u00d1la\u009bn\u00dcazN\u00dbel\u009be[B}\u0092X[b\u00d1Z\u00c5I\u00be\u00c5ei$Wa\u009f\u00d1I\u0080be'\u00be\u00cd  C,\u0080\u0087n\u0094\u00ae\u00c5\u00bf\u00a1dt\u00be?\u00c5g[i[[Rddk\u00a1rx}\u00d1N\u009fk\u00dc\u0080[aAWR \u008bAr3\u00c5\u00da\u00a4\u00be?ae\u00d3{ARB\u00ad}\u0080C}g \u00ce1\u00ae\u009a%\u00cd[\u00cdv\u00beD3\u009bH#pp\u00aeg\u00db\u0092rt\u00c5\u00daW\u0080\u0092\u00d1\u0087v\u0080Zr\u00d1k}\u00adeWeR_XZv",
+        "generation_stats": {
+          "chars_per_sec": 103.1,
+          "mean_entropy": 5.282,
+          "mean_top1_prob": 0.0105
+        },
+        "text_metrics": {
+          "n_chars": 300,
+          "n_words": 8,
+          "unique_word_ratio": 1.0,
+          "avg_word_length": 36.5,
+          "trigram_repeat_ratio": 0.0,
+          "alpha_ratio": 0.6,
+          "sentence_count": 5,
+          "avg_sentence_length": 1.6,
+          "max_char_run": 2,
+          "degenerate": false
+        }
+      },
+      {
+        "prompt": "The old man walked slowly through the ",
+        "generated": " (e i2p$,,la\u0080\u00ce1n\u00cd\u009d\u00af\ni\u00d1\u00e1tEW\u00bb\u009ft\u00a3?RRR\u00ce\u0080We[\u00c5\u0092\u00d1EXvarEg?IR\u00adRWDA\u00be\u00a2?e\u00dc\u009fk\u00e8l\u00a0g\u00ber\u00d1\u009br\u00bfWn\u00beB\u00be\u00c5I\u00a1\u00be\u00dcI\u00a3\u009d\u0087\u00af\u00d1rv\u00a12\u00bf\u00d5\u00dbW\u009fnpW\u00801,e\u00dcX\u00adv\u0080\u00ae\u00e9\u00da&keCaboe&\u00ce\u00c5[a%}\u0080?\u00cdR\u00c2B\u00c5WdB\u0080E\u00da\u00d5}\u009d #\u00d3DA\u00bc\u00c5e?C\u00d8\u0094l\u00a1 z\u00cdW\u00802\u00cd\u00a1\u00beBn\u0094Wyelg\u00cdtr\u0080\u0080\u00ebp\u00dcC W\u00ceabmre\u00d1\u009f\u00dagre\u00e8\u00a11\u00ad\u0092N\u00bcv\u0080 \u00dc1lI&\u00dc?D&\u00dcZB?\u00ae\u00dcl1\u00c5\u00bf\u00adW \u00ce\u00derXvrpm\u00d1\u00e2W\u00bere\u009f\u00a3\u00dc\u00c2[n\u00a1?\u00dcvn1\u0089W\u009fe\u00bf1\u0093|\u00bc\u00ber[bZB\u0080\u00bc\u009dBb\u00c5\u00e9W[\u00ae\u00dbIRknmDmrre\u00c5b%rdDC",
+        "generation_stats": {
+          "chars_per_sec": 106.3,
+          "mean_entropy": 5.284,
+          "mean_top1_prob": 0.0101
+        },
+        "text_metrics": {
+          "n_chars": 300,
+          "n_words": 9,
+          "unique_word_ratio": 1.0,
+          "avg_word_length": 32.33,
+          "trigram_repeat_ratio": 0.0,
+          "alpha_ratio": 0.627,
+          "sentence_count": 8,
+          "avg_sentence_length": 1.1,
+          "max_char_run": 3,
+          "degenerate": false
+        }
+      },
+      {
+        "prompt": "A system of linear equations can be solved by ",
+        "generated": "aEW\u0080Iz\u00e9ob(k?}aB\u00bbz\u00eb1ng\u00daZ\u00c2l\u0092[ rk,n C\u00dc\u009d\u009dX\u00bca3 \u00d3}\u00e6 \u009d\u00c5E\u00d1DX\u008b\u00be\u0080Xb\u008aS\u00dc1r%d,Xn\u00c2\u00be\u00d1\u0092\u00c2\u009f1Dnm g\u00bf\u00daXBn\u009f\u00de\u00d1DrgW'mn{\u00cdL,,[\u00d1W\u0080WXr?e2kB\u00e9gtR\u00bfdAe\u00d1idnney1C\u0092g#oR\u00dc\u00bevp\u00c5\u00d1 X\u00c5B&N\u00ae?'lVB\u00ad\u0092\u009dDlWda\u00e9n\u00dc3\u00d1C;\u0087N}\u00cf\u0080tRR1g}n,\u0094\u00c5\u00d1D\u0080i\u00be \u0094 \u00ae?b\u0092k\u00be\u00cdd\u0080e \u00aaDB\u00c5\u00d1&\u00d3\u00a1\u00a1 pEI\u00c5b%Rb\u00e8\u00a3\u00d1b\u009d\u00a1X\u0080m[\u00dc \u00ae\u00cde\u0092Zl\u00cd\u00a1z v\u00c5\u00d1\u00a1\u0092'I\u00ce%bAX\u00ceWW[W$1v\u00ae\u0080ed\u00bf\u00bf\u00beId\u0080C\u0094\u00db\u00dct\u00cf \u00d3R\u00c2ir\u00c5}C#\u009f\u00betl#\u00be\u00ce\u00ae}\u00ce \u00d1DN",
+        "generation_stats": {
+          "chars_per_sec": 104.9,
+          "mean_entropy": 5.283,
+          "mean_top1_prob": 0.0104
+        },
+        "text_metrics": {
+          "n_chars": 300,
+          "n_words": 15,
+          "unique_word_ratio": 1.0,
+          "avg_word_length": 19.07,
+          "trigram_repeat_ratio": 0.0,
+          "alpha_ratio": 0.623,
+          "sentence_count": 4,
+          "avg_sentence_length": 3.8,
+          "max_char_run": 2,
+          "degenerate": false
+        }
+      },
+      {
+        "prompt": "The algorithm processes each element in ",
+        "generated": "\u0092(t;\u00dc\u009el}\u00be\u00da\u00a0\u008ci\u00e8}/\u00a1'\u009b~\u00d1/}\u00e2\u00dc\u0092 \u00cdk\u00c5\u00c5d,\u00aa\u009f\u00dc1bbn\u00be'\u00b3#k'\u00ae?b?\u00dcD\u0094taa[\u00dbkr'zx\u009d me\u00a4{\u009bl\u009bk%B\u0080\u00aet\u00beb\u00c5layW\u00a0\u0092\u00ae g\u00cf\u00a1% ?k\u009dt\u00d1\u00c3nDeZR\u00cfnRW\u00c5&\u00aaWE\u00be\u00c5\u00cdlD \u00d1\u00c5e\u00dc,\u00ce%\u009dI\u009fkB\u0092\u009fn\u00c5}}X}\u00be\u00ectk\u00ec\u008be%a\u00ce}\u00aedn}\u00cdr\u00a1Wa\u00cd \u00a1l?rB\u0080m\u009dnI}I|\u0092\u0094\u00a2\u0092\u0092,ta\u00dcpp\u00be\u00beR\u0092v\u00d1r\u00a1l_\u0091\u00da\u00d31\u0091e\u0092\u00c2\u009d\u00bfl\u00a1XW\u00cdz\u0080\u00ef\u00efX\u00ebmB\u00a2\u00d1\u00a1De\u00e9dEi, \u009f#Z\u00cfgvZ\u00cd}\u009fBW\u00ae\u0080&\u00cdy\u0080%[\u0080\u00aen\u00d1z1\u00e8CnD\u0080\u00cd\u00d1\u00c5\u00c5\u00d1\u00dcmk\u00a1\u00ed\u00advXX\u0094l?eg1R \u00bcd\u0094X\u009f\u0080\u00bf\u00d5b\u00c5\u00ecERE\u009fa\u0092",
+        "generation_stats": {
+          "chars_per_sec": 104.5,
+          "mean_entropy": 5.282,
+          "mean_top1_prob": 0.0105
+        },
+        "text_metrics": {
+          "n_chars": 300,
+          "n_words": 11,
+          "unique_word_ratio": 1.0,
+          "avg_word_length": 26.36,
+          "trigram_repeat_ratio": 0.0,
+          "alpha_ratio": 0.577,
+          "sentence_count": 5,
+          "avg_sentence_length": 2.2,
+          "max_char_run": 2,
+          "degenerate": false
+        }
+      },
+      {
+        "prompt": "The relationship between structure and function ",
+        "generated": "}zHEa\u00e1\u00d1\u0099lI\u00a1\u00f0t\u00ae\u00dbWl\u0080 \u00bcl?l\u00e9V\u00d1\u00d1}[Al\u00a3\u0092An\u00c5 ?\u00cf\u00ce\u00a11W#b\u00db\u00cbne\u00beCd\u009d\u0094\u00a1g2Bt[  yBm,1\u00addrrlV\u00cd\u00den m\u00a1\u00a0vR\u00d1kenRbr%\u009d[r n\u0092}\u00ae\u0092nlB\u00be\u00dc\u00dcnzlntW\u00e9\u00dcZ1\u00bfa\u00dcN\u00bc\u00d1\u0080\u009ddW\u009d\u00a1B\u00d1\u00a1R\u0087r\u00c5m\u00c2\u00aeRRWeX1g\u0080glV\u00ae[\u00ae\u00a3t\u00dcvdkmS?X\u0080?\u00da[W}aeW?\u009d'\u00d1&\u00ce\u00a1l %\u00d1l\u00c51111\u00be1\u00dca\u00dc[\u00c2 n\u00ae?n\u00bc\u00a1\u008b\u00cdk\u00d1R}''\u00be\u00c5\u0092\u0087XWNb\u00e9lbDi}nnteCrC\u00a1N\u009d\u00dc,{I\u00d1\u00e9\u00dc1Blk\u00bevD%\u00bc\u0080\u00b0lgte\u008aNznvDDWBgvl\u00cb\u00cf\u008a \u00d1\u00a1BpXW1}\u00b3\u00dc\u0092t[\u00e21\u00daBm\u00d1gr 1\u00beZ#\u009dRd",
+        "generation_stats": {
+          "chars_per_sec": 104.9,
+          "mean_entropy": 5.283,
+          "mean_top1_prob": 0.0105
+        },
+        "text_metrics": {
+          "n_chars": 300,
+          "n_words": 11,
+          "unique_word_ratio": 1.0,
+          "avg_word_length": 26.27,
+          "trigram_repeat_ratio": 0.0,
+          "alpha_ratio": 0.623,
+          "sentence_count": 6,
+          "avg_sentence_length": 1.8,
+          "max_char_run": 4,
+          "degenerate": false
+        }
+      }
+    ],
+    "aggregate": {
+      "avg_unique_word_ratio": 1.0,
+      "avg_trigram_repeat": 0.0,
+      "avg_word_length": 30.52,
+      "degenerate_count": 0,
+      "total_prompts": 8
+    }
+  },
+  "hardware": {
+    "gpu": "AMD RX 6750 XT (12GB, DirectML)",
+    "gpu_tdp_watts": 186,
+    "wall_time_hours": 0.01,
+    "gpu_energy_kwh": 0.002,
+    "ms_per_step_avg": 6206.2
+  }
+}
