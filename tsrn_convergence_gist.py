@@ -166,7 +166,7 @@ def train_convergence(dataset, device, n_steps=70000, batch_size=8,
     # Save best model checkpoint
     sfx = f"_{tag}" if tag else ""
     if best_model_state is not None:
-        best_ckpt_path = f"checkpoints/tsrn_gist_enwik8{sfx}_best.pt"
+        best_ckpt_path = f"checkpoints/tsrn_gist_enwik8{context_len}{sfx}_best.pt"
         torch.save({
             "model_state_dict": best_model_state,
             "config": {"vocab": V, "d_model": d_model, "context_len": ctx,
@@ -199,7 +199,7 @@ def train_convergence(dataset, device, n_steps=70000, batch_size=8,
 
     # Save final checkpoint
     sfx = f"_{tag}" if tag else ""
-    ckpt_path = f"checkpoints/tsrn_gist_enwik8{sfx}_final_{n_steps}steps.pt"
+    ckpt_path = f"checkpoints/tsrn_gist_enwik8{context_len}{sfx}_final_{n_steps}steps.pt"
     torch.save({
         "model_state_dict": model.state_dict(),
         "config": {"vocab": V, "d_model": d_model, "context_len": ctx,
@@ -249,7 +249,7 @@ def train_convergence(dataset, device, n_steps=70000, batch_size=8,
     }
 
     sfx = f"_{tag}" if tag else ""
-    out = f"results/tsrn_gist_enwik8{sfx}_{n_steps}steps.json"
+    out = f"results/tsrn_gist_enwik8{context_len}{sfx}_{n_steps}steps.json"
     with open(out, "w") as f:
         json.dump(results, f, indent=2)
     print(f"\n  Results saved: {out}")
@@ -269,10 +269,10 @@ def train_convergence(dataset, device, n_steps=70000, batch_size=8,
     return results
 
 
-def _save_results(log, step, model, best_val_bpc, tag=""):
+def _save_results(log, step, model, best_val_bpc, tag="", context_len=256):
     """Save incremental results to disk."""
     sfx = f"_{tag}" if tag else ""
-    out = f"results/tsrn_gist_enwik8{sfx}_progress_{step}steps.json"
+    out = f"results/tsrn_gist_enwik8{context_len}{sfx}_progress_{step}steps.json"
     with open(out, "w") as f:
         json.dump({
             "step": step,

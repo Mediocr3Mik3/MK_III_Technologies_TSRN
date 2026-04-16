@@ -7,14 +7,16 @@ import sys, os, json, time, torch
 import torch.nn as nn
 sys.path.insert(0, os.path.dirname(__file__))
 
-from tsrn_dml import TSRN, load_enwik8, evaluate, evaluate_sequential
+from tsrn_gist import TSRNGist, load_enwik8, evaluate, evaluate_sequential
+from tsrn_dml import TSRN
 
 def main():
-    # Find best checkpoint
-    ckpt_path = "checkpoints/tsrn_enwik8_v6_100k_best.pt"
+    # Find best checkpoint — prefer latest TSRNGist, fall back to baseline TSRN
+    ckpt_path = "checkpoints/tsrn_gist_enwik8_best.pt"
     if not os.path.exists(ckpt_path):
-        print(f"ERROR: No checkpoint found. Tried:")
-        print(f"  checkpoints/tsrn_enwik8_v6_100k_best.pt")
+        ckpt_path = "checkpoints/tsrn_enwik8_v6_100k_best.pt"
+    if not os.path.exists(ckpt_path):
+        print(f"ERROR: No checkpoint found.")
         sys.exit(1)
 
     print(f"Loading checkpoint: {ckpt_path}")
@@ -41,21 +43,37 @@ def main():
     print(f"\nLoading enwik8 (ctx={ctx})...")
     dataset = load_enwik8(context_len=ctx)
 
-    # Build model
-    # FIX 1: Use dataset.vocab_sz instead of the missing cfg["vocab"]
-    # FIX 2: Safely fallback for n_heads using the same logic as the training script
+    # Build model — detect TSRNGist vs baseline TSRN from config keys
     n_heads = cfg.get("n_heads", max(4, cfg["d_model"] // 64))
-    
-    model = TSRN(
-        vocab=dataset.vocab_sz, 
-        d_model=cfg["d_model"],
-        context_len=cfg["context_len"], 
-        n_blocks=cfg["n_blocks"],
-        top_k=cfg["top_k"], 
-        n_heads=n_heads,
-        mem_depth=cfg["mem_depth"], 
-        dropout=0.0  # no dropout for eval
-    )
+    is_gist = "max_gists" in cfg or "gist_top_k" in cfg
+    vocab = cfg.get("vocab", dataset.vocab_sz)
+
+    if is_gist:
+        print(f"  Model type: TSRNGist")
+        model = TSRNGist(
+            vocab=vocab,
+            d_model=cfg["d_model"],
+            context_len=cfg["context_len"],
+            n_blocks=cfg["n_blocks"],
+            top_k=cfg["top_k"],
+            n_heads=n_heads,
+            mem_depth=cfg["mem_depth"],
+            max_gists=cfg.get("max_gists", 64),
+            gist_top_k=cfg.get("gist_top_k", 4),
+            dropout=0.0,
+        )
+    else:
+        print(f"  Model type: TSRN (baseline)")
+        model = TSRN(
+            vocab=vocab,
+            d_model=cfg["d_model"],
+            context_len=cfg["context_len"],
+            n_blocks=cfg["n_blocks"],
+            top_k=cfg["top_k"],
+            n_heads=n_heads,
+            mem_depth=cfg["mem_depth"],
+            dropout=0.0,
+        )
     
     # FIX 3: Strip out "module." or "_orig_mod." prefixes if the model was trained 
     # using DataParallel or torch.compile
@@ -93,20 +111,28 @@ def main():
 
     model.eval()
 
-    # Sanity check: one batch should give ~0.79 BPC
+    # Reset gist buffer if TSRNGist
+    if is_gist:
+        model.gist_buffer.reset()
+
+    # Sanity check: one batch
     x, y = dataset.batch("test", 8, device)
     _, loss = model(x, y)
     sanity_bpc = loss.item() / 0.6931  # math.log(2)
-    print(f"Sanity check BPC: {sanity_bpc:.4f}  (expected ~0.79)")
+    expected_bpc = ckpt.get('best_val_bpc', 0.8)
+    print(f"Sanity check BPC: {sanity_bpc:.4f}  (expected ~{expected_bpc:.2f})")
     if sanity_bpc > 1.5:
         print(f"WARNING: Sanity check failed — model weights may not be loaded correctly")
-    print(f"Model: TSRN ({model.count_params():,} params)")
+    model_label = "TSRNGist" if is_gist else "TSRN"
+    print(f"Model: {model_label} ({model.count_params():,} params)")
     print(f"Best val BPC from training: {ckpt.get('best_val_bpc', '?')}")
 
     # --- Random sampling evaluation (for comparison) ---
     print(f"\n{'='*70}")
     print(f"  Random Sampling Evaluation (200 batches x 16, ~16% of test set)")
     print(f"{'='*70}")
+    if is_gist:
+        model.gist_buffer.reset()
     t0 = time.time()
     rand_loss, rand_ppl, rand_bpc = evaluate(
         model, dataset, device, n_batches=200, batch_size=8, split="test")
@@ -122,6 +148,8 @@ def main():
     print(f"  Windows: {n_windows:,} non-overlapping x {ctx} bytes = "
           f"{n_windows * ctx:,} bytes / {len(dataset.test):,} total")
 
+    if is_gist:
+        model.gist_buffer.reset()
     t0 = time.time()
     seq_loss, seq_ppl, seq_bpc = evaluate_sequential(
         model, dataset, device, batch_size=8, split="test")
@@ -131,6 +159,8 @@ def main():
 
     # --- Also do val set for completeness ---
     print(f"\n  Val set (sequential)...")
+    if is_gist:
+        model.gist_buffer.reset()
     val_loss, val_ppl, val_bpc = evaluate_sequential(
         model, dataset, device, batch_size=8, split="val")
     print(f"  Val BPC (sequential):  {val_bpc:.4f}  (PPL: {val_ppl:.3f})")
@@ -139,7 +169,7 @@ def main():
     print(f"\n{'='*70}")
     print(f"  SUMMARY: Full Sequential Evaluation")
     print(f"{'='*70}")
-    print(f"  Model:      TSRN ({model.count_params():,} params)")
+    print(f"  Model:      {model_label} ({model.count_params():,} params)")
     print(f"  Dataset:    enwik8 (byte-level, standard 90M/5M/5M)")
     print(f"  Context:    {ctx} bytes")
     print(f"  Protocol:   Non-overlapping windows, full test set coverage")
@@ -162,7 +192,7 @@ def main():
         "context_len": ctx,
         "protocol": "non-overlapping windows, full test set coverage",
         "dataset": "enwik8 byte-level (latin-1), standard 90M/5M/5M split",
-        "vocab_size": cfg["vocab"],
+        "vocab_size": vocab,
         "test": {
             "bpc_sequential": round(seq_bpc, 4),
             "ppl_sequential": round(seq_ppl, 3),

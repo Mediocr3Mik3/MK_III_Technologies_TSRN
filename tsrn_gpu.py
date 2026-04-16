@@ -335,7 +335,8 @@ class RGPool(nn.Module):
             x = x[:, :-1, :]   # drop last token if odd
             T -= 1
         # Pair adjacent tokens
-        pair = torch.cat([x[:, 0::2, :], x[:, 1::2, :]], dim=-1)  # B T/2 2d
+        x_shifted = F.pad(x[:, :-1, :], (0, 0, 1, 0)) # [B, T, D]
+        pair = torch.cat([x_shifted[:, 0::2, :], x[:, 0::2, :]], dim=-1)   # B T/2 2d
         # Disentangle
         pair = torch.tanh(self.disentangle(pair))                  # B T/2 2d
         # Pool to single token
