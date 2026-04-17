@@ -11,9 +11,6 @@ data/
 enwik8
 enwik8.zip
 
-# Checkpoints (large model files)
-checkpoints/*.pt
-
 # IDE
 .vscode/
 .idea/
