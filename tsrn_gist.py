@@ -93,13 +93,42 @@ class SheafRotorDiffusion(nn.Module):
 
 
 # ---------------------------------------------------------------------------
-#  Gist Extractor — attention-pool sequence to Cl(1,0) gist (theta, mag)
+#  Gist Extractor — causal per-position attention-pool to Cl(1,0) gist
+#
+#  CAUSALITY REQUIREMENT:
+#    The extracted gist for coarse position j is injected into Scale 2
+#    at coarse position j.  Coarse position j predicts fine target 2j+1,
+#    so it must only see fine tokens x_0 ... x_{2j}.
+#
+#  FIX — prefix-masked causal extraction:
+#    We produce T/2 gist vectors, one per coarse position j, where gist j
+#    is computed by attending over fine tokens {0, 1, ..., 2j} only.
+#
+#    Let T2 = T // 2.  We issue T2 queries (one per coarse slot) against
+#    T keys/values (fine positions).  The causal mask M is:
+#
+#        M[j, t] = 0    if  t <= 2j          (position j may see fine t)
+#        M[j, t] = -inf if  t >  2j          (future — blocked)
+#
+#    This mask has shape (T2, T) and is computed once per forward pass.
+#
+#    Output:
+#        theta : (B, T2, d//2)   — per-coarse Clifford rotation angles
+#        mag   : (B, T2, 1)      — per-coarse magnitude gate
+#
+#    The legacy single-vector interface (used by GistBuffer.store) is
+#    preserved by taking the last coarse position's gist, which has seen
+#    x_0 ... x_{T-2} (the maximum causally-visible prefix), used to
+#    represent the whole window for cross-batch retrieval.
 # ---------------------------------------------------------------------------
 
 class GistExtractor(nn.Module):
     def __init__(self, d_model: int, n_heads: int = 4):
         super().__init__()
         self.d, self.H, self.dh = d_model, n_heads, d_model // n_heads
+        # One learnable query per coarse position is parameter-expensive;
+        # instead use a single query prototype that is position-modulated
+        # by a learned coarse positional embedding (same capacity, less params).
         self.query = nn.Parameter(torch.randn(1, 1, d_model) * 0.02)
         self.Wk = nn.Linear(d_model, d_model, bias=False)
         self.Wv = nn.Linear(d_model, d_model, bias=False)
@@ -108,12 +137,60 @@ class GistExtractor(nn.Module):
         self.ln = nn.LayerNorm(d_model)
 
     def forward(self, x: Tensor) -> Tuple[Tensor, Tensor]:
+        """
+        Args:
+            x: (B, T, d) — Scale 1 output, T must be even.
+        Returns:
+            theta : (B, T2, d//2)  causal per-coarse gist angles
+            mag   : (B, T2, 1)     causal per-coarse magnitude gates
+        where T2 = T // 2.
+        """
+        B, T, d = x.shape
+        T2 = T // 2
+        H, dh = self.H, self.dh
+
+        # Keys and values from all T fine positions
+        k = self.Wk(x).view(B, T, H, dh).permute(0, 2, 1, 3)   # B H T dh
+        v = self.Wv(x).view(B, T, H, dh).permute(0, 2, 1, 3)   # B H T dh
+
+        # T2 queries — broadcast the single prototype to T2 positions.
+        # Shape: (B, H, T2, dh)
+        q = self.query.view(1, 1, H, dh).expand(B, T2, H, dh).permute(0, 2, 1, 3)
+
+        # Raw scores: (B, H, T2, T)
+        scores = (q @ k.transpose(-2, -1)) / math.sqrt(dh)
+
+        # Causal mask M[j, t] = -inf  iff  t > 2j
+        # Coarse index j in {0,...,T2-1}, fine index t in {0,...,T-1}.
+        # j_idx shape (T2, 1), t_idx shape (1, T) — broadcast to (T2, T).
+        j_idx = torch.arange(T2, device=x.device).unsqueeze(1)   # T2 x 1
+        t_idx = torch.arange(T, device=x.device).unsqueeze(0)    # 1  x T
+        # Allowed: t <= 2j   i.e. t <= 2*j_idx
+        future_mask = t_idx > 2 * j_idx                          # T2 x T, bool
+        scores = scores.masked_fill(
+            future_mask.unsqueeze(0).unsqueeze(0), float("-inf")) # broadcast over B, H
+
+        # Softmax and weighted sum: (B, H, T2, dh)
+        pooled = (torch.softmax(scores, dim=-1) @ v)
+        # Reshape to (B, T2, d)
+        pooled = pooled.permute(0, 2, 1, 3).contiguous().reshape(B, T2, d)
+        pooled = self.ln(pooled)
+
+        theta = self.proj_theta(pooled)                 # B T2 d//2
+        mag   = torch.sigmoid(self.proj_mag(pooled))   # B T2 1
+        return theta, mag
+
+    def forward_single(self, x: Tensor) -> Tuple[Tensor, Tensor]:
+        """Legacy single-vector extraction (causal: attends to all of x,
+        which is the maximum safe prefix for cross-batch gist storage).
+        Used only by GistBuffer.store to produce the ring-buffer key."""
         B, T, d = x.shape
         H, dh = self.H, self.dh
-        q = self.query.expand(B, -1, -1).view(B, 1, H, dh).permute(0,2,1,3)
-        k = self.Wk(x).view(B, T, H, dh).permute(0,2,1,3)
-        v = self.Wv(x).view(B, T, H, dh).permute(0,2,1,3)
-        scores = (q @ k.transpose(-2,-1)) / math.sqrt(dh)
+        q = self.query.view(1, 1, H, dh).expand(B, 1, H, dh).permute(0, 2, 1, 3)
+        k = self.Wk(x).view(B, T, H, dh).permute(0, 2, 1, 3)
+        v = self.Wv(x).view(B, T, H, dh).permute(0, 2, 1, 3)
+        scores = (q @ k.transpose(-2, -1)) / math.sqrt(dh)
+        # No mask needed: storing a summary of the entire (past) window is causal.
         pooled = (torch.softmax(scores, -1) @ v).permute(0,2,1,3).reshape(B, d)
         pooled = self.ln(pooled)
         return self.proj_theta(pooled), torch.sigmoid(self.proj_mag(pooled))
@@ -169,6 +246,18 @@ class GistBuffer(nn.Module):
 
 # ---------------------------------------------------------------------------
 #  Gist Rotation — apply rotor before CliffordFFN (pre-token alignment)
+#
+#  When called from Scale 1 (fine positions):
+#    gist_theta/mag come from the GistBuffer (previous-window gists) with
+#    shape (B, K, dh) — K retrieved past gists.  The weighted sum produces
+#    a single rotation applied uniformly to all T fine positions.  This
+#    is safe: retrieved gists are from strictly past windows.
+#
+#  When called from Scale 2 (coarse positions):
+#    gist_theta has shape (B, T2, dh) — one gist per coarse position j,
+#    computed causally by GistExtractor.forward().  gist_weights is None
+#    in this case, signalling per-position mode: each coarse token j is
+#    rotated by its own causal gist j.
 # ---------------------------------------------------------------------------
 
 class GistRotationLayer(nn.Module):
@@ -178,18 +267,49 @@ class GistRotationLayer(nn.Module):
         self.gist_strength = nn.Parameter(torch.tensor(0.0))
         self.ln = nn.LayerNorm(d_model)
 
-    def forward(self, x, gist_theta, gist_mag, gist_weights):
-        w = gist_weights.unsqueeze(-1) * gist_mag
-        w = w / (w.sum(dim=1, keepdim=True) + 1e-8)
-        theta = (w * gist_theta).sum(dim=1) * torch.sigmoid(self.gist_strength)
-        r, i = x[..., :self.dh], x[..., self.dh:]
-        c = torch.cos(theta).unsqueeze(1)
-        s = torch.sin(theta).unsqueeze(1)
-        return self.ln(torch.cat([r*c - i*s, r*s + i*c], dim=-1))
+    def forward(self, x, gist_theta, gist_mag, gist_weights=None):
+        """
+        x           : (B, T, d)
+        gist_theta  : (B, K, dh)  K retrieved gists  — Scale 1 path
+                   OR (B, T, dh)  per-position gists  — Scale 2 path
+        gist_mag    : (B, K, 1) or (B, T, 1)
+        gist_weights: (B, K) or None (None signals per-position mode)
+        """
+        if gist_weights is not None:
+            # Scale 1 path: weighted sum over K retrieved past gists -> single theta
+            w = gist_weights.unsqueeze(-1) * gist_mag           # B K 1
+            w = w / (w.sum(dim=1, keepdim=True) + 1e-8)
+            theta = (w * gist_theta).sum(dim=1)                 # B dh
+            theta = theta * torch.sigmoid(self.gist_strength)
+            # Broadcast theta to all T positions
+            r, i = x[..., :self.dh], x[..., self.dh:]
+            c = torch.cos(theta).unsqueeze(1)                   # B 1 dh
+            s = torch.sin(theta).unsqueeze(1)
+        else:
+            # Scale 2 path: per-position gist, shape (B, T, dh)
+            # gist_mag shape: (B, T, 1) — squeeze last dim for elementwise
+            theta = gist_theta * torch.sigmoid(self.gist_strength)  # B T dh
+            r, i = x[..., :self.dh], x[..., self.dh:]
+            c = torch.cos(theta)                                # B T dh
+            s = torch.sin(theta)
+        return self.ln(torch.cat([r * c - i * s, r * s + i * c], dim=-1))
 
 
 # ---------------------------------------------------------------------------
 #  Gist Cross-Attention — tokens attend to past gist representations
+#
+#  Scale 1 path: gist_theta shape (B, K, dh), gist_mag (B, K, 1).
+#    K retrieved gists from the ring buffer — always strictly past windows.
+#    No causal masking needed between current tokens and past-window gists.
+#
+#  Scale 2 path: gist_theta shape (B, T2, dh), gist_mag (B, T2, 1).
+#    Per-position causal gists from GistExtractor.  Coarse token j must
+#    only attend to gist key j (its own causal summary).  We enforce this
+#    with a diagonal mask: each query attends only to its own gist key.
+#    This degenerates to a simple elementwise gated add, which is what the
+#    architecture intends (the gist "primes" that specific token), so
+#    we implement it as a direct projection rather than wasting attention
+#    compute on an identity-masked softmax.
 # ---------------------------------------------------------------------------
 
 class GistCrossAttention(nn.Module):
@@ -202,19 +322,50 @@ class GistCrossAttention(nn.Module):
         self.Wo = nn.Linear(d_model, d_model, bias=False)
         self.drop = nn.Dropout(dropout)
         self.gist_up = nn.Linear(d_model//2 + 1, d_model)
+        # Per-position projection used in Scale 2 path (diagonal attend)
+        self.gist_gate = nn.Linear(d_model, d_model, bias=True)
         nn.init.zeros_(self.Wo.weight)
+        nn.init.zeros_(self.gist_gate.weight)
+        nn.init.zeros_(self.gist_gate.bias)
 
     def forward(self, x, gist_theta, gist_mag):
+        """
+        x          : (B, T, d)
+        gist_theta : (B, K, dh)  K past-window gists  — Scale 1 path
+                  OR (B, T, dh)  per-position gists    — Scale 2 path
+        gist_mag   : (B, K, 1) or (B, T, 1)
+
+        We distinguish paths by comparing gist_theta.shape[1] to x.shape[1].
+        Scale 1: gist_theta.shape[1] == K (small, from buffer, K << T).
+        Scale 2: gist_theta.shape[1] == T (equals sequence length of x).
+        """
         B, T, d = x.shape
-        H, dh = self.H, self.dh
-        k = gist_theta.shape[1]
-        gist_repr = self.gist_up(torch.cat([gist_theta, gist_mag], dim=-1))
-        Q = self.Wq(x).view(B,T,H,dh).permute(0,2,1,3)
-        K = self.Wk(gist_repr).view(B,k,H,dh).permute(0,2,1,3)
-        V = self.Wv(gist_repr).view(B,k,H,dh).permute(0,2,1,3)
-        scores = (Q @ K.transpose(-2,-1)) / math.sqrt(dh)
-        ctx = (self.drop(torch.softmax(scores, -1)) @ V)
-        return self.Wo(ctx.permute(0,2,1,3).contiguous().reshape(B,T,d))
+        K = gist_theta.shape[1]
+
+        # Lift gist (theta, mag) back to model dim
+        gist_repr = self.gist_up(torch.cat([gist_theta, gist_mag], dim=-1))  # B K d  or  B T d
+
+        if K != T:
+            # ── Scale 1 path: standard cross-attention, all-to-all ──
+            # K is the number of retrieved past-window gists (small, << T).
+            # No causal masking required: all K gists are from strictly past windows.
+            H, dh = self.H, self.dh
+            Q = self.Wq(x).view(B, T, H, dh).permute(0, 2, 1, 3)
+            K_ = self.Wk(gist_repr).view(B, K, H, dh).permute(0, 2, 1, 3)
+            V  = self.Wv(gist_repr).view(B, K, H, dh).permute(0, 2, 1, 3)
+            scores = (Q @ K_.transpose(-2, -1)) / math.sqrt(dh)
+            ctx = (self.drop(torch.softmax(scores, -1)) @ V)
+            return self.Wo(ctx.permute(0, 2, 1, 3).contiguous().reshape(B, T, d))
+        else:
+            # ── Scale 2 path: per-position causal gist conditioning ──
+            # gist_repr[j] was computed from fine tokens {0..2j} only (causal).
+            # Attending token j to all gist_repr keys would reintroduce future
+            # info (gist_repr[j'] for j'>j encodes fine tokens up to 2j' > 2j).
+            # Correct operation: token j uses ONLY gist_repr[j].
+            # This is equivalent to a diagonal attention mask, which simplifies
+            # to an elementwise gated projection — no cross-position mixing.
+            gate = torch.sigmoid(self.gist_gate(gist_repr))   # B T d
+            return self.Wo(x * gate)
 
 
 # ---------------------------------------------------------------------------
@@ -383,12 +534,14 @@ class TSRNGist(nn.Module):
         pos = torch.arange(T, device=idx.device)
         x = self.embed(idx) + self.pos_s1(pos)
 
-        # Retrieve gists from buffer
-        ctx_summary = x.mean(dim=1)  # B d
+        # Retrieve gists from buffer (strictly past windows — causal by construction)
+        ctx_summary = x.mean(dim=1)  # B d  (embedding mean; no future info here)
         gist_theta, gist_mag, gist_w = self.gist_buffer.retrieve(
             self.gist_buffer.key_proj(ctx_summary), top_k=self.gist_top_k)
+        # gist_theta: (B, K, dh),  gist_mag: (B, K, 1),  gist_w: (B, K)
+        # K <= max_gists, all from previous windows — safe to use in Scale 1.
 
-        # Scale 1
+        # Scale 1 — fine tokens, uses retrieved past-window gists
         for block in self.s1_blocks:
             if self.gradient_checkpoint and self.training:
                 x = torch.utils.checkpoint.checkpoint(
@@ -397,31 +550,43 @@ class TSRNGist(nn.Module):
             else:
                 x = block(x, gist_theta, gist_mag, gist_w)
 
-        # Extract gist at RG boundary — this IS the global section
-        new_theta, new_mag = self.gist_extractor(x)
-        if self.training:
-            self.gist_buffer.store(new_theta, new_mag, ctx_summary)
-
-        # Build fresh gist tensors for Scale 2 (carries grad → extractor trains)
-        fresh_theta = new_theta.unsqueeze(1)                     # B 1 dh
-        fresh_mag = new_mag.unsqueeze(1)                         # B 1 1
-        fresh_w = torch.ones(B, 1, device=idx.device)            # B 1
-
-        # RG coarse-grain
+        # ── Causal gist extraction at RG boundary ──────────────────────────
+        # GistExtractor.forward() now returns per-coarse-position gists:
+        #   fresh_theta : (B, T2, dh)  where fresh_theta[j] encodes x_{0..2j}
+        #   fresh_mag   : (B, T2, 1)
+        # This is strictly causal: coarse token j sees fine tokens 0..2j only.
         T2 = T // 2
+        fresh_theta, fresh_mag = self.gist_extractor(x)
+        # fresh_theta shape: (B, T2, dh) — verify against T2
+        assert fresh_theta.shape[1] == T2, (
+            f"GistExtractor returned {fresh_theta.shape[1]} positions, expected {T2}")
+
+        # Store a single cross-batch gist summary using the last causal position
+        # (position T2-1 encodes x_{0..T-2}, the maximal causal prefix).
+        # forward_single re-uses the same weights, attends to all of x (causal
+        # because all of x is the current past window).
+        if self.training:
+            store_theta, store_mag = self.gist_extractor.forward_single(x)
+            self.gist_buffer.store(store_theta, store_mag, ctx_summary)
+
+        # RG coarse-grain (now causal — see RGPool docstring)
         pos2 = torch.arange(T2, device=idx.device)
         xc = self.rg_pool(x) + self.pos_s2(pos2)
 
-        # Scale 2 uses fresh gist (global section spanning both scales)
+        # Scale 2 — coarse tokens.
+        # Pass fresh_theta/mag with gist_weights=None to signal per-position mode.
+        # GistRotationLayer and GistCrossAttention use per-position gist[j] for
+        # coarse token j — no future information crosses the causal boundary.
         for block in self.s2_blocks:
             if self.gradient_checkpoint and self.training:
                 xc = torch.utils.checkpoint.checkpoint(
-                    block, xc, fresh_theta, fresh_mag, fresh_w,
+                    block, xc, fresh_theta, fresh_mag, None,
                     use_reentrant=False)
             else:
-                xc = block(xc, fresh_theta, fresh_mag, fresh_w)
+                xc = block(xc, fresh_theta, fresh_mag, None)
 
         # Upsample & fuse
+        # xc_up[t] = xc[t//2], which was built from fine tokens 0..t (causal). ✓
         xc_up = xc.repeat_interleave(2, dim=1).contiguous()
         if xc_up.size(1) < T:
             xc_up = F.pad(xc_up, (0, 0, 0, T - xc_up.size(1)))

@@ -511,6 +511,26 @@ class CliffordFFN(nn.Module):
 #     MERA-inspired: disentangle pairs then pool.
 #     Disentangle: 2d -> 2d (near-identity, removes short-range correlations)
 #     Pool: 2d -> d (merge adjacent tokens)
+#
+#     CAUSALITY REQUIREMENT (autoregressive LM):
+#       When predicting the target for fine position t, the model must only
+#       have access to x_0 ... x_t.  Coarse token j feeds back into fine
+#       positions {2j, 2j+1} via the upsample-fuse step, so coarse token j
+#       must be computed from fine tokens with index <= 2j only.
+#
+#     FIX — causal pairing:
+#       We shift x left by one via zero-padding on the left:
+#           x_shifted = [0, x_0, x_1, ..., x_{T-1}]   (length T+1)
+#       Then:
+#           left  = x_shifted[0::2] = [0,      x_1,   x_3,  ...]  (indices 2j-1)
+#           right = x_shifted[1::2] = [x_0,    x_2,   x_4,  ...]  (indices 2j  )
+#       Coarse token j = pool(x_{2j-1}, x_{2j}), where x_{-1} := 0.
+#       Latest index used: 2j <= 2j.  ✓  No future tokens visible.
+#
+#     Upsample check:
+#       repeat_interleave(2) maps coarse j -> fine {2j, 2j+1}.
+#       Fine position t receives xc[t//2], built from x_{t-1} and x_t.
+#       Latest index: t.  ✓
 # ---------------------------------------------------------------------------
 
 class RGPool(nn.Module):
@@ -525,11 +545,25 @@ class RGPool(nn.Module):
 
     def forward(self, x: Tensor) -> Tensor:
         B, T, d = x.shape
+        # Ensure even length (drop last token if odd — same as before)
         if T % 2 != 0:
             x = x[:, :-1, :]
             T -= 1
-        pair = torch.cat([x[:, 0::2, :].contiguous(), x[:, 1::2, :].contiguous()], dim=-1)
-        pair = torch.tanh(self.disentangle(pair))
+        # Causal shift: prepend one zero frame so pair j uses (x[2j-1], x[2j]).
+        # x_shifted shape: (B, T+1, d).  x_{-1} is defined as the zero vector.
+        pad  = torch.zeros(B, 1, d, device=x.device, dtype=x.dtype)
+        x_sh = torch.cat([pad, x], dim=1)          # (B, T+1, d)
+        # x_sh has T+1 elements at indices 0..T.
+        # We need exactly T/2 pairs.  T+1 elements -> take first T elements so
+        # both strides land on [0, T/2) pairs:
+        #   left  = x_sh[:, 0::2, :]  indices 0, 2, 4, ...  (= x_{-1}, x_1, x_3, ...)
+        #   right = x_sh[:, 1::2, :]  indices 1, 3, 5, ...  (= x_0,   x_2, x_4, ...)
+        # With T+1 elements both slices have ceil((T+1)/2) = T/2+1 entries if T
+        # is even, so we slice to exactly T//2.
+        left  = x_sh[:, 0::2, :][:, :T//2, :].contiguous()   # (B, T/2, d)
+        right = x_sh[:, 1::2, :][:, :T//2, :].contiguous()   # (B, T/2, d)
+        pair  = torch.cat([left, right], dim=-1)              # (B, T/2, 2d)
+        pair  = torch.tanh(self.disentangle(pair))
         return self.norm(self.pool(pair)).contiguous()
 
 
