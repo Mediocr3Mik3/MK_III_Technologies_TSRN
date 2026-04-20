@@ -87,12 +87,13 @@ def train_convergence(dataset, device, n_steps=70000, batch_size=8,
                      mem_depth=mem_depth, max_gists=max_gists,
                      gist_top_k=gist_top_k, dropout=dropout)
 
+    # Load model weights first (optimizer state restored below, after it's built).
     start_step = 0
+    _resume_ckpt = None
     if resume_from and os.path.exists(resume_from):
-        ckpt = torch.load(resume_from, map_location="cpu")
-        model.load_state_dict(ckpt["model_state_dict"])
-        start_step = ckpt.get("step", 0)
-        print(f"  Resumed from {resume_from} at step {start_step}")
+        _resume_ckpt = torch.load(resume_from, map_location="cpu")
+        model.load_state_dict(_resume_ckpt["model_state_dict"])
+        start_step = _resume_ckpt.get("step", 0)
 
     model.to(device)
     model.train()
@@ -125,6 +126,20 @@ def train_convergence(dataset, device, n_steps=70000, batch_size=8,
     log = []
     best_val_bpc = float("inf")
     best_model_state = None
+
+    # Full resume: restore optimizer moments, best-so-far BPC, and log.
+    # Without this, Adam's exp_avg/exp_avg_sq reset to zero at the resume
+    # step, producing a large effective-LR spike for the first ~100 steps.
+    if _resume_ckpt is not None:
+        if "optimizer_state_dict" in _resume_ckpt:
+            optimizer.load_state_dict(_resume_ckpt["optimizer_state_dict"])
+        best_val_bpc = _resume_ckpt.get("best_val_bpc", float("inf"))
+        log = list(_resume_ckpt.get("log", []))
+        print(f"  Resumed from {resume_from} at step {start_step} "
+              f"(best_val_bpc so far = {best_val_bpc:.4f}, "
+              f"opt state = {'restored' if 'optimizer_state_dict' in _resume_ckpt else 'FRESH'})")
+        del _resume_ckpt  # release CPU memory
+
     eval_every = max(1, n_steps // 50)  # ~50 eval points over run
     t0 = time.time()
 
@@ -135,7 +150,10 @@ def train_convergence(dataset, device, n_steps=70000, batch_size=8,
           f"{'ValLoss':>9}  {'ValPPL':>9}  {'ValBPC':>8}  {'GNorm':>7}  {'ms/step':>10}")
     print(f"{'-'*85}")
 
-    for step in range(start_step + 1, n_steps + 1):
+    # Track the most recent completed step for interrupt-time checkpointing.
+    _last_completed_step = start_step
+    try:
+      for step in range(start_step + 1, n_steps + 1):
         lr = get_lr(step, min(n_steps // 10, 4000), n_steps, lr_max, lr_max * 0.1)
         for g in optimizer.param_groups:
             g["lr"] = lr
@@ -226,6 +244,32 @@ def train_convergence(dataset, device, n_steps=70000, batch_size=8,
 
             # Save incremental results
             _save_results(log, step, model, best_val_bpc, run_tag)
+
+        _last_completed_step = step
+    except KeyboardInterrupt:
+        interrupt_step = _last_completed_step
+        ipath = f"checkpoints/{run_tag}_interrupt_step{interrupt_step:06d}.pt"
+        print(f"\n\n  [INTERRUPT] Ctrl+C caught at step {interrupt_step}. "
+              f"Saving emergency checkpoint -> {ipath}")
+        try:
+            torch.save({
+                "model_state_dict": model.state_dict(),
+                "optimizer_state_dict": optimizer.state_dict(),
+                "config": {"vocab": V, "d_model": d_model, "context_len": ctx,
+                           "n_blocks": n_blocks, "top_k": top_k,
+                           "n_heads": n_heads, "mem_depth": mem_depth,
+                           "max_gists": max_gists, "gist_top_k": gist_top_k},
+                "step": interrupt_step,
+                "best_val_bpc": best_val_bpc,
+                "log": log,
+                "run_tag": run_tag,
+                "interrupted": True,
+            }, ipath)
+            _save_results(log, interrupt_step, model, best_val_bpc, run_tag)
+            print(f"  [INTERRUPT] Saved. Resume with: --resume {ipath}")
+        except Exception as e:
+            print(f"  [INTERRUPT] Save failed: {e}")
+        return  # skip best-model save + final eval; exit cleanly
 
     # Save best model checkpoint
     if best_model_state is not None:
