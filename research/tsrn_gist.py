@@ -29,8 +29,7 @@ from torch import Tensor
 
 from tsrn_dml import (
     TropicalAttention, CliffordFFN, RGPool, PAdicMemory,
-    EchoStateReservoir, PAdicAttention,
-    TropicalSSM, PersistentCrossWindowMemory,
+    EchoStateReservoir, PAdicAttention, TropicalSSM,
     CharDataset, CharDatasetSplit, load_enwik8, load_wikitext2,
     generate_synthetic_data, detect_device, evaluate,
     evaluate_sequential, get_lr, device_sync,
@@ -396,7 +395,7 @@ class TSRNGistBlock(nn.Module):
         self.use_reservoir = use_reservoir
         if use_reservoir:
             self.ln_res = nn.LayerNorm(d_model)
-            self.reservoir = EchoStateReservoir(d_model)
+            self.reservoir = EchoStateReservoir(d_model, d_reservoir=d_model // 2)
 
         # Tropical SSM (optional, parallel to reservoir)
         self.use_tropical_ssm = use_tropical_ssm
@@ -477,11 +476,7 @@ class TSRNGist(nn.Module):
         self.gist_top_k = gist_top_k
 
         self.embed = nn.Embedding(vocab, d_model)
-        self.pos_s1 = nn.Embedding(context_len, d_model)
-        self.pos_s2 = nn.Embedding(context_len // 2, d_model)
         nn.init.normal_(self.embed.weight, std=0.02)
-        nn.init.normal_(self.pos_s1.weight, std=0.01)
-        nn.init.normal_(self.pos_s2.weight, std=0.01)
 
         # Scale 1 blocks (reservoir + SSM in first block)
         self.s1_blocks = nn.ModuleList([
@@ -546,10 +541,30 @@ class TSRNGist(nn.Module):
     def count_params(self) -> int:
         return sum(p.numel() for p in self.parameters() if p.requires_grad)
 
+    def reset_cross_window(self):
+        """Reset cross-window memory in all attention layers."""
+        for block in self.s1_blocks:
+            block.attn.cross_window_mem.reset()
+        for block in self.s2_blocks:
+            block.attn.cross_window_mem.reset()
+
+    def set_cross_window_enabled(self, enabled: bool):
+        """Enable/disable cross-window K/V cache in all attention layers.
+
+        Disabled by default. Enable only for SEQUENTIAL autoregressive
+        generation (e.g. streaming inference). For random-batch evaluation
+        it is both semantically wrong (caches unrelated context) and slow
+        (doubles T_kv -> triggers O(T^2) chunked path)."""
+        for block in self.s1_blocks:
+            block.attn.cross_window_mem.enabled = enabled
+        for block in self.s2_blocks:
+            block.attn.cross_window_mem.enabled = enabled
+        if not enabled:
+            self.reset_cross_window()
+
     def forward(self, idx: Tensor, targets: Optional[Tensor] = None):
         B, T = idx.shape
-        pos = torch.arange(T, device=idx.device)
-        x = self.embed(idx) + self.pos_s1(pos)
+        x = self.embed(idx)
 
         # Retrieve gists from buffer (strictly past windows — causal by construction)
         ctx_summary = x.mean(dim=1)  # B d  (embedding mean; no future info here)
@@ -587,8 +602,7 @@ class TSRNGist(nn.Module):
             self.gist_buffer.store(store_theta, store_mag, ctx_summary)
 
         # RG coarse-grain (now causal — see RGPool docstring)
-        pos2 = torch.arange(T2, device=idx.device)
-        xc = self.rg_pool(x) + self.pos_s2(pos2)
+        xc = self.rg_pool(x)
 
         # Scale 2 — coarse tokens.
         # Use buffer-retrieved past-window gists (same as Scale 1) for stability.
