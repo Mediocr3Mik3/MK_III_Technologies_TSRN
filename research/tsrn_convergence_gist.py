@@ -17,6 +17,7 @@ from tsrn_gist import (
     TSRNGist, load_enwik8,
     detect_device, evaluate, get_lr,
 )
+from tsrn_dml import AdamWDML
 from tsrn_inference import generate_with_stats, run_quality_benchmark
 
 
@@ -113,7 +114,7 @@ def train_convergence(dataset, device, n_steps=70000, batch_size=8,
              if p.requires_grad and p.dim() >= 2}
     no_decay = {p for p in model.parameters()
                 if p.requires_grad and p not in decay}
-    optimizer = torch.optim.AdamW([
+    optimizer = AdamWDML([
         {"params": list(decay), "weight_decay": 0.1},
         {"params": list(no_decay), "weight_decay": 0.0},
     ], lr=lr_max, betas=(0.9, 0.95))

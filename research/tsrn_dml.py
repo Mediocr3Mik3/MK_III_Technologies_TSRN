@@ -55,6 +55,101 @@ from torch import Tensor
 #  Semantics:  out[b, t, ...] = max(x[b, 0, ...], ..., x[b, t, ...])
 # ---------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------
+#  DML-safe AdamW optimizer.
+#
+#  Stock torch.optim.AdamW uses aten::lerp internally (both single-tensor
+#  via `.lerp_()` and multi-tensor via `torch._foreach_lerp_()`), which
+#  falls back to CPU on DirectML.  On a 22.9M-param model this is a
+#  per-parameter CPU round-trip every step — catastrophic for throughput.
+#
+#  AdamWDML replaces the EMA update
+#      exp_avg.lerp_(grad, 1 - beta1)
+#  with the mathematically-equivalent
+#      exp_avg.mul_(beta1).add_(grad, alpha=1 - beta1)
+#  which maps to GPU-native ops on every backend.  All other AdamW state
+#  (exp_avg_sq, bias correction, decoupled weight decay, epsilon) matches
+#  torch.optim.AdamW exactly.
+# ---------------------------------------------------------------------------
+
+class AdamWDML(torch.optim.Optimizer):
+    """Drop-in AdamW that avoids `aten::lerp` (DirectML CPU fallback).
+
+    Semantics identical to torch.optim.AdamW with decoupled weight decay.
+    Supports per-param-group lr / weight_decay / betas / eps.
+    """
+
+    def __init__(self, params, lr: float = 1e-3,
+                 betas: Tuple[float, float] = (0.9, 0.999),
+                 eps: float = 1e-8, weight_decay: float = 0.01):
+        if lr < 0.0:
+            raise ValueError(f"Invalid learning rate: {lr}")
+        if not 0.0 <= betas[0] < 1.0:
+            raise ValueError(f"Invalid beta1: {betas[0]}")
+        if not 0.0 <= betas[1] < 1.0:
+            raise ValueError(f"Invalid beta2: {betas[1]}")
+        if eps < 0.0:
+            raise ValueError(f"Invalid eps: {eps}")
+        if weight_decay < 0.0:
+            raise ValueError(f"Invalid weight_decay: {weight_decay}")
+        defaults = dict(lr=lr, betas=betas, eps=eps, weight_decay=weight_decay)
+        super().__init__(params, defaults)
+
+    @torch.no_grad()
+    def step(self, closure=None):
+        loss = None
+        if closure is not None:
+            with torch.enable_grad():
+                loss = closure()
+
+        for group in self.param_groups:
+            lr = group["lr"]
+            beta1, beta2 = group["betas"]
+            eps = group["eps"]
+            wd = group["weight_decay"]
+
+            for p in group["params"]:
+                if p.grad is None:
+                    continue
+                grad = p.grad
+                if grad.is_sparse:
+                    raise RuntimeError(
+                        "AdamWDML does not support sparse gradients"
+                    )
+
+                state = self.state[p]
+                if len(state) == 0:
+                    state["step"] = 0
+                    state["exp_avg"] = torch.zeros_like(
+                        p, memory_format=torch.preserve_format)
+                    state["exp_avg_sq"] = torch.zeros_like(
+                        p, memory_format=torch.preserve_format)
+
+                exp_avg = state["exp_avg"]
+                exp_avg_sq = state["exp_avg_sq"]
+                state["step"] += 1
+                t = state["step"]
+
+                # Decoupled weight decay: p <- p * (1 - lr * wd)
+                if wd != 0.0:
+                    p.mul_(1.0 - lr * wd)
+
+                # First moment:  m <- beta1 * m + (1 - beta1) * g    (NO lerp)
+                exp_avg.mul_(beta1).add_(grad, alpha=1.0 - beta1)
+                # Second moment: v <- beta2 * v + (1 - beta2) * g^2
+                exp_avg_sq.mul_(beta2).addcmul_(grad, grad, value=1.0 - beta2)
+
+                # Bias correction
+                bc1 = 1.0 - beta1 ** t
+                bc2 = 1.0 - beta2 ** t
+                step_size = lr / bc1
+                # denom = sqrt(v) / sqrt(bc2) + eps
+                denom = exp_avg_sq.sqrt().div_(math.sqrt(bc2)).add_(eps)
+                p.addcdiv_(exp_avg, denom, value=-step_size)
+
+        return loss
+
+
 def prefix_max(x: Tensor, dim: int = 1) -> Tensor:
     """Parallel prefix-max along `dim` (default 1).
 
