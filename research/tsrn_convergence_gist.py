@@ -4,9 +4,12 @@ TSRN-Gist convergence run on enwik8 (byte-level, standard protocol).
 - Periodic checkpointing every 5k steps
 - Inference samples at each checkpoint
 - Final test-set evaluation and quality benchmark
+- NEXUS Innovation #3 Maslov temperature cycling on tropical attention
+- NEXUS Innovation #4 Sheaf Harmonic positional encoding (model-side)
+- NEXUS Innovation #5 RG fixed-point weight sharing for Scale-2 (model-side)
 """
 
-import os, sys, json, time, math, argparse
+import os, sys, json, time, math, argparse, datetime
 import torch
 import torch.nn as nn
 
@@ -15,6 +18,52 @@ from tsrn_gist import (
     detect_device, evaluate, get_lr,
 )
 from tsrn_inference import generate_with_stats, run_quality_benchmark
+
+
+# ---------------------------------------------------------------------------
+#  Filename tag — YYYYMMDD_<script>[_<user_tag>]
+# ---------------------------------------------------------------------------
+
+def build_run_tag(user_tag: str = "") -> str:
+    """Build run identifier: YYYYMMDD_<script>[_<user_tag>]."""
+    date = datetime.datetime.now().strftime("%Y%m%d")
+    script = os.path.splitext(os.path.basename(sys.argv[0] or "run"))[0]
+    suffix = f"_{user_tag}" if user_tag else ""
+    return f"{date}_{script}{suffix}"
+
+
+def ckpt_path(run_tag: str, step: int, kind: str = "step") -> str:
+    """kind in {'step', 'best', 'final'}.  Layout under checkpoints/."""
+    if kind == "best":
+        return f"checkpoints/{run_tag}_best.pt"
+    if kind == "final":
+        return f"checkpoints/{run_tag}_final_step{step:06d}.pt"
+    return f"checkpoints/{run_tag}_step{step:06d}.pt"
+
+
+def results_path(run_tag: str, step: int, kind: str = "progress") -> str:
+    """kind in {'progress', 'final'}.  Layout under results/."""
+    if kind == "final":
+        return f"results/{run_tag}_final_step{step:06d}.json"
+    return f"results/{run_tag}_progress_step{step:06d}.json"
+
+
+# ---------------------------------------------------------------------------
+#  Maslov temperature schedule — NEXUS Innovation #3
+# ---------------------------------------------------------------------------
+
+def maslov_h_schedule(step: int, n_steps: int,
+                      h_warm: float = 1.5, h_cool: float = 0.3,
+                      n_cycles: int = 3) -> float:
+    """Cycle Maslov h from warm (classical) to cool (tropical) over training.
+
+    Cosine cycling: h(t) = (h_warm+h_cool)/2 + (h_warm-h_cool)/2 * cos(2*pi*c*t)
+    with c = n_cycles / n_steps.  Starts warm, ends cool.
+    """
+    t = max(0.0, min(1.0, step / max(1, n_steps)))
+    mid = 0.5 * (h_warm + h_cool)
+    amp = 0.5 * (h_warm - h_cool)
+    return float(mid + amp * math.cos(2.0 * math.pi * n_cycles * t))
 
 # ---------------------------------------------------------------------------
 #  Training loop with periodic checkpointing + inference samples
@@ -47,12 +96,18 @@ def train_convergence(dataset, device, n_steps=70000, batch_size=8,
     model.to(device)
     model.train()
 
+    # Run tag for all output artifacts: YYYYMMDD_tsrn_convergence_gist[_tag]
+    run_tag = build_run_tag(tag)
+
     print(f"\n  TSRNGist: {model.count_params():,} parameters")
     print(f"  Vocab: {V}  |  Context: {ctx}  |  d_model: {d_model}")
     eff_batch = batch_size * grad_accum_steps
     print(f"  Steps: {n_steps}  |  Batch: {batch_size}x{grad_accum_steps}={eff_batch}  |  LR: {lr_max}")
     print(f"  Gists: {max_gists} buffer, top-{gist_top_k} retrieval")
     print(f"  Checkpoint every {ckpt_every} steps")
+    print(f"  Run tag: {run_tag}")
+    print(f"  NEXUS: Maslov cycling (h: 1.5->0.3, 3 cycles), "
+          f"Sheaf Harmonic PE, RG fixed-point S2 (max_iters={model.s2_max_iters}, eps={model.s2_eps})")
 
     decay = {p for n, p in model.named_parameters()
              if p.requires_grad and p.dim() >= 2}
@@ -83,6 +138,12 @@ def train_convergence(dataset, device, n_steps=70000, batch_size=8,
         lr = get_lr(step, min(n_steps // 10, 4000), n_steps, lr_max, lr_max * 0.1)
         for g in optimizer.param_groups:
             g["lr"] = lr
+
+        # NEXUS Innovation #3 — Maslov temperature cycling (per-step scalar).
+        # h is a buffer inside every TropicalAttention layer.  Updating it is
+        # a cheap scalar op and preserves causality (causal mask applied after).
+        h_now = maslov_h_schedule(step, n_steps)
+        model.set_maslov_h(h_now)
 
         # Reset gist buffer periodically to avoid stale gists
         if step % 100 == 1:
@@ -121,6 +182,8 @@ def train_convergence(dataset, device, n_steps=70000, batch_size=8,
                 "lr": round(lr, 7),
                 "wall_time_s": round(elapsed, 1),
                 "ms_per_step": round(ms_step, 1),
+                "maslov_h": round(h_now, 4),
+                "s2_iters_used": int(model._last_s2_iters.item()),
             })
 
             if val_bpc < best_val_bpc:
@@ -130,8 +193,7 @@ def train_convergence(dataset, device, n_steps=70000, batch_size=8,
 
         # Periodic checkpoint + inference sample
         if step % ckpt_every == 0:
-            sfx = f"_{tag}" if tag else ""
-            ckpt_path = f"checkpoints/tsrn_gist_enwik8{context_len}{sfx}_{step}steps.pt"
+            cpath = ckpt_path(run_tag, step, kind="step")
             torch.save({
                 "model_state_dict": model.state_dict(),
                 "optimizer_state_dict": optimizer.state_dict(),
@@ -142,8 +204,9 @@ def train_convergence(dataset, device, n_steps=70000, batch_size=8,
                 "step": step,
                 "best_val_bpc": best_val_bpc,
                 "log": log,
-            }, ckpt_path)
-            print(f"  >> Checkpoint saved: {ckpt_path}")
+                "run_tag": run_tag,
+            }, cpath)
+            print(f"  >> Checkpoint saved: {cpath}")
 
             # Quick inference sample
             model.eval()
@@ -161,12 +224,11 @@ def train_convergence(dataset, device, n_steps=70000, batch_size=8,
             model.train()
 
             # Save incremental results
-            _save_results(log, step, model, best_val_bpc, tag)
+            _save_results(log, step, model, best_val_bpc, run_tag)
 
     # Save best model checkpoint
-    sfx = f"_{tag}" if tag else ""
     if best_model_state is not None:
-        best_ckpt_path = f"checkpoints/tsrn_gist_enwik8{context_len}{sfx}_best.pt"
+        best_cpath = ckpt_path(run_tag, step=0, kind="best")
         torch.save({
             "model_state_dict": best_model_state,
             "config": {"vocab": V, "d_model": d_model, "context_len": ctx,
@@ -174,8 +236,9 @@ def train_convergence(dataset, device, n_steps=70000, batch_size=8,
                        "n_heads": n_heads, "mem_depth": mem_depth,
                        "max_gists": max_gists, "gist_top_k": gist_top_k},
             "best_val_bpc": round(best_val_bpc, 4),
-        }, best_ckpt_path)
-        print(f"\n  >> Best model saved: {best_ckpt_path} (val_bpc={best_val_bpc:.4f})")
+            "run_tag": run_tag,
+        }, best_cpath)
+        print(f"\n  >> Best model saved: {best_cpath} (val_bpc={best_val_bpc:.4f})")
         # Load best model for final evaluation
         model.load_state_dict(best_model_state)
         model.to(device)
@@ -198,8 +261,7 @@ def train_convergence(dataset, device, n_steps=70000, batch_size=8,
     print(f"  Test: PPL={test_ppl:.3f}  BPC={test_bpc:.4f}")
 
     # Save final checkpoint
-    sfx = f"_{tag}" if tag else ""
-    ckpt_path = f"checkpoints/tsrn_gist_enwik8{context_len}{sfx}_final_{n_steps}steps.pt"
+    final_cpath = ckpt_path(run_tag, step=n_steps, kind="final")
     torch.save({
         "model_state_dict": model.state_dict(),
         "config": {"vocab": V, "d_model": d_model, "context_len": ctx,
@@ -211,8 +273,9 @@ def train_convergence(dataset, device, n_steps=70000, batch_size=8,
         "test_ppl": round(test_ppl, 3),
         "best_val_bpc": round(best_val_bpc, 4),
         "log": log,
-    }, ckpt_path)
-    print(f"  Final checkpoint: {ckpt_path}")
+        "run_tag": run_tag,
+    }, final_cpath)
+    print(f"  Final checkpoint: {final_cpath}")
 
     # Quality benchmark
     print(f"\n  Running quality benchmark...")
@@ -248,8 +311,16 @@ def train_convergence(dataset, device, n_steps=70000, batch_size=8,
         },
     }
 
-    sfx = f"_{tag}" if tag else ""
-    out = f"results/tsrn_gist_enwik8{context_len}{sfx}_{n_steps}steps.json"
+    out = results_path(run_tag, n_steps, kind="final")
+    # Embed run_tag and innovation flags for traceability
+    results["run_tag"] = run_tag
+    results["innovations"] = {
+        "maslov_cycling": True,
+        "sheaf_harmonic_pe": True,
+        "rg_fixed_point_s2": True,
+        "s2_max_iters": model.s2_max_iters,
+        "s2_eps": model.s2_eps,
+    }
     with open(out, "w") as f:
         json.dump(results, f, indent=2)
     print(f"\n  Results saved: {out}")
@@ -269,15 +340,17 @@ def train_convergence(dataset, device, n_steps=70000, batch_size=8,
     return results
 
 
-def _save_results(log, step, model, best_val_bpc, tag="", context_len=256):
-    """Save incremental results to disk."""
-    sfx = f"_{tag}" if tag else ""
-    out = f"results/tsrn_gist_enwik8{best_val_bpc}{sfx}_progress_{step}steps.json"
+def _save_results(log, step, model, best_val_bpc, run_tag: str):
+    """Save incremental progress results to disk with stable naming."""
+    out = results_path(run_tag, step, kind="progress")
     with open(out, "w") as f:
         json.dump({
+            "run_tag": run_tag,
             "step": step,
             "params": model.count_params(),
             "best_val_bpc": round(best_val_bpc, 4),
+            "maslov_h": round(float(model.get_maslov_h()), 4),
+            "s2_iters_used": int(model._last_s2_iters.item()),
             "log": log,
         }, f, indent=2)
 

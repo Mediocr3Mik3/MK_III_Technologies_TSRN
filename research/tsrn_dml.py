@@ -281,6 +281,62 @@ def generate_synthetic_data(path: str, n_paragraphs: int = 5000) -> str:
 #  Compatible with tropical attention: rotation preserves max structure.
 # ---------------------------------------------------------------------------
 
+class SheafHarmonicPE(nn.Module):
+    """Sheaf Harmonic positional encoding (NEXUS Innovation #4).
+
+    Additive PE built from the bottom-n_harmonics eigenfunctions of the
+    1-D path-graph Laplacian.  For a path of length T the Laplacian has
+    closed-form eigenvectors phi_k(t) = sqrt(2/T) cos(pi*k*(t+1/2)/T),
+    k=0..T-1, with eigenvalues 2(1-cos(pi*k/T)).  We keep the smoothest
+    n_harmonics (small k) — these are the sheaf-harmonic modes that best
+    respect local coherence.
+
+    The harmonics are a static cosine basis (no input-dependent eigen-
+    decomposition per forward, so DML-fast).  A learned linear projection
+    maps them into d_model.  Projection is zero-initialised so the model
+    starts identical to the baseline and learns what positional content
+    to inject.
+
+    Causal-safe: each position t has its own deterministic PE vector; no
+    cross-token mixing, no dependence on future tokens.
+    """
+    def __init__(self, d_model: int, max_seq_len: int = 4096,
+                 n_harmonics: int = 64):
+        super().__init__()
+        self.n_harmonics = min(n_harmonics, max_seq_len)
+        self.proj = nn.Linear(self.n_harmonics, d_model, bias=False)
+        nn.init.zeros_(self.proj.weight)
+        # Eigenvalues of the path-graph Laplacian (for diagnostics/spectral gap)
+        k = torch.arange(self.n_harmonics, dtype=torch.float32)
+        eigvals = 2.0 * (1.0 - torch.cos(math.pi * k / max(max_seq_len, 1)))
+        self.register_buffer("eigvals", eigvals, persistent=False)
+        self._build_cache(max_seq_len)
+
+    def _build_cache(self, seq_len: int):
+        t = torch.arange(seq_len, dtype=torch.float32).unsqueeze(1)  # (T,1)
+        k = torch.arange(self.n_harmonics, dtype=torch.float32).unsqueeze(0)
+        # DCT-II basis (eigenvectors of the Neumann path-graph Laplacian)
+        phi = math.sqrt(2.0 / max(seq_len, 1)) * torch.cos(
+            math.pi * k * (t + 0.5) / max(seq_len, 1))  # (T, n_harmonics)
+        self.register_buffer("harmonics", phi, persistent=False)
+
+    def forward(self, T: int, device, dtype) -> Tensor:
+        """Return additive PE of shape (T, d_model)."""
+        if T > self.harmonics.shape[0]:
+            self._build_cache(T)
+            # move buffers to right device
+            self.harmonics = self.harmonics.to(device)
+        h = self.harmonics[:T].to(device=device, dtype=dtype)
+        return self.proj(h)
+
+    def spectral_gap(self) -> float:
+        """Gap between smallest and second-smallest eigenvalue.
+        Diagnostic: larger gap -> better positional disambiguation."""
+        if self.eigvals.numel() < 2:
+            return 0.0
+        return float(self.eigvals[1] - self.eigvals[0])
+
+
 class RotaryPositionEmbedding(nn.Module):
     """RoPE: applies sinusoidal rotary embeddings to query/key tensors."""
 
@@ -380,6 +436,10 @@ class TropicalAttention(nn.Module):
         # Cross-window K/V cache — extends effective context during eval
         self.cross_window_mem = PersistentCrossWindowMemory(
             d_model, n_heads, max_cached_len=256)
+        # Maslov dequantization parameter h (NEXUS Innovation #3).
+        # h * logsumexp(raw/h) -> max as h->0 (tropical), -> smooth as h->inf.
+        # Registered as buffer so set_maslov_h() can cycle it during training.
+        self.register_buffer("maslov_h", torch.tensor(1.0))
 
     def _attend_chunk(self, Qq: Tensor, K: Tensor, V: Tensor,
                       qi: int, q_end: int, k: int, T_kv: int,
@@ -395,16 +455,18 @@ class TropicalAttention(nn.Module):
         elems_per_cs = max(1, B * H * qc * T_kv)
         cs = max(1, min(dh, max_5d_bytes // (elems_per_cs * 4)))
 
+        # Maslov: scores = h * logsumexp(raw/h).  h=1 -> vanilla logsumexp.
+        h = self.maslov_h
         if cs >= dh:
             raw = Qq.unsqueeze(3) + K.unsqueeze(2)
-            scores = torch.logsumexp(raw, dim=-1)
+            scores = h * torch.logsumexp(raw / h, dim=-1)
             del raw
         else:
             scores = None
             for c0 in range(0, dh, cs):
                 c1 = min(c0 + cs, dh)
                 raw = Qq[:, :, :, c0:c1].unsqueeze(3) + K[:, :, :, c0:c1].unsqueeze(2)
-                chunk_lse = torch.logsumexp(raw, dim=-1)
+                chunk_lse = h * torch.logsumexp(raw / h, dim=-1)
                 del raw
                 if scores is None:
                     scores = chunk_lse
@@ -438,17 +500,18 @@ class TropicalAttention(nn.Module):
     def _channel_chunked_scores(self, Q: Tensor, K: Tensor,
                                 B: int, H: int, T: int, dh: int) -> Tensor:
         """Fast channel-chunked path for short contexts.
-        Computes full (B,H,T,T) scores via logsumexp over dh chunks.
+        Computes full (B,H,T,T) scores via Maslov-softened logsumexp: h * lse(x/h).
         """
         # Chunk budget sized to fit raw 5D tensor + its backward copy in memory
         max_chunk_bytes = 192 * 1024 * 1024  # 192 MB (autograd ~2x this)
         T_q, T_k = Q.shape[2], K.shape[2]
         cs = max(1, min(dh, max_chunk_bytes // max(1, B * H * T_q * T_k * 4)))
+        h = self.maslov_h
         scores = None
         for c0 in range(0, dh, cs):
             c1 = min(c0 + cs, dh)
             raw = Q[:, :, :, c0:c1].unsqueeze(3) + K[:, :, :, c0:c1].unsqueeze(2)
-            chunk_lse = torch.logsumexp(raw, dim=-1)
+            chunk_lse = h * torch.logsumexp(raw / h, dim=-1)
             del raw
             if scores is None:
                 scores = chunk_lse
@@ -777,32 +840,30 @@ class EchoStateReservoir(nn.Module):
         nn.init.zeros_(self.W_r.weight)
         nn.init.constant_(self.W_r.bias, 2.0)   # sigmoid(2.0) ≈ 0.88 — mostly reset on
 
-        # Register cache as buffer so it's saved/loaded with checkpoints
-        self.register_buffer("_cached_v", torch.zeros(dr))
+        # Deterministic starting vector for power iter (no RNG, no persistent state).
+        # This removes cross-call state pollution: every forward sees the same
+        # starting point, so rho_current is a pure function of W_res and is
+        # identical across batches -> batch-independent (causal) reservoir output.
+        v0 = torch.ones(dr) / math.sqrt(dr)
+        self.register_buffer("_v0", v0, persistent=False)
 
-    def _power_iter_spectral_radius(self, W: Tensor, n_iter: int = 3) -> Tensor:
+    def _power_iter_spectral_radius(self, W: Tensor, n_iter: int = 6) -> Tensor:
         """Approximate spectral radius via power iteration (GPU-safe, no eigvals).
-        
-        Uses detached W — gradients flow through rho_target, not through the
-        spectral radius estimate itself.
+
+        Deterministic: starts from a fixed unit vector, runs n_iter GEMM sweeps,
+        returns ||W v|| / ||v||.  Uses detached W so gradients flow through
+        rho_target only, not through the estimate itself.  No persistent state
+        across calls — ensures batch-independence (no stale cached eigenvector
+        leaking information between forward passes).
         """
-        W_det = W.detach()  # spectral radius is a constant for gradient purposes
-        
+        W_det = W.detach()
         with torch.no_grad():
-            if torch.all(self._cached_v == 0):
-                self._cached_v.copy_(
-                    torch.randn(W_det.shape[0], 
-                            device=W_det.device, 
-                            dtype=W_det.dtype)
-                )
-            # Use 2D matmul (W @ v.unsqueeze(-1)) to avoid addmv CPU-fallback on DML
-            v = self._cached_v.clone().unsqueeze(-1)  # (dr, 1)
+            v = self._v0.to(W_det.device, W_det.dtype).unsqueeze(-1)  # (dr, 1)
             for _ in range(n_iter):
-                v = W_det @ v             # (dr, dr) @ (dr, 1) = (dr, 1) — gemm, GPU-native
-                v_norm = v.norm()
-                if v_norm > 0:
-                    v = v / v_norm
-            self._cached_v.copy_(v.squeeze(-1))
+                v = W_det @ v
+                vn = v.norm()
+                if vn > 0:
+                    v = v / vn
             return (W_det @ v).norm()
 
     def forward(self, x: Tensor) -> Tensor:

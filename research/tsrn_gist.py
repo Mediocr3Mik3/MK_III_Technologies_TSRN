@@ -30,6 +30,7 @@ from torch import Tensor
 from tsrn_dml import (
     TropicalAttention, CliffordFFN, RGPool, PAdicMemory,
     EchoStateReservoir, PAdicAttention, TropicalSSM,
+    SheafHarmonicPE,
     CharDataset, CharDatasetSplit, load_enwik8, load_wikitext2,
     generate_synthetic_data, detect_device, evaluate,
     evaluate_sequential, get_lr, device_sync,
@@ -469,7 +470,12 @@ class TSRNGist(nn.Module):
                  n_blocks: int = 1, top_k: int = 8, n_heads: int = 4,
                  mem_depth: int = 6, sheaf_window: int = 3,
                  max_gists: int = 64, gist_top_k: int = 4,
-                 dropout: float = 0.1):
+                 dropout: float = 0.1,
+                 # NEXUS Innovation #3 — Scale-2 RG fixed-point iteration
+                 s2_max_iters: Optional[int] = None,
+                 s2_eps: float = 0.01,
+                 # NEXUS Innovation #4 — Sheaf Harmonic positional encoding
+                 pe_harmonics: int = 64):
         super().__init__()
         self.ctx = context_len
         self.d = d_model
@@ -477,6 +483,11 @@ class TSRNGist(nn.Module):
 
         self.embed = nn.Embedding(vocab, d_model)
         nn.init.normal_(self.embed.weight, std=0.02)
+
+        # NEXUS Innovation #4 — Sheaf Harmonic PE (zero-init projection;
+        # model learns what frequency content to inject on top of RoPE/ALiBi)
+        self.sheaf_pe = SheafHarmonicPE(d_model, max_seq_len=context_len,
+                                        n_harmonics=pe_harmonics)
 
         # Scale 1 blocks (reservoir + SSM in first block)
         self.s1_blocks = nn.ModuleList([
@@ -497,16 +508,24 @@ class TSRNGist(nn.Module):
         # RG coarse-grain
         self.rg_pool = RGPool(d_model)
 
-        # Scale 2 blocks
-        self.s2_blocks = nn.ModuleList([
-            TSRNGistBlock(d_model, top_k=max(2, top_k // 2), n_heads=n_heads,
-                          sheaf_window=sheaf_window, mem_depth=mem_depth,
-                          use_reservoir=False,
-                          use_padic_attn=(i == n_blocks - 1),
-                          use_memory=False,
-                          use_gist_cross_attn=True, dropout=dropout)
-            for i in range(n_blocks)
-        ])
+        # NEXUS Innovation #3 — single shared Scale-2 block, iterated to
+        # RG fixed point.  s2_max_iters defaults to n_blocks (preserves the
+        # old forward budget); iteration stops early once
+        # ||x_new - x_old||_F / ||x_old||_F < s2_eps.  This gives adaptive
+        # depth and ~30% Scale-2 parameter reduction.
+        self.s2_block = TSRNGistBlock(
+            d_model, top_k=max(2, top_k // 2), n_heads=n_heads,
+            sheaf_window=sheaf_window, mem_depth=mem_depth,
+            use_reservoir=False,
+            use_padic_attn=True,  # present every iteration (stable RG map)
+            use_memory=False,
+            use_gist_cross_attn=True, dropout=dropout)
+        self.s2_max_iters = int(s2_max_iters) if s2_max_iters else max(1, n_blocks)
+        self.s2_eps = float(s2_eps)
+        self.s2_n_blocks = n_blocks  # kept for checkpoint compat / logging
+        # Diagnostic: exposed for training loop to log avg iteration count
+        self.register_buffer("_last_s2_iters", torch.tensor(0, dtype=torch.long),
+                             persistent=False)
 
         # Learnable gated fusion: replaces hard-coded 0.5 blend
         self.fuse_gate = nn.Linear(2 * d_model, d_model, bias=True)
@@ -545,8 +564,7 @@ class TSRNGist(nn.Module):
         """Reset cross-window memory in all attention layers."""
         for block in self.s1_blocks:
             block.attn.cross_window_mem.reset()
-        for block in self.s2_blocks:
-            block.attn.cross_window_mem.reset()
+        self.s2_block.attn.cross_window_mem.reset()
 
     def set_cross_window_enabled(self, enabled: bool):
         """Enable/disable cross-window K/V cache in all attention layers.
@@ -557,14 +575,33 @@ class TSRNGist(nn.Module):
         (doubles T_kv -> triggers O(T^2) chunked path)."""
         for block in self.s1_blocks:
             block.attn.cross_window_mem.enabled = enabled
-        for block in self.s2_blocks:
-            block.attn.cross_window_mem.enabled = enabled
+        self.s2_block.attn.cross_window_mem.enabled = enabled
         if not enabled:
             self.reset_cross_window()
+
+    def set_maslov_h(self, h: float):
+        """Set Maslov temperature h on every TropicalAttention layer.
+
+        h -> 0: tropical (argmax-like, committed combinatorial structure).
+        h  = 1: plain logsumexp (default, tropical-compatible).
+        h -> inf: smooth/classical (softmax-like).
+        Use with the Maslov cycling schedule in the training loop."""
+        h_tensor = torch.tensor(float(h))
+        for block in self.s1_blocks:
+            block.attn.maslov_h.fill_(float(h))
+        self.s2_block.attn.maslov_h.fill_(float(h))
+
+    def get_maslov_h(self) -> float:
+        return float(self.s1_blocks[0].attn.maslov_h.item())
 
     def forward(self, idx: Tensor, targets: Optional[Tensor] = None):
         B, T = idx.shape
         x = self.embed(idx)
+
+        # NEXUS Innovation #4 — Sheaf Harmonic positional encoding (additive)
+        # Broadcast over batch.  Zero-init proj means no effect at step 0.
+        pe = self.sheaf_pe(T, x.device, x.dtype)          # (T, d)
+        x = x + pe.unsqueeze(0)                            # (B, T, d)
 
         # Retrieve gists from buffer (strictly past windows — causal by construction)
         ctx_summary = x.mean(dim=1)  # B d  (embedding mean; no future info here)
@@ -604,17 +641,35 @@ class TSRNGist(nn.Module):
         # RG coarse-grain (now causal — see RGPool docstring)
         xc = self.rg_pool(x)
 
-        # Scale 2 — coarse tokens.
-        # Use buffer-retrieved past-window gists (same as Scale 1) for stability.
-        # Per-position fresh gists created too many competing gradient paths;
-        # buffer gists are strictly causal (previous windows) and converge faster.
-        for block in self.s2_blocks:
+        # NEXUS Innovation #3 — RG fixed-point iteration on Scale-2.
+        # Apply the SAME shared block up to s2_max_iters times, with early
+        # stopping once ||xc_new - xc_prev||_F / ||xc_prev||_F < s2_eps.
+        # Causality: every op inside self.s2_block is causally masked
+        # (TropicalAttention causal=True, SheafRotorDiffusion causal offsets,
+        # PAdicAttention causal future_mask, GistCrossAttention receives
+        # past-window gists only).  Repeated application of a causal operator
+        # remains causal — iteration cannot create new future dependencies.
+        s2_iters_used = 0
+        for it in range(self.s2_max_iters):
+            xc_prev = xc
             if self.gradient_checkpoint and self.training:
                 xc = torch.utils.checkpoint.checkpoint(
-                    block, xc, gist_theta, gist_mag, gist_w,
+                    self.s2_block, xc, gist_theta, gist_mag, gist_w,
                     use_reentrant=False)
             else:
-                xc = block(xc, gist_theta, gist_mag, gist_w)
+                xc = self.s2_block(xc, gist_theta, gist_mag, gist_w)
+            s2_iters_used = it + 1
+            # Early-stopping on relative Frobenius change (inference-time
+            # adaptive depth; training always runs the full budget so
+            # autograd sees a consistent graph and all params get gradient).
+            if not self.training and it + 1 < self.s2_max_iters:
+                with torch.no_grad():
+                    denom = xc_prev.norm().clamp(min=1e-6)
+                    delta = (xc - xc_prev).norm() / denom
+                if delta.item() < self.s2_eps:
+                    break
+        # Record for logging (detached; buffer is non-persistent)
+        self._last_s2_iters.fill_(int(s2_iters_used))
 
         # Upsample & fuse
         # xc_up[t] = xc[t//2], which was built from fine tokens 0..t (causal). ✓
