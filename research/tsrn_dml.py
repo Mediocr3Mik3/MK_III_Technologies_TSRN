@@ -45,6 +45,52 @@ from torch import Tensor
 
 
 # ---------------------------------------------------------------------------
+#  GPU-native prefix-max (Hillis-Steele parallel scan, O(log T) depth).
+#
+#  Replaces torch.cummax, which falls back to CPU on DirectML and kills
+#  throughput (CPU round-trip per step).  This implementation uses only
+#  pointwise torch.maximum + F.pad, both GPU-native on every backend.
+#
+#  Semantics:  out[b, t, ...] = max(x[b, 0, ...], ..., x[b, t, ...])
+# ---------------------------------------------------------------------------
+
+def prefix_max(x: Tensor, dim: int = 1) -> Tensor:
+    """Parallel prefix-max along `dim` (default 1).
+
+    Uses the Hillis-Steele scan: log2(T) iterations, each a single
+    pointwise-max against a left-shifted copy padded with -inf.  Returns
+    a tensor of the same shape and dtype as `x`.
+    """
+    if dim != 1:
+        # Move target dim to position 1, scan, then move back.
+        x = x.transpose(1, dim)
+        out = prefix_max(x, dim=1)
+        return out.transpose(1, dim)
+
+    T = x.shape[1]
+    if T <= 1:
+        return x
+    # F.pad takes pairs from the LAST dim inward.  For a tensor whose last
+    # two dims are (..., T, D), padding dim=1 on the left needs length 2
+    # tuples for each of the last two dims: (D_left, D_right, T_left, T_right).
+    # We want to pad the 2nd-to-last effective dim (T) on the LEFT by `step`
+    # with -inf, leaving the last dim untouched.  So the pad tuple is
+    # sized to 2 * (x.ndim - 1) and only the T-pair is non-zero.
+    trailing_dims = x.ndim - 2  # dims after T
+    pad_trailing = (0, 0) * trailing_dims
+
+    cum = x
+    step = 1
+    while step < T:
+        sliced = cum[:, :-step]
+        pad_spec = pad_trailing + (step, 0)
+        shifted = F.pad(sliced, pad_spec, mode="constant", value=float("-inf"))
+        cum = torch.maximum(cum, shifted)
+        step *= 2
+    return cum
+
+
+# ---------------------------------------------------------------------------
 #  Device detection (DirectML for AMD GPU)
 # ---------------------------------------------------------------------------
 
@@ -1027,7 +1073,9 @@ class TropicalSSM(nn.Module):
         shifted_u = u - t_idx * A_c  # (B, T, ds)
         g_init = A_c.unsqueeze(0).expand(B, -1).unsqueeze(1)  # (B, 1, ds)
         G = torch.cat([g_init, shifted_u], dim=1)  # (B, T+1, ds)
-        cum_max, _ = G.cummax(dim=1)  # (B, T+1, ds)
+        # prefix_max: GPU-native O(log T) scan.  Replaces torch.cummax which
+        # falls back to CPU on DirectML (per-step round-trip, catastrophic).
+        cum_max = prefix_max(G, dim=1)  # (B, T+1, ds)
         cum_max = cum_max[:, 1:, :]   # (B, T, ds)
         t_scale = t_idx.unsqueeze(0) * A_c  # (1, T, ds)
         H = t_scale + cum_max  # (B, T, ds)
