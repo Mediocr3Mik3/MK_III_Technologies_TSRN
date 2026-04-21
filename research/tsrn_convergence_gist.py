@@ -9,7 +9,7 @@ TSRN-Gist convergence run on enwik8 (byte-level, standard protocol).
 - NEXUS Innovation #5 RG fixed-point weight sharing for Scale-2 (model-side)
 """
 
-import os, sys, json, time, math, argparse, datetime
+import os, sys, json, time, math, argparse, datetime, gc
 import torch
 import torch.nn as nn
 
@@ -178,6 +178,15 @@ def train_convergence(dataset, device, n_steps=70000, batch_size=8,
         loss_val = accum_loss / grad_accum_steps
         gnorm = nn.utils.clip_grad_norm_(model.parameters(), 1.0)
         optimizer.step()
+
+        # Periodic gc to limit DirectML heap fragmentation on long runs.
+        # DML has no empty_cache() API and does not compact its allocator,
+        # so Python refs to intermediate tensors outliving a single step
+        # gradually fragment the heap and eventually OOM on trivially
+        # small allocations.  gc.collect() every 500 steps drops those
+        # refs and lets DML reclaim storage; cheap (~1 ms on a clean graph).
+        if step % 500 == 0:
+            gc.collect()
 
         # Periodic evaluation
         if step % eval_every == 0 or step == 1:
