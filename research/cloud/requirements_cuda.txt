@@ -1,0 +1,35 @@
+# TropFormer cloud-training (CUDA) requirements
+# Install on top of the base requirements.txt at repo root.
+#
+# Tested with CUDA 12.1 and CUDA 12.4.  PyTorch wheels supporting both:
+#   pip install --index-url https://download.pytorch.org/whl/cu121 torch==2.4.1
+#   pip install --index-url https://download.pytorch.org/whl/cu124 torch==2.5.1
+#
+# Pick the closest match to your driver:  nvidia-smi -> 'CUDA Version: 12.x'
+
+# Core (PyTorch with CUDA support — installed via cu* index in launch scripts)
+torch>=2.4,<2.7
+numpy>=1.24,<2.1
+tqdm>=4.66
+
+# HuggingFace stack for streaming datasets + tokenizers (Stage 1+ data pipeline)
+datasets>=2.20
+huggingface_hub>=0.24
+tokenizers>=0.20
+transformers>=4.45        # used by some quality-eval helpers
+
+# Distributed / mixed-precision tooling
+accelerate>=0.34          # optional convenience wrapper
+deepspeed>=0.14           # optional ZeRO-2/3 for very large models
+
+# Memory-efficient optimizers (optional; --use-8bit-optim flag)
+bitsandbytes>=0.43
+
+# Logging
+wandb>=0.17               # optional; set WANDB_MODE=disabled if not using
+
+# CUDA-only attention kernels (optional, big speedup on Ampere+)
+# Install separately AFTER torch is installed since it builds against torch:
+#   pip install flash-attn --no-build-isolation
+# Listed here for reference only:
+# flash-attn>=2.6
