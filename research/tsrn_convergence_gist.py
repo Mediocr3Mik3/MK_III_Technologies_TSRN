@@ -111,13 +111,24 @@ def train_convergence(dataset, device, n_steps=70000, batch_size=8,
     print(f"  NEXUS: Maslov cycling (h: 1.5->0.3, 3 cycles), "
           f"Sheaf Harmonic PE, RG fixed-point S2 (max_iters={model.s2_max_iters}, eps={model.s2_eps})")
 
-    decay = {p for n, p in model.named_parameters()
-             if p.requires_grad and p.dim() >= 2}
-    no_decay = {p for p in model.parameters()
-                if p.requires_grad and p not in decay}
+    # Build the two param groups as LISTS, not sets.
+    # Sets iterate in hash order; for nn.Parameter, hash defaults to id()
+    # = memory address, which Windows ASLR randomizes across processes.
+    # That made optimizer.load_state_dict() positionally misalign moments
+    # with parameters on resume, causing shape-mismatch crashes.
+    # named_parameters() iterates in module-registration order (fully
+    # deterministic within and across runs given the same architecture).
+    decay_params, no_decay_params = [], []
+    for _n, p in model.named_parameters():
+        if not p.requires_grad:
+            continue
+        if p.dim() >= 2:
+            decay_params.append(p)
+        else:
+            no_decay_params.append(p)
     optimizer = AdamWDML([
-        {"params": list(decay), "weight_decay": 0.1},
-        {"params": list(no_decay), "weight_decay": 0.0},
+        {"params": decay_params, "weight_decay": 0.1},
+        {"params": no_decay_params, "weight_decay": 0.0},
     ], lr=lr_max, betas=(0.9, 0.95))
 
     os.makedirs("checkpoints", exist_ok=True)
@@ -125,19 +136,31 @@ def train_convergence(dataset, device, n_steps=70000, batch_size=8,
 
     log = []
     best_val_bpc = float("inf")
-    best_model_state = None
+    best_ckpt_path = None  # path on disk; we no longer hold the dict in RAM
 
     # Full resume: restore optimizer moments, best-so-far BPC, and log.
-    # Without this, Adam's exp_avg/exp_avg_sq reset to zero at the resume
-    # step, producing a large effective-LR spike for the first ~100 steps.
+    # Without optimizer state, Adam's exp_avg/exp_avg_sq reset to zero
+    # at the resume step, producing a large effective-LR spike for the
+    # first ~100-500 steps.
     if _resume_ckpt is not None:
+        opt_status = "no state in ckpt"
         if "optimizer_state_dict" in _resume_ckpt:
-            optimizer.load_state_dict(_resume_ckpt["optimizer_state_dict"])
+            try:
+                optimizer.load_state_dict(_resume_ckpt["optimizer_state_dict"])
+                opt_status = "restored"
+            except Exception as e:
+                # Checkpoint produced before the set->list ordering fix will
+                # have an optimizer state whose positional indices correspond
+                # to the original (non-deterministic) hash order.  We cannot
+                # reconstruct that order, so fall back to fresh moments.
+                # Expect a small LR spike for ~100 steps after resume; loss
+                # will recover quickly.
+                opt_status = f"FRESH (load failed: {type(e).__name__})"
         best_val_bpc = _resume_ckpt.get("best_val_bpc", float("inf"))
         log = list(_resume_ckpt.get("log", []))
         print(f"  Resumed from {resume_from} at step {start_step} "
               f"(best_val_bpc so far = {best_val_bpc:.4f}, "
-              f"opt state = {'restored' if 'optimizer_state_dict' in _resume_ckpt else 'FRESH'})")
+              f"opt state = {opt_status})")
         del _resume_ckpt  # release CPU memory
 
     eval_every = max(1, n_steps // 50)  # ~50 eval points over run
@@ -183,9 +206,11 @@ def train_convergence(dataset, device, n_steps=70000, batch_size=8,
         # DML has no empty_cache() API and does not compact its allocator,
         # so Python refs to intermediate tensors outliving a single step
         # gradually fragment the heap and eventually OOM on trivially
-        # small allocations.  gc.collect() every 500 steps drops those
-        # refs and lets DML reclaim storage; cheap (~1 ms on a clean graph).
-        if step % 500 == 0:
+        # small allocations.  With --grad-ckpt enabled, each backward
+        # pass spawns extra recomputed intermediates, so we collect more
+        # aggressively (every 200 steps).  Cheap (~1 ms on a clean graph).
+        gc_every = 200 if gradient_checkpoint else 500
+        if step % gc_every == 0:
             gc.collect()
 
         # Periodic evaluation
@@ -216,15 +241,37 @@ def train_convergence(dataset, device, n_steps=70000, batch_size=8,
 
             if val_bpc < best_val_bpc:
                 best_val_bpc = val_bpc
-                best_model_state = {k: v.cpu().clone()
-                                    for k, v in model.state_dict().items()}
+                # Write best checkpoint to disk immediately and drop the
+                # CPU dict.  Holding ``best_model_state`` for the full run
+                # cost ~88-400 MB of resident CPU memory and forced a
+                # full GPU→CPU sweep on every val improvement (frequent
+                # early in training).
+                best_ckpt_path = ckpt_path(run_tag, step=0, kind="best")
+                cpu_state = {k: v.detach().cpu()
+                             for k, v in model.state_dict().items()}
+                torch.save({
+                    "model_state_dict": cpu_state,
+                    "config": {"vocab": V, "d_model": d_model, "context_len": ctx,
+                               "n_blocks": n_blocks, "top_k": top_k,
+                               "n_heads": n_heads, "mem_depth": mem_depth,
+                               "max_gists": max_gists, "gist_top_k": gist_top_k},
+                    "best_val_bpc": round(best_val_bpc, 4),
+                    "step": step,
+                    "run_tag": run_tag,
+                }, best_ckpt_path)
+                del cpu_state
+                gc.collect()
 
         # Periodic checkpoint + inference sample
         if step % ckpt_every == 0:
             cpath = ckpt_path(run_tag, step, kind="step")
+            # Move state_dicts to CPU explicitly before save so torch.save
+            # does not pin GPU memory for serialization.  Drop refs after.
+            cpu_model = {k: v.detach().cpu() for k, v in model.state_dict().items()}
+            cpu_opt = optimizer.state_dict()  # already CPU-mappable, but copies on save
             torch.save({
-                "model_state_dict": model.state_dict(),
-                "optimizer_state_dict": optimizer.state_dict(),
+                "model_state_dict": cpu_model,
+                "optimizer_state_dict": cpu_opt,
                 "config": {"vocab": V, "d_model": d_model, "context_len": ctx,
                            "n_blocks": n_blocks, "top_k": top_k,
                            "n_heads": n_heads, "mem_depth": mem_depth,
@@ -234,6 +281,8 @@ def train_convergence(dataset, device, n_steps=70000, batch_size=8,
                 "log": log,
                 "run_tag": run_tag,
             }, cpath)
+            del cpu_model, cpu_opt
+            gc.collect()
             print(f"  >> Checkpoint saved: {cpath}")
 
             # Quick inference sample
@@ -280,21 +329,13 @@ def train_convergence(dataset, device, n_steps=70000, batch_size=8,
             print(f"  [INTERRUPT] Save failed: {e}")
         return  # skip best-model save + final eval; exit cleanly
 
-    # Save best model checkpoint
-    if best_model_state is not None:
-        best_cpath = ckpt_path(run_tag, step=0, kind="best")
-        torch.save({
-            "model_state_dict": best_model_state,
-            "config": {"vocab": V, "d_model": d_model, "context_len": ctx,
-                       "n_blocks": n_blocks, "top_k": top_k,
-                       "n_heads": n_heads, "mem_depth": mem_depth,
-                       "max_gists": max_gists, "gist_top_k": gist_top_k},
-            "best_val_bpc": round(best_val_bpc, 4),
-            "run_tag": run_tag,
-        }, best_cpath)
-        print(f"\n  >> Best model saved: {best_cpath} (val_bpc={best_val_bpc:.4f})")
-        # Load best model for final evaluation
-        model.load_state_dict(best_model_state)
+    # Best model already saved to disk during training.  Load it for final eval.
+    if best_ckpt_path is not None and os.path.exists(best_ckpt_path):
+        print(f"\n  >> Best model on disk: {best_ckpt_path} (val_bpc={best_val_bpc:.4f})")
+        best_blob = torch.load(best_ckpt_path, map_location="cpu")
+        model.load_state_dict(best_blob["model_state_dict"])
+        del best_blob
+        gc.collect()
         model.to(device)
 
     # Final evaluation

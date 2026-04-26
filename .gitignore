@@ -11,6 +11,35 @@ data/
 enwik8
 enwik8.zip
 
+# Model checkpoints (binary, often hundreds of MB)
+checkpoints/
+research/checkpoints/
+*.pt
+*.pth
+*.safetensors
+*.onnx
+
+# Run-specific artifacts
+logs/
+results/*progress*.json
+results/*final*.json
+research/results/
+
+# Generated CUDA shared libs
+cuda/*.so
+cuda/*.dll
+cuda/*.lib
+cuda/*.exp
+cuda/*.pdb
+
+# Archives & misc
+*.zip
+*.tar
+*.tar.gz
+files*.zip
+research/_tmp_*.py
+staged_changes/
+
 # IDE
 .vscode/
 .idea/

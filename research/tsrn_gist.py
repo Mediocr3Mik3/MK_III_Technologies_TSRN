@@ -19,7 +19,7 @@ Usage:
   python tsrn_gist.py --preset 22m  --dataset enwik8
 """
 
-import argparse, json, math, os, time
+import argparse, gc, json, math, os, time
 from typing import Dict, List, Optional, Tuple
 
 import torch
@@ -34,6 +34,7 @@ from tsrn_dml import (
     CharDataset, CharDatasetSplit, load_enwik8, load_wikitext2,
     generate_synthetic_data, detect_device, evaluate,
     evaluate_sequential, get_lr, device_sync,
+    AdamWDML,
 )
 
 
@@ -727,13 +728,20 @@ def train_gist(dataset, device, n_steps=100000, batch_size=8,
     print(f"  LR: {lr_max}  |  Gists: {max_gists} buf, top-{gist_top_k}")
     print(f"  Checkpoint every {ckpt_every} steps")
 
-    decay = {p for n, p in model.named_parameters()
-             if p.requires_grad and p.dim() >= 2}
-    no_decay = {p for p in model.parameters()
-                if p.requires_grad and p not in decay}
-    optimizer = torch.optim.AdamW([
-        {"params": list(decay), "weight_decay": 0.1},
-        {"params": list(no_decay), "weight_decay": 0.0},
+    # Deterministic param ordering for resume safety
+    decay_params, no_decay_params = [], []
+    for n, p in model.named_parameters():
+        if not p.requires_grad:
+            continue
+        if p.dim() >= 2:
+            decay_params.append(p)
+        else:
+            no_decay_params.append(p)
+    # AdamWDML avoids the aten::lerp DirectML CPU fallback that causes
+    # monotonic GPU heap growth in plain torch.optim.AdamW.
+    optimizer = AdamWDML([
+        {"params": decay_params, "weight_decay": 0.1},
+        {"params": no_decay_params, "weight_decay": 0.0},
     ], lr=lr_max, betas=(0.9, 0.95))
 
     os.makedirs("checkpoints", exist_ok=True)
@@ -741,7 +749,6 @@ def train_gist(dataset, device, n_steps=100000, batch_size=8,
 
     log = []
     best_val_bpc = float("inf")
-    best_model_state = None
     eval_every = max(1, n_steps // 50)
     t0 = time.time()
 
@@ -773,6 +780,13 @@ def train_gist(dataset, device, n_steps=100000, batch_size=8,
         gnorm = nn.utils.clip_grad_norm_(model.parameters(), 1.0)
         optimizer.step()
 
+        # DirectML has no empty_cache() and does not compact its allocator,
+        # so Python refs to intermediate tensors gradually fragment the heap
+        # and eventually OOM on small allocations.  Periodic gc.collect()
+        # drops those refs and lets DML reclaim storage.
+        if step % 500 == 0:
+            gc.collect()
+
         if step % eval_every == 0 or step == 1:
             model.gist_buffer.reset()
             val_loss, val_ppl, val_bpc = evaluate(
@@ -795,11 +809,14 @@ def train_gist(dataset, device, n_steps=100000, batch_size=8,
 
             if val_bpc < best_val_bpc:
                 best_val_bpc = val_bpc
-                best_model_state = {k: v.cpu().clone()
-                                    for k, v in model.state_dict().items()}
+                # Move state_dict to CPU once for torch.save, then drop the
+                # reference immediately.  Holding it in best_model_state
+                # caused steady CPU growth and DML staging-buffer pressure.
+                cpu_state = {k: v.detach().cpu()
+                             for k, v in model.state_dict().items()}
                 torch.save({
                     "step": step,
-                    "model_state_dict": best_model_state,
+                    "model_state_dict": cpu_state,
                     "val_bpc": val_bpc,
                     "config": {
                         "d_model": d_model, "context_len": ctx,
@@ -809,17 +826,22 @@ def train_gist(dataset, device, n_steps=100000, batch_size=8,
                         "dropout": dropout, "vocab": V,
                     },
                 }, f"checkpoints/tsrn_gist_best{tag}.pt")
+                del cpu_state
+                gc.collect()
 
         if step % ckpt_every == 0:
             ckpt_path = f"checkpoints/tsrn_gist_{step}steps{tag}.pt"
+            cpu_state = {k: v.detach().cpu()
+                         for k, v in model.state_dict().items()}
             torch.save({
                 "step": step,
-                "model_state_dict": {k: v.cpu().clone()
-                                     for k, v in model.state_dict().items()},
+                "model_state_dict": cpu_state,
                 "optimizer_state_dict": optimizer.state_dict(),
                 "val_bpc": log[-1]["val_bpc"] if log else None,
                 "log": log,
             }, ckpt_path)
+            del cpu_state
+            gc.collect()
             print(f"  >> Checkpoint: {ckpt_path}")
             with open(f"results/tsrn_gist_progress_{step}steps{tag}.json",
                       "w") as f:
@@ -827,12 +849,15 @@ def train_gist(dataset, device, n_steps=100000, batch_size=8,
                           f, indent=2)
 
     final_path = f"checkpoints/tsrn_gist_final_{n_steps}steps{tag}.pt"
+    cpu_state = {k: v.detach().cpu()
+                 for k, v in model.state_dict().items()}
     torch.save({
         "step": n_steps,
-        "model_state_dict": {k: v.cpu().clone()
-                             for k, v in model.state_dict().items()},
+        "model_state_dict": cpu_state,
         "log": log, "best_val_bpc": best_val_bpc,
     }, final_path)
+    del cpu_state
+    gc.collect()
 
     print(f"\n{'='*85}")
     print(f"  Training complete. Best val BPC: {best_val_bpc:.4f}")
