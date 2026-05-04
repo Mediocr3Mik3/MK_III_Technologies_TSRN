@@ -32,6 +32,13 @@ from tsrn_dml import (
     EchoStateReservoir, PAdicAttention, TropicalSSM,
     KleeneSSM, KleeneAttention, build_attention, build_ssm,
     SheafHarmonicPE,
+)
+try:
+    from model_config import ModelConfig, nano_config
+except ImportError:
+    ModelConfig = None  # type: ignore
+    nano_config = None  # type: ignore
+from tsrn_dml import (
     CharDataset, CharDatasetSplit, load_enwik8, load_wikitext2,
     generate_synthetic_data, detect_device, evaluate,
     evaluate_sequential, get_lr, device_sync,
@@ -577,7 +584,9 @@ class TSRNGist(nn.Module):
                  pe_harmonics: int = 64,
                  # v2.0 features
                  use_hyperbolic: bool = False,
-                 gist_chaining: bool = False):
+                 gist_chaining: bool = False,
+                 # Kleene / ModelConfig wiring
+                 config=None):
         super().__init__()
         self.ctx = context_len
         self.d = d_model
@@ -601,7 +610,8 @@ class TSRNGist(nn.Module):
                           use_padic_attn=False, use_memory=True,
                           use_gist_cross_attn=True,
                           use_tropical_ssm=(i == 0),
-                          dropout=dropout)
+                          dropout=dropout,
+                          config=config)
             for i in range(n_blocks)
         ])
 
@@ -632,7 +642,8 @@ class TSRNGist(nn.Module):
             use_reservoir=False,
             use_padic_attn=True,  # present every iteration (stable RG map)
             use_memory=False,
-            use_gist_cross_attn=True, dropout=dropout)
+            use_gist_cross_attn=True, dropout=dropout,
+            config=config)
         self.s2_max_iters = int(s2_max_iters) if s2_max_iters else max(1, n_blocks)
         self.s2_eps = float(s2_eps)
         self.s2_n_blocks = n_blocks  # kept for checkpoint compat / logging

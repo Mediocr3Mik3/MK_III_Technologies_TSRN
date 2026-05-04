@@ -73,12 +73,21 @@ if _RESEARCH_DIR not in sys.path:
 # torch.cummax instead of the Hillis-Steele scan inside research.tsrn_dml.
 from research.cloud import tsrn_cuda
 tsrn_cuda.install_cuda_fastpaths()
+from research.cloud.wandb_logger import WandBLogger
 
 # Now import model + dataset + eval helpers (legacy top-level style)
 from tsrn_gist import TSRNGist, load_enwik8                               # type: ignore
 from tsrn_dml import (                                                    # type: ignore
     CharDataset, evaluate, evaluate_sequential, get_lr,
 )
+try:
+    from model_config import ModelConfig, nano_config, pro_config, kyro_config  # type: ignore
+    _TIER_MAP = {"nano": nano_config, "pro": pro_config, "kyro": kyro_config}
+except Exception:
+    ModelConfig = None  # type: ignore
+    _TIER_MAP = {}
+# Import v2.0 components
+from tropical_tokenizer import TropicalMergingTokenizer                      # type: ignore
 try:
     from tsrn_inference import generate_with_stats, run_quality_benchmark  # type: ignore
 except Exception:  # pragma: no cover
@@ -226,6 +235,27 @@ def train(cfg: Dict[str, Any], args: argparse.Namespace) -> None:
     dataset = load_enwik8(context_len=cfg["context_len"])
     V = dataset.vocab_sz
 
+    # --- TMT tokenizer (v2.0) ---
+    tmt_tokenizer = None
+    if cfg.get("use_tmt_tokenizer", False) and cfg.get("tmt_path"):
+        if is_main:
+            print(f"-- Loading TMT tokenizer from {cfg['tmt_path']} --")
+        tmt_tokenizer = TropicalMergingTokenizer.load(cfg["tmt_path"])
+        V = tmt_tokenizer.vocab_size
+
+    # --- ModelConfig (Kleene/tier wiring) ---
+    model_cfg = None
+    if _TIER_MAP and (cfg.get("use_kleene_ssm") or cfg.get("tier")):
+        tier_name = cfg.get("tier", "nano")
+        model_cfg = _TIER_MAP.get(tier_name)
+        if model_cfg is not None and cfg.get("use_kleene_ssm"):
+            from dataclasses import replace  # type: ignore
+            model_cfg = replace(model_cfg,
+                                d_model=cfg["d_model"],
+                                n_heads=cfg["n_heads"],
+                                context_len=cfg["context_len"],
+                                top_k=cfg.get("top_k", 16))
+
     # --- model ---
     model = TSRNGist(
         vocab=V, d_model=cfg["d_model"], context_len=cfg["context_len"],
@@ -234,6 +264,10 @@ def train(cfg: Dict[str, Any], args: argparse.Namespace) -> None:
         n_heads=cfg["n_heads"], mem_depth=cfg.get("mem_depth", 7),
         max_gists=cfg.get("max_gists", 64), gist_top_k=cfg.get("gist_top_k", 4),
         dropout=cfg.get("dropout", 0.1),
+        # v2.0 features
+        use_hyperbolic=cfg.get("use_hyperbolic", False),
+        gist_chaining=cfg.get("gist_chaining", False),
+        config=model_cfg,
     )
 
     # --- resume model weights only (optimizer state restored after build) ---
@@ -298,6 +332,10 @@ def train(cfg: Dict[str, Any], args: argparse.Namespace) -> None:
     if is_main:
         os.makedirs("checkpoints", exist_ok=True)
         os.makedirs("results", exist_ok=True)
+
+    # --- WandB logger (no-op unless --wandb-project given, rank-0 only) ---
+    wb = WandBLogger.maybe_init(args, cfg, run_tag, is_main=is_main,
+                                model=_unwrap(model), world_size=world)
 
     # --- header ---
     n_steps = cfg["steps"]
@@ -401,10 +439,19 @@ def train(cfg: Dict[str, Any], args: argparse.Namespace) -> None:
                 tr_bpc = loss_val / math.log(2)
                 elapsed = time.time() - t0
                 ms_step = elapsed / max(1, step - start_step) * 1000
-                print(f"{step:>6}  {loss_val:>10.4f}  {tr_bpc:>8.4f}  "
-                      f"{val_loss:>9.4f}  {val_ppl:>9.2f}  {val_bpc:>8.4f}  "
-                      f"{float(gnorm):>7.3f}  {ms_step:>8.1f}ms")
-                log.append({
+                
+                # v2.0 logging: PAdicPE norms and PaCS effective context
+                padic_pe_norm = None
+                pacs_effective_ctx = None
+                if cfg.get("log_padic_pe", False) and hasattr(_unwrap(model), 'sheaf_pe'):
+                    with torch.no_grad():
+                        pe = _unwrap(model).sheaf_pe(cfg["context_len"], device, torch.float32)
+                        padic_pe_norm = pe.norm().item()
+                
+                if cfg.get("log_pacs", False):
+                    pacs_effective_ctx = cfg.get("inference_ctx", cfg["context_len"])
+                
+                log_entry = {
                     "step": step,
                     "train_loss": round(loss_val, 5),
                     "train_bpc": round(tr_bpc, 4),
@@ -416,7 +463,21 @@ def train(cfg: Dict[str, Any], args: argparse.Namespace) -> None:
                     "wall_time_s": round(elapsed, 1),
                     "ms_per_step": round(ms_step, 1),
                     "maslov_h": round(h_now, 4),
-                })
+                }
+                if padic_pe_norm is not None:
+                    log_entry["padic_pe_norm"] = round(padic_pe_norm, 4)
+                if pacs_effective_ctx is not None:
+                    log_entry["pacs_effective_ctx"] = pacs_effective_ctx
+                log.append(log_entry)
+                wb.log(log_entry, step=step)
+                
+                print(f"{step:>6}  {loss_val:>10.4f}  {tr_bpc:>8.4f}  "
+                      f"{val_loss:>9.4f}  {val_ppl:>9.2f}  {val_bpc:>8.4f}  "
+                      f"{float(gnorm):>7.3f}  {ms_step:>8.1f}ms")
+                if padic_pe_norm is not None:
+                    print(f"         PAdicPE norm: {padic_pe_norm:.4f}")
+                if pacs_effective_ctx is not None:
+                    print(f"         PaCS effective ctx: {pacs_effective_ctx}")
 
                 if val_bpc < best_val_bpc:
                     best_val_bpc = val_bpc
@@ -425,6 +486,7 @@ def train(cfg: Dict[str, Any], args: argparse.Namespace) -> None:
                         best_ckpt_path, model, optimizer, scaler,
                         step, best_val_bpc, log, cfg, run_tag,
                     )
+                    wb.log({"best_val_bpc": best_val_bpc}, step=step)
 
             # --- periodic checkpoint + sample ---
             if step % ckpt_every == 0 and is_main:
@@ -447,6 +509,7 @@ def train(cfg: Dict[str, Any], args: argparse.Namespace) -> None:
                         sample = gen["full_text"][:200].replace("\n", " ")
                         safe = sample.encode("ascii", errors="replace").decode("ascii")
                         print(f"  >> Sample @ step {step}: {safe}")
+                        wb.log_text("sample", safe, step=step)
                     except Exception as e:
                         print(f"  >> Sample failed: {e}")
                     _unwrap(model).train()
@@ -548,6 +611,21 @@ def train(cfg: Dict[str, Any], args: argparse.Namespace) -> None:
     print(f"  Time:     {total_time/3600:.2f} hours on {world}× GPU")
     print(f"{'='*80}")
 
+    # --- WandB final summary + cleanup ---
+    wb.log_summary(
+        test_bpc=float(test_bpc),
+        test_ppl=float(test_ppl),
+        val_bpc=float(val_bpc),
+        val_ppl=float(val_ppl),
+        best_val_bpc=float(best_val_bpc),
+        wall_time_hours=round(total_time / 3600, 2),
+        n_params=_unwrap(model).count_params(),
+        n_steps=n_steps,
+    )
+    if best_ckpt_path is not None and os.path.exists(best_ckpt_path):
+        wb.save_artifact(best_ckpt_path, name=f"{run_tag}_best", artifact_type="model")
+    wb.finish()
+
     tsrn_cuda.cleanup_distributed()
 
 
@@ -590,6 +668,31 @@ def main(argv: Optional[List[str]] = None) -> None:
                    help="Disable gradient checkpointing (uses more VRAM).")
     p.add_argument("--use-8bit-optim", action="store_true",
                    help="Use bitsandbytes AdamW8bit (saves optimizer VRAM).")
+    # v2.0 parameters
+    p.add_argument("--use-tmt-tokenizer", action="store_true",
+                   help="Use Tropical Merging Tokenization (v2.0)")
+    p.add_argument("--tmt-path", type=str, default=None,
+                   help="Path to TMT tokenizer file")
+    p.add_argument("--use-hyperbolic", action="store_true",
+                   help="Use hyperbolic gist vectors (v2.0)")
+    p.add_argument("--gist-chaining", action="store_true",
+                   help="Enable gist chaining for infinite context (v2.0)")
+    p.add_argument("--log-padic-pe", action="store_true",
+                   help="Log PAdicPE norms during training (v2.0)")
+    p.add_argument("--log-pacs", action="store_true",
+                   help="Log PaCS effective context during training (v2.0)")
+    # Kleene / tier flags
+    p.add_argument("--use-kleene-ssm", action="store_true",
+                   help="Enable KleeneSSM (replaces TropicalSSM). All tiers default on.")
+    p.add_argument("--tier", type=str, default=None, choices=["nano", "pro", "kyro"],
+                   help="ModelConfig tier. Sets Kleene flags automatically.")
+    # WandB flags
+    p.add_argument("--wandb-project", type=str, default=None,
+                   help="WandB project name. If unset, WandB logging is disabled.")
+    p.add_argument("--wandb-entity", type=str, default=None,
+                   help="WandB entity (team/username). Optional.")
+    p.add_argument("--wandb-run-name", type=str, default=None,
+                   help="WandB run name. Defaults to the auto-generated run tag.")
     args = p.parse_args(argv)
 
     cfg = load_preset(args.preset)
@@ -602,12 +705,22 @@ def main(argv: Optional[List[str]] = None) -> None:
         "context_len":     args.context,
         "ckpt_every":      args.ckpt_every,
         "eval_every":      args.eval_every,
+        "compile":         not args.no_compile,
+        "gradient_checkpoint": not args.no_grad_ckpt,
+        "use_8bit_optimizer": args.use_8bit_optim,
+        # v2.0 overrides
+        "use_tmt_tokenizer": args.use_tmt_tokenizer,
+        "tmt_path": args.tmt_path,
+        "use_hyperbolic": args.use_hyperbolic,
+        "gist_chaining": args.gist_chaining,
+        "log_padic_pe": args.log_padic_pe,
+        "log_pacs": args.log_pacs,
+        "use_kleene_ssm": args.use_kleene_ssm or None,
+        "tier": args.tier,
     }
     for k, v in overrides.items():
         if v is not None:
             cfg[k] = v
-    if args.no_compile:
-        cfg["compile"] = False
     if args.no_grad_ckpt:
         cfg["gradient_checkpoint"] = False
     if args.use_8bit_optim:
