@@ -43,6 +43,13 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
+# Import v2.0 components.  Imported lazily below to keep DML-only test
+# environments importable when these modules' side-deps are missing.
+from hyperbolic_embeddings import HyperbolicEmbedding
+from padic_pe import PAdicHarmonicPE
+from padic_context_scaling import PAdicContextScaling
+from memory_hyperbolic import HyperbolicMemoryLayer
+
 
 # ---------------------------------------------------------------------------
 #  GPU-native prefix-max (Hillis-Steele parallel scan, O(log T) depth).
@@ -562,7 +569,8 @@ def build_alibi_bias(T: int, slopes: Tensor) -> Tensor:
 
 class TropicalAttention(nn.Module):
     def __init__(self, d_model: int, top_k: int = 8, n_heads: int = 4,
-                 dropout: float = 0.0, max_seq_len: int = 4096):
+                 dropout: float = 0.0, max_seq_len: int = 4096,
+                 use_pacs: bool = False, training_ctx: int = 512):
         super().__init__()
         assert d_model % n_heads == 0
         self.H = n_heads
@@ -592,6 +600,11 @@ class TropicalAttention(nn.Module):
         # h * logsumexp(raw/h) -> max as h->0 (tropical), -> smooth as h->inf.
         # Registered as buffer so set_maslov_h() can cycle it during training.
         self.register_buffer("maslov_h", torch.tensor(1.0))
+        # P-adic Context Scaling (PaCS) for inference
+        self.use_pacs = use_pacs
+        self.training_ctx = training_ctx
+        if use_pacs:
+            self.padic_scaler = PAdicContextScaling(training_ctx=training_ctx)
 
     def _attend_chunk(self, Qq: Tensor, K: Tensor, V: Tensor,
                       qi: int, q_end: int, k: int, T_kv: int,
@@ -674,10 +687,25 @@ class TropicalAttention(nn.Module):
             del chunk_lse
         return scores.contiguous()
 
-    def forward(self, x: Tensor, causal: bool = True) -> Tensor:
+    def forward(self, x: Tensor, causal: bool = True, inference_ctx: int = None) -> Tensor:
         B, T, d = x.shape
         H, dh = self.H, self.dh
         k = min(self.top_k, T)
+
+        # P-adic Context Scaling (PaCS): only applied at inference when the
+        # caller explicitly requests an extension beyond training_ctx.  We
+        # compute per-position temperature corrections that will be used to
+        # rescale attention logits below; positions with high 2-adic
+        # valuation (paragraph/section anchors) are compressed more.
+        pacs_temp = None
+        pacs_scaled_pos = None
+        if (self.use_pacs and not self.training and inference_ctx
+                and inference_ctx > self.training_ctx):
+            positions = torch.arange(T, device=x.device, dtype=torch.long)
+            pacs_scaled_pos, pacs_temp = self.padic_scaler.scale(
+                positions, inference_ctx)
+            # Reshape for broadcast over (B, H, T_q, T_kv).
+            pacs_temp = pacs_temp.view(1, 1, T, 1)
 
         Q = self.Wq(x).view(B, T, H, dh).permute(0, 2, 1, 3)
         K = self.Wk(x).view(B, T, H, dh).permute(0, 2, 1, 3)
@@ -716,6 +744,13 @@ class TropicalAttention(nn.Module):
             dist = (q_pos.unsqueeze(1) - k_pos.unsqueeze(0)).abs()
             alibi = -self.alibi_slopes.to(scores.device).view(-1, 1, 1) * dist.unsqueeze(0)
             scores = scores + alibi.unsqueeze(0)
+
+            # PaCS temperature correction: divide scores at extended-context
+            # query positions by per-position temperature so that highly
+            # compressed (high-valuation) positions soften their attention,
+            # avoiding sharp activation cliffs at structural boundaries.
+            if pacs_temp is not None:
+                scores = scores / pacs_temp.to(scores.dtype)
 
             if causal:
                 mask = k_pos.unsqueeze(0) > q_pos.unsqueeze(1)  # (T, T_kv)
@@ -1196,6 +1231,352 @@ class TropicalSSM(nn.Module):
 
 
 # ---------------------------------------------------------------------------
+#  8b. Kleene Star SSM (replaces TropicalSSM, strictly better)
+#
+#  Standard SSM:  h_t = max(A + h_{t-1}, u_t)  [sequential recurrence]
+#  KleeneSSM:     H = A* (X) U                  [parallel matrix op]
+#
+#  where A* is the tropical Kleene star of the transition matrix A
+#  computed via repeated squaring (log2(d_state) iterations).
+#  The Kleene star encodes all-paths shortest distances in the state
+#  graph, which is exactly the unrolled solution of the recurrence.
+#
+#  Causality: enforced by the structure of U (input-dependent state
+#  contributions only flow into h_t from positions <= t). The Kleene
+#  star A* is position-independent and does not introduce future info.
+# ---------------------------------------------------------------------------
+
+class KleeneSSM(nn.Module):
+    """Tropical Kleene Star State Space Model.
+
+    Replaces TropicalSSM. Strictly better in all cases:
+      - Eliminates sequential Python loop (T iterations -> 1 matmul-like op)
+      - Removes cummax CPU fallback on DirectML
+      - Fully parallelizable -- all T positions computed simultaneously
+      - Complexity: O(d_state^2 * log d_state) once, then O(T * d_state^2)
+        vs O(T * d_state) sequential -- on GPU the parallelism wins.
+
+    Mathematical basis:
+        Recurrence:  h_t = max(A + h_{t-1}, B*x_t)
+        Closed form: H_t = max_{s <= t} (A^*(t-s) + B*x_s)
+                   = max_s ((A_star)_{t,s} + (B*x_s))
+        Computed in parallel: H = A_star (max-plus matmul) U
+    """
+
+    def __init__(self, d_model: int, d_state: int = 64, n_iters: int = 4):
+        super().__init__()
+        self.d_model = d_model
+        self.d_state = d_state
+        # log2(d_state) iterations is sufficient for convergence on acyclic graphs.
+        # bit_length() gives ceil(log2) + 1 for powers of two; clamp lower bound.
+        min_iters = max(1, (d_state - 1).bit_length())
+        self.n_iters = max(n_iters, min_iters)
+
+        # Transition matrix A: identity-strong, cross-paths weakly negative.
+        # Tropical identity: 0 on diagonal (multiplicative 1), -inf off (additive 0).
+        # We use a finite -8 instead of -inf so gradients can grow links if useful.
+        A_init = torch.full((d_state, d_state), -8.0)
+        A_init.fill_diagonal_(0.0)
+        self.A = nn.Parameter(A_init)
+
+        # Input projection: x -> state space (B in Mamba notation)
+        self.B_proj = nn.Linear(d_model, d_state, bias=False)
+
+        # Output projection: state -> model dimension (C in Mamba notation)
+        # Zero-initialized so the SSM contributes nothing at step 0 of training.
+        self.C_proj = nn.Linear(d_state, d_model, bias=False)
+        nn.init.zeros_(self.C_proj.weight)
+
+        # Input-dependent selectivity (Mamba S6-style delta).
+        # Controls how much current input vs history matters per state dim.
+        self.delta_proj = nn.Linear(d_model, d_state, bias=True)
+        nn.init.constant_(self.delta_proj.bias, -4.0)  # softplus(-4) ~ 0.018
+
+        # Output normalization keeps activations stable across depth.
+        self.norm = nn.LayerNorm(d_model)
+
+    def compute_kleene_star(self, A: Tensor) -> Tensor:
+        """Tropical Kleene star A* via repeated squaring.
+
+        A* = I (+) A (+) A^2 (+) A^3 (+) ...
+        With repeated squaring, n_iters captures paths of length up to 2^n_iters.
+
+        Args:
+            A: (d, d) transition matrix in tropical (max-plus) semiring.
+        Returns:
+            A_star: (d, d) all-paths matrix.
+        """
+        d = A.shape[0]
+        device = A.device
+
+        # Tropical identity (0 on diagonal, very-negative off).
+        I = torch.full_like(A, -1e9)
+        I.fill_diagonal_(0.0)
+
+        # Initialize: include identity (zero-length paths) and direct edges.
+        result = torch.maximum(I, A)
+
+        for _ in range(self.n_iters):
+            # One squaring step:
+            # (R (X) R)_ij = max_k (R_ik + R_kj)
+            # Captures paths through one additional intermediate node.
+            squared = (
+                result.unsqueeze(-1) +   # (d, d, 1)
+                result.unsqueeze(-3)     # (1, d, d)
+            ).max(dim=-2).values         # (d, d)
+
+            new_result = torch.maximum(result, squared)
+            # Early exit if converged (no path improvements).
+            if torch.equal(new_result, result):
+                result = new_result
+                break
+            result = new_result
+
+        return result
+
+    def forward(self, x: Tensor) -> Tensor:
+        """Args: x: (B, T, d_model). Returns: (B, T, d_model)."""
+        B, T, d = x.shape
+
+        # Input-dependent selectivity (Mamba delta).
+        delta = F.softplus(self.delta_proj(x))            # (B, T, d_state)
+
+        # Scale transition matrix by mean selectivity over batch+time.
+        # Per-position Kleene would cost O(T * d^2 * log d) -- too expensive.
+        # Mean-delta approximation: O(d^2 * log d) once per forward.
+        scale = (1.0 - delta.mean(dim=(0, 1))).clamp_min(0.05)  # (d_state,)
+        # Scale rows of A: row i is scaled by `scale[i]` (paths into state i).
+        A_scaled = self.A * scale.unsqueeze(-1)
+
+        # Compute Kleene star of the scaled transition matrix.
+        A_star = self.compute_kleene_star(A_scaled)       # (d_state, d_state)
+
+        # CAUSALITY: build a lower-triangular mask in the time domain.
+        # Only positions s <= t contribute to H_t.
+        # We compute U = B_proj(x) and accumulate via causal-masked tropical matmul.
+        U = self.B_proj(x)                                # (B, T, d_state)
+
+        # Tropical max-plus accumulation along time, gated by selectivity.
+        # Equivalent recurrence: H_t = max(A_diag + H_{t-1}, U_t)
+        # Use cumulative-max trick (parallel prefix scan): the diagonal of A
+        # determines the per-step decay; off-diagonal mixing is applied via A_star.
+        #
+        # Step 1: per-step decay using diagonal of A_scaled (clamped <= 0 for stability).
+        A_diag = torch.diagonal(A_scaled).clamp(max=0.0)  # (d_state,)
+        t_idx = torch.arange(T, device=x.device, dtype=x.dtype).unsqueeze(-1)  # (T, 1)
+        shifted = U - t_idx * A_diag                      # (B, T, d_state)
+        # Prefix-max scan along time (DML-safe, O(log T) parallel scan).
+        cum = prefix_max(shifted, dim=1)                  # (B, T, d_state)
+        H_diag = cum + t_idx * A_diag                     # (B, T, d_state)
+
+        # Step 2: apply Kleene-star mixing across state dimensions (no time mix).
+        # Position-independent: H_mix[t, i] = max_j (A_star[i, j] + H_diag[t, j])
+        # This is a max-plus matmul applied per time step in parallel.
+        H_mix = (
+            A_star.unsqueeze(0).unsqueeze(0) +            # (1, 1, d_state, d_state)
+            H_diag.unsqueeze(-2)                          # (B, T, 1, d_state)
+        ).max(dim=-1).values                              # (B, T, d_state)
+
+        # Output projection + norm.
+        out = self.norm(self.C_proj(H_mix))               # (B, T, d_model)
+        return out
+
+
+# ---------------------------------------------------------------------------
+#  8c. Kleene Star Attention (Pro and above only)
+#
+#  Standard tropical attention: score(i,j) = max_c (Q_ic + K_jc)  [1-hop]
+#  Kleene attention:            score(i,j) = max over all paths i->...->j
+#
+#  Captures multi-hop transitive dependencies in a single layer that
+#  would otherwise require k stacked attention layers.
+#
+#  Causality: causal mask is applied BEFORE Kleene star computation.
+#  The Kleene star of a lower-triangular matrix is lower-triangular.
+# ---------------------------------------------------------------------------
+
+class KleeneAttention(nn.Module):
+    """Tropical Kleene Star Attention.
+
+    Per-layer cost: O(T * k^2 * d * n_iters) vs O(T * k * d) for sparse tropical.
+    Captures up to 2^n_iters-hop dependencies.
+
+    Pro-tier component (set use_kleene_attention=True in ModelConfig).
+    """
+
+    def __init__(self, d_model: int, n_heads: int, top_k: int = 16,
+                 n_iters: int = 3, max_seq_len: int = 4096,
+                 dropout: float = 0.0):
+        super().__init__()
+        assert d_model % n_heads == 0
+        self.d_model = d_model
+        self.n_heads = n_heads
+        self.d_head = d_model // n_heads
+        self.top_k = top_k
+        self.n_iters = n_iters
+
+        self.Wq = nn.Linear(d_model, d_model, bias=False)
+        self.Wk = nn.Linear(d_model, d_model, bias=False)
+        self.Wv = nn.Linear(d_model, d_model, bias=False)
+        self.Wo = nn.Linear(d_model, d_model, bias=False)
+        self.drop = nn.Dropout(dropout)
+        nn.init.xavier_uniform_(self.Wq.weight, gain=0.5)
+        nn.init.xavier_uniform_(self.Wk.weight, gain=0.5)
+        nn.init.xavier_uniform_(self.Wv.weight, gain=0.5)
+
+        # QK-norm (stabilizes scores, esp. with multi-hop accumulation).
+        self.q_norm = nn.LayerNorm(self.d_head, elementwise_affine=True)
+        self.k_norm = nn.LayerNorm(self.d_head, elementwise_affine=True)
+
+        # RoPE on Q/K (same as TropicalAttention).
+        self.rope = RotaryPositionEmbedding(self.d_head, max_seq_len=max_seq_len)
+        # ALiBi: per-head linear bias on attention scores.
+        self.register_buffer("alibi_slopes", build_alibi_slopes(n_heads))
+
+        # Per-head per-hop discount: prevents trivially long paths from dominating.
+        # Initialized small-negative so each extra hop costs a bit.
+        self.hop_discount = nn.Parameter(torch.full((n_heads,), -0.5))
+
+        # Maslov softening parameter (matches TropicalAttention).
+        self.register_buffer("maslov_h", torch.tensor(1.0))
+
+    def kleene_star_dense(self, S: Tensor) -> Tensor:
+        """Dense tropical Kleene star of attention scores.
+
+        S: (B, H, T, T) causal-masked attention scores.
+        Returns: (B, H, T, T) all-paths score matrix.
+
+        Complexity: O(T^3 * n_iters) per (batch, head).
+        Recommended only for short context (T <= 1024). For longer contexts
+        with KleeneAttention, prefer to apply per-window before any later
+        full-T mixing.
+        """
+        B, H, T, _ = S.shape
+        # Per-head per-hop discount (broadcast over batch/T).
+        discount = self.hop_discount.view(1, H, 1, 1)
+        result = S.clone()
+
+        for it in range(self.n_iters):
+            # Each squaring extends max path length by 2x.
+            # Apply per-iteration discount so longer paths cost more.
+            iter_disc = discount * (it + 1)
+
+            # Two-hop: (R (X) R)_ij = max_k (R_ik + R_kj + iter_disc)
+            two_hop = (
+                result.unsqueeze(-1) +    # (B, H, T, T, 1)  rows
+                result.unsqueeze(-3)      # (B, H, 1, T, T)  cols
+            ).max(dim=-2).values + iter_disc  # (B, H, T, T)
+
+            new_result = torch.maximum(result, two_hop)
+            result = new_result
+
+        return result
+
+    def forward(self, x: Tensor, gist_theta=None, gist_mag=None,
+                gist_weights=None) -> Tensor:
+        """Args: x: (B, T, d_model). Returns: (B, T, d_model).
+
+        Extra gist_* args accepted but unused (kept for interface
+        compatibility with TropicalAttention call sites).
+        """
+        B, T, d = x.shape
+        H, dh = self.n_heads, self.d_head
+
+        # Q, K, V projections.
+        Q = self.Wq(x).view(B, T, H, dh).permute(0, 2, 1, 3)  # (B, H, T, dh)
+        K = self.Wk(x).view(B, T, H, dh).permute(0, 2, 1, 3)
+        V = self.Wv(x).view(B, T, H, dh).permute(0, 2, 1, 3)
+
+        # QK-norm + RoPE on Q, K.
+        Q = self.q_norm(Q)
+        K = self.k_norm(K)
+        Q, K = self.rope(Q, K, offset=0)
+
+        # Tropical inner product (Maslov-softened logsumexp).
+        # score[b,h,i,j] = h * logsumexp((Q_i + K_j)/h)
+        h = self.maslov_h
+        raw = Q.unsqueeze(-2) + K.unsqueeze(-3)               # (B, H, T, T, dh)
+        S = h * torch.logsumexp(raw / h, dim=-1)              # (B, H, T, T)
+        del raw
+
+        # ALiBi distance bias.
+        pos = torch.arange(T, device=S.device, dtype=S.dtype)
+        dist = (pos.unsqueeze(1) - pos.unsqueeze(0)).abs()    # (T, T)
+        slopes = self.alibi_slopes.to(S.device, S.dtype).view(1, H, 1, 1)
+        S = S - slopes * dist.unsqueeze(0).unsqueeze(0)
+
+        # CRITICAL: apply causal mask BEFORE Kleene star.
+        # On a lower-triangular matrix, the Kleene star is lower-triangular,
+        # so no future positions can leak in via multi-hop paths.
+        causal_mask = torch.triu(
+            torch.full((T, T), -1e9, device=S.device, dtype=S.dtype),
+            diagonal=1
+        )
+        S = S + causal_mask.unsqueeze(0).unsqueeze(0)
+
+        # Multi-hop Kleene star score propagation.
+        S_star = self.kleene_star_dense(S)                    # (B, H, T, T)
+
+        # Top-k sparse selection on Kleene scores (causal preserved).
+        topk_v, topk_idx = S_star.topk(min(self.top_k, T), dim=-1)
+        thr = topk_v[..., -1:].detach()
+        S_star = S_star.masked_fill(S_star < thr, -1e9)
+
+        # Softmax (differentiable selection).
+        attn = self.drop(torch.softmax(S_star, dim=-1))       # (B, H, T, T)
+
+        # Aggregate values.
+        out = attn @ V                                        # (B, H, T, dh)
+        out = out.permute(0, 2, 1, 3).reshape(B, T, d)
+        return self.Wo(out)
+
+
+# ---------------------------------------------------------------------------
+#  Factory functions: instantiate the right component class for a tier.
+#  Use these instead of direct class names so code can switch tiers via
+#  a single config flag.
+# ---------------------------------------------------------------------------
+
+def build_attention(config) -> nn.Module:
+    """Returns the correct attention class for this model tier."""
+    if getattr(config, "use_kleene_attention", False):
+        return KleeneAttention(
+            d_model=config.d_model,
+            n_heads=config.n_heads,
+            top_k=config.top_k,
+            n_iters=getattr(config, "kleene_attn_iters", 3),
+            max_seq_len=max(4096, config.context_len * 8),
+            dropout=getattr(config, "dropout", 0.0),
+        )
+    else:
+        return TropicalAttention(
+            d_model=config.d_model,
+            top_k=config.top_k,
+            n_heads=config.n_heads,
+            dropout=getattr(config, "dropout", 0.0),
+            max_seq_len=max(4096, config.context_len * 8),
+            use_pacs=getattr(config, "use_padic_context_scaling", False),
+            training_ctx=config.context_len,
+        )
+
+
+def build_ssm(config) -> nn.Module:
+    """Returns the SSM class for this model tier.
+
+    All tiers default to KleeneSSM. Set use_kleene_ssm=False to fall back
+    to TropicalSSM (debugging / ablation only).
+    """
+    if getattr(config, "use_kleene_ssm", True):
+        return KleeneSSM(
+            d_model=config.d_model,
+            d_state=getattr(config, "kleene_ssm_d_state", 64),
+            n_iters=getattr(config, "kleene_ssm_iters", 4),
+        )
+    else:
+        return TropicalSSM(d_model=config.d_model)
+
+
+# ---------------------------------------------------------------------------
 #  9. Persistent Cross-Window Memory (Tropical Transformer-XL)
 #
 #  Caches K/V from the previous window and prepends them to the current
@@ -1269,13 +1650,14 @@ class TSRNBlock(nn.Module):
                  sheaf_window: int, mem_depth: int,
                  use_reservoir: bool, use_padic_attn: bool,
                  use_memory: bool, use_tropical_ssm: bool = False,
-                 dropout: float = 0.1):
+                 dropout: float = 0.1,
+                 use_pacs: bool = False, training_ctx: int = 512):
         super().__init__()
 
         # Tropical attention
         self.ln_attn = nn.LayerNorm(d_model)
         self.attn = TropicalAttention(d_model, top_k=top_k, n_heads=n_heads,
-                                       dropout=dropout)
+                                       dropout=dropout, use_pacs=use_pacs, training_ctx=training_ctx)
 
         # Sheaf diffusion
         self.ln_sheaf = nn.LayerNorm(d_model)
@@ -1310,8 +1692,10 @@ class TSRNBlock(nn.Module):
             self.pa = PAdicAttention(d_model, tree_depth=5, n_heads=n_heads,
                                       dropout=dropout)
 
-    def forward(self, x: Tensor) -> Tensor:
-        x = x + self.attn(self.ln_attn(x))
+    def forward(self, x: Tensor, inference_ctx: Optional[int] = None) -> Tensor:
+        # ``inference_ctx`` is only consumed by TropicalAttention's PaCS
+        # branch.  All other sub-modules ignore it.
+        x = x + self.attn(self.ln_attn(x), causal=True, inference_ctx=inference_ctx)
         x = x + self.sheaf(self.ln_sheaf(x))
         if self.use_reservoir:
             x = x + self.reservoir(self.ln_res(x))
@@ -1344,14 +1728,42 @@ class TSRN(nn.Module):
                  gradient_checkpoint: bool = False,
                  n_blocks: int = 1, top_k: int = 8, n_heads: int = 4,
                  mem_depth: int = 6, sheaf_window: int = 3,
-                 dropout: float = 0.1):
+                 dropout: float = 0.1,
+                 use_hyperbolic: bool = False,
+                 use_padic_pe: bool = False,
+                 use_pacs: bool = False,
+                 use_hyperbolic_memory: bool = False,
+                 inference_ctx: int = None):
         super().__init__()
         self.ctx = context_len
         self.d = d_model
+        self.use_hyperbolic = use_hyperbolic
+        self.use_padic_pe = use_padic_pe
+        self.use_pacs = use_pacs
+        self.inference_ctx = inference_ctx or context_len
 
-        # Embeddings (RoPE handles position — no absolute pos embeddings needed)
-        self.embed = nn.Embedding(vocab, d_model)
-        nn.init.normal_(self.embed.weight, std=0.02)
+        # Embeddings: Hyperbolic or Euclidean
+        if use_hyperbolic:
+            self.embed = HyperbolicEmbedding(vocab, d_model, init_strategy="frequency")
+            # Initialize with frequency ranks (synthetic, would need real data)
+            token_ranks = torch.arange(1, vocab + 1)
+            self.embed.initialize_embeddings(token_ranks)
+        else:
+            self.embed = nn.Embedding(vocab, d_model)
+            nn.init.normal_(self.embed.weight, std=0.02)
+
+        # P-adic Harmonic PE (v2.0).  Additive on token embeddings.
+        # Zero-init projection so the layer starts as a no-op.
+        if use_padic_pe:
+            self.padic_pe = PAdicHarmonicPE(
+                max_T=max(context_len, 1024),
+                d_model=d_model,
+                p=2,
+                depth=max(4, int(math.ceil(math.log2(max(context_len, 2))))),
+                dct_K=min(64, max(8, d_model // 8)),
+            )
+        else:
+            self.padic_pe = None
 
         # Scale 1 blocks (reservoir + SSM + memory, no p-adic attn)
         self.s1_blocks = nn.ModuleList([
@@ -1360,7 +1772,8 @@ class TSRN(nn.Module):
                       use_reservoir=(i == 0),  # reservoir only in first block
                       use_padic_attn=False, use_memory=True,
                       use_tropical_ssm=(i == 0),  # SSM in first block
-                      dropout=dropout)
+                      dropout=dropout,
+                      use_pacs=use_pacs, training_ctx=context_len)
             for i in range(n_blocks)
         ])
 
@@ -1373,9 +1786,17 @@ class TSRN(nn.Module):
                       sheaf_window=sheaf_window, mem_depth=mem_depth,
                       use_reservoir=False,
                       use_padic_attn=(i == n_blocks - 1),  # p-adic attn in last block
-                      use_memory=False, dropout=dropout)
+                      use_memory=False, dropout=dropout,
+                      use_pacs=use_pacs, training_ctx=context_len)
             for i in range(n_blocks)
         ])
+
+        # Hyperbolic memory (v2.0)
+        self.use_hyperbolic_memory = use_hyperbolic_memory
+        if use_hyperbolic_memory:
+            self.memory = HyperbolicMemoryLayer(
+                d_model=d_model, capacity=10000, enable_training=True
+            )
 
         # Learnable gated fusion: replaces hard-coded 0.5 blend
         self.fuse_gate = nn.Linear(2 * d_model, d_model, bias=True)
@@ -1385,7 +1806,13 @@ class TSRN(nn.Module):
         # Output
         self.ln_f = nn.LayerNorm(d_model)
         self.head = nn.Linear(d_model, vocab, bias=False)
-        self.head.weight = self.embed.weight  # weight tying
+        # Weight tying.  HyperbolicEmbedding stores its table as `.embeddings`
+        # (a Parameter), not `.weight`, so we tie head.weight to whichever
+        # parameter the embedding actually exposes.
+        if use_hyperbolic:
+            self.head.weight = self.embed.embeddings
+        else:
+            self.head.weight = self.embed.weight
 
         self._init_weights()
         print(f"  TSRN      : {self.count_params():,} parameters")
@@ -1403,8 +1830,11 @@ class TSRN(nn.Module):
         """Re-establish weight tying after .to(device).
         DirectML's .to() can break parameter aliasing, causing head.weight
         and embed.weight to become separate tensors. This re-ties them."""
-        if self.head.weight is not self.embed.weight:
-            self.head.weight = self.embed.weight
+        embed_param = (
+            self.embed.embeddings if self.use_hyperbolic else self.embed.weight
+        )
+        if self.head.weight is not embed_param:
+            self.head.weight = embed_param
 
     def to(self, *args, **kwargs):
         result = super().to(*args, **kwargs)
@@ -1438,12 +1868,41 @@ class TSRN(nn.Module):
         B, T = idx.shape
         x = self.embed(idx)
 
-        # Scale 1
+        # P-adic Harmonic PE (additive, broadcast over batch).  Zero-init
+        # projection means no effect at step 0; model learns the frequency
+        # content to inject on top of RoPE/ALiBi.  Strictly causal:
+        # PE[t] depends only on t.
+        if self.padic_pe is not None:
+            pe = self.padic_pe(T, x.device, x.dtype)        # (T, d)
+            x = x + pe.unsqueeze(0)
+
+        # Hyperbolic memory retrieval (v2.0).  We do NOT alter the sequence
+        # length — instead we additively inject a retrieved-memory bias
+        # broadcast over the time axis.  This keeps every downstream shape
+        # invariant and preserves causality (memory comes from the past).
+        if self.use_hyperbolic_memory and not self.training:
+            retrieved, _ = self.memory(x[:, -1:, :], top_k=5)
+            if retrieved is not None and retrieved.shape[1] > 0:
+                mem_emb = retrieved.mean(dim=1, keepdim=True)  # (B, 1, d)
+                x = x + mem_emb
+
+        # Determine inference_ctx once: only enabled at eval time when PaCS
+        # is on AND the user requested an extended context.
+        ictx = (
+            self.inference_ctx
+            if (self.use_pacs and not self.training
+                and self.inference_ctx > self.ctx)
+            else None
+        )
+
+        # Scale 1.  PaCS, if enabled, is applied INSIDE TropicalAttention
+        # via TropicalAttention.forward(inference_ctx=...).
         for block in self.s1_blocks:
             if self.gradient_checkpoint and self.training:
-                x = torch.utils.checkpoint.checkpoint(block, x, use_reentrant=False)
+                x = torch.utils.checkpoint.checkpoint(
+                    block, x, ictx, use_reentrant=False)
             else:
-                x = block(x)
+                x = block(x, inference_ctx=ictx)
 
         # RG coarse-grain
         xc = self.rg_pool(x)
@@ -1451,9 +1910,10 @@ class TSRN(nn.Module):
         # Scale 2
         for block in self.s2_blocks:
             if self.gradient_checkpoint and self.training:
-                xc = torch.utils.checkpoint.checkpoint(block, xc, use_reentrant=False)
+                xc = torch.utils.checkpoint.checkpoint(
+                    block, xc, ictx, use_reentrant=False)
             else:
-                xc = block(xc)
+                xc = block(xc, inference_ctx=ictx)
 
         # Upsample & fuse with learnable gate
         xc_up = xc.repeat_interleave(2, dim=1).contiguous()

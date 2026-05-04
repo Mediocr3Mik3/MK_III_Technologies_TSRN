@@ -30,12 +30,16 @@ from torch import Tensor
 from tsrn_dml import (
     TropicalAttention, CliffordFFN, RGPool, PAdicMemory,
     EchoStateReservoir, PAdicAttention, TropicalSSM,
+    KleeneSSM, KleeneAttention, build_attention, build_ssm,
     SheafHarmonicPE,
     CharDataset, CharDatasetSplit, load_enwik8, load_wikitext2,
     generate_synthetic_data, detect_device, evaluate,
     evaluate_sequential, get_lr, device_sync,
     AdamWDML,
 )
+
+# Import v2.0 components
+from hyperbolic_embeddings import poincare_to_tangent, tangent_to_poincare
 
 
 # ---------------------------------------------------------------------------
@@ -125,9 +129,10 @@ class SheafRotorDiffusion(nn.Module):
 # ---------------------------------------------------------------------------
 
 class GistExtractor(nn.Module):
-    def __init__(self, d_model: int, n_heads: int = 4):
+    def __init__(self, d_model: int, n_heads: int = 4, use_hyperbolic: bool = False):
         super().__init__()
         self.d, self.H, self.dh = d_model, n_heads, d_model // n_heads
+        self.use_hyperbolic = use_hyperbolic
         # One learnable query per coarse position is parameter-expensive;
         # instead use a single query prototype that is position-modulated
         # by a learned coarse positional embedding (same capacity, less params).
@@ -137,14 +142,18 @@ class GistExtractor(nn.Module):
         self.proj_theta = nn.Linear(d_model, d_model // 2)
         self.proj_mag = nn.Linear(d_model, 1)
         self.ln = nn.LayerNorm(d_model)
+        # For hyperbolic gist output (v2.0)
+        if use_hyperbolic:
+            self.hyperbolic_proj = nn.Linear(d_model, d_model, bias=False)
 
-    def forward(self, x: Tensor) -> Tuple[Tensor, Tensor]:
+    def forward(self, x: Tensor) -> Tuple[Tensor, Tensor, Optional[Tensor]]:
         """
         Args:
             x: (B, T, d) — Scale 1 output, T must be even.
         Returns:
             theta : (B, T2, d//2)  causal per-coarse gist angles
             mag   : (B, T2, 1)     causal per-coarse magnitude gates
+            hyperbolic_gist : (B, T2, d) optional hyperbolic gist vectors (v2.0)
         where T2 = T // 2.
         """
         B, T, d = x.shape
@@ -180,9 +189,18 @@ class GistExtractor(nn.Module):
 
         theta = self.proj_theta(pooled)                 # B T2 d//2
         mag   = torch.sigmoid(self.proj_mag(pooled))   # B T2 1
-        return theta, mag
 
-    def forward_single(self, x: Tensor) -> Tuple[Tensor, Tensor]:
+        # Optional hyperbolic gist output (v2.0)
+        hyperbolic_gist = None
+        if self.use_hyperbolic:
+            # Project to hyperbolic space
+            hyperbolic_repr = self.hyperbolic_proj(pooled)  # B T2 d
+            # Project to Poincaré disk
+            hyperbolic_gist = tangent_to_poincare(hyperbolic_repr)
+
+        return theta, mag, hyperbolic_gist
+
+    def forward_single(self, x: Tensor) -> Tuple[Tensor, Tensor, Optional[Tensor]]:
         """Legacy single-vector extraction (causal: attends to all of x,
         which is the maximum safe prefix for cross-batch gist storage).
         Used only by GistBuffer.store to produce the ring-buffer key."""
@@ -195,7 +213,16 @@ class GistExtractor(nn.Module):
         # No mask needed: storing a summary of the entire (past) window is causal.
         pooled = (torch.softmax(scores, -1) @ v).permute(0,2,1,3).reshape(B, d)
         pooled = self.ln(pooled)
-        return self.proj_theta(pooled), torch.sigmoid(self.proj_mag(pooled))
+        theta = self.proj_theta(pooled)
+        mag = torch.sigmoid(self.proj_mag(pooled))
+        
+        # Optional hyperbolic gist output (v2.0)
+        hyperbolic_gist = None
+        if self.use_hyperbolic:
+            hyperbolic_repr = self.hyperbolic_proj(pooled)  # B d
+            hyperbolic_gist = tangent_to_poincare(hyperbolic_repr)
+        
+        return theta, mag, hyperbolic_gist
 
 
 # ---------------------------------------------------------------------------
@@ -203,16 +230,19 @@ class GistExtractor(nn.Module):
 # ---------------------------------------------------------------------------
 
 class GistBuffer(nn.Module):
-    def __init__(self, d_model: int, max_gists: int = 64):
+    def __init__(self, d_model: int, max_gists: int = 64, use_hyperbolic: bool = False):
         super().__init__()
         self.dh = d_model // 2
         self.max_gists = max_gists
+        self.use_hyperbolic = use_hyperbolic
         self.register_buffer("stored_theta", torch.zeros(max_gists, d_model//2))
         self.register_buffer("stored_mag", torch.zeros(max_gists, 1))
         self.register_buffer("stored_keys", torch.zeros(max_gists, d_model))
         self.register_buffer("count", torch.tensor(0, dtype=torch.long))
         self.register_buffer("write_ptr", torch.tensor(0, dtype=torch.long))
         self.key_proj = nn.Linear(d_model, d_model, bias=False)
+        # For binary storage
+        self.binary_path = None
 
     def store(self, theta: Tensor, mag: Tensor, ctx_repr: Tensor):
         B = theta.shape[0]
@@ -244,6 +274,51 @@ class GistBuffer(nn.Module):
     def reset(self):
         self.stored_theta.zero_(); self.stored_mag.zero_()
         self.stored_keys.zero_(); self.count.zero_(); self.write_ptr.zero_()
+
+    def save_vectors_bin(self, path: str):
+        """Save gist vectors to binary format (v2.0)."""
+        n = self.count.item()
+        if n == 0:
+            return
+
+        import numpy as np
+        theta_np = self.stored_theta[:n].cpu().numpy()
+        mag_np = self.stored_mag[:n].cpu().numpy()
+        keys_np = self.stored_keys[:n].cpu().numpy()
+
+        # Save with header: d_model, n_vectors
+        header = np.array([self.stored_theta.shape[1] + 1, n], dtype=np.int32)
+        combined = np.concatenate([theta_np, mag_np], axis=-1)
+
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "wb") as f:
+            f.write(header.tobytes())
+            f.write(combined.tobytes())
+            f.write(keys_np.tobytes())
+
+        self.binary_path = path
+
+    def load_vectors_bin(self, path: str):
+        """Load gist vectors from binary format (v2.0)."""
+        import numpy as np
+
+        with open(path, "rb") as f:
+            header = np.frombuffer(f.read(8), dtype=np.int32)
+            d_model, n_vectors = header[0], header[1]
+            combined = np.frombuffer(f.read(n_vectors * d_model * 4), dtype=np.float32)
+            keys_np = np.frombuffer(f.read(n_vectors * d_model * 4), dtype=np.float32)
+
+        combined = combined.reshape(n_vectors, d_model)
+        theta_np = combined[:, :self.dh]
+        mag_np = combined[:, self.dh:]
+
+        self.stored_theta[:n_vectors] = torch.from_numpy(theta_np)
+        self.stored_mag[:n_vectors] = torch.from_numpy(mag_np)
+        self.stored_keys[:n_vectors] = torch.from_numpy(keys_np)
+        self.count.fill_(n_vectors)
+        self.write_ptr.fill_(n_vectors)
+
+        self.binary_path = path
 
 
 # ---------------------------------------------------------------------------
@@ -386,11 +461,23 @@ class TSRNGistBlock(nn.Module):
                  use_reservoir: bool, use_padic_attn: bool,
                  use_memory: bool, use_gist_cross_attn: bool = True,
                  use_tropical_ssm: bool = False,
-                 dropout: float = 0.1):
+                 dropout: float = 0.1,
+                 config=None):
+        """
+        Args:
+            config: Optional ModelConfig. If provided, attention and SSM
+                modules are built via build_attention()/build_ssm() so
+                Kleene variants are wired in when their flags are set.
+                Backwards compatible: if config is None, uses
+                TropicalAttention + (optionally) TropicalSSM as before.
+        """
         super().__init__()
         self.ln_attn = nn.LayerNorm(d_model)
-        self.attn = TropicalAttention(d_model, top_k=top_k, n_heads=n_heads,
-                                       dropout=dropout)
+        if config is not None:
+            self.attn = build_attention(config)
+        else:
+            self.attn = TropicalAttention(d_model, top_k=top_k, n_heads=n_heads,
+                                           dropout=dropout)
         self.ln_sheaf = nn.LayerNorm(d_model)
         self.sheaf = SheafRotorDiffusion(d_model, window=sheaf_window,
                                           dropout=dropout)
@@ -399,9 +486,20 @@ class TSRNGistBlock(nn.Module):
             self.ln_res = nn.LayerNorm(d_model)
             self.reservoir = EchoStateReservoir(d_model, d_reservoir=d_model // 2)
 
-        # Tropical SSM (optional, parallel to reservoir)
+        # Tropical / Kleene SSM (optional, parallel to reservoir).
+        # When config is provided, we always build via build_ssm() because the
+        # config controls whether SSM is on at all (use_kleene_ssm flag covers
+        # both KleeneSSM=True and TropicalSSM=False fallback).
         self.use_tropical_ssm = use_tropical_ssm
-        if use_tropical_ssm:
+        if config is not None:
+            # config-driven path: SSM is on iff use_kleene_ssm OR caller
+            # explicitly passed use_tropical_ssm=True for the legacy path.
+            ssm_on = bool(getattr(config, "use_kleene_ssm", True)) or use_tropical_ssm
+            self.use_tropical_ssm = ssm_on
+            if ssm_on:
+                self.ln_ssm = nn.LayerNorm(d_model)
+                self.tropical_ssm = build_ssm(config)
+        elif use_tropical_ssm:
             self.ln_ssm = nn.LayerNorm(d_model)
             self.tropical_ssm = TropicalSSM(d_model)
 
@@ -476,11 +574,16 @@ class TSRNGist(nn.Module):
                  s2_max_iters: Optional[int] = None,
                  s2_eps: float = 0.01,
                  # NEXUS Innovation #4 — Sheaf Harmonic positional encoding
-                 pe_harmonics: int = 64):
+                 pe_harmonics: int = 64,
+                 # v2.0 features
+                 use_hyperbolic: bool = False,
+                 gist_chaining: bool = False):
         super().__init__()
         self.ctx = context_len
         self.d = d_model
         self.gist_top_k = gist_top_k
+        self.use_hyperbolic = use_hyperbolic
+        self.gist_chaining = gist_chaining
 
         self.embed = nn.Embedding(vocab, d_model)
         nn.init.normal_(self.embed.weight, std=0.02)
@@ -503,8 +606,17 @@ class TSRNGist(nn.Module):
         ])
 
         # Gist extraction at RG boundary
-        self.gist_extractor = GistExtractor(d_model, n_heads=n_heads)
-        self.gist_buffer = GistBuffer(d_model, max_gists=max_gists)
+        self.gist_extractor = GistExtractor(d_model, n_heads=n_heads,
+                                            use_hyperbolic=use_hyperbolic)
+        self.gist_buffer = GistBuffer(d_model, max_gists=max_gists,
+                                      use_hyperbolic=use_hyperbolic)
+
+        # Gist chaining buffer (v2.0) - stores hyperbolic gists for infinite context
+        if gist_chaining and use_hyperbolic:
+            self.gist_chain_buffer = GistBuffer(d_model, max_gists=max_gists * 2,
+                                                use_hyperbolic=True)
+        else:
+            self.gist_chain_buffer = None
 
         # RG coarse-grain
         self.rg_pool = RGPool(d_model)
@@ -624,9 +736,10 @@ class TSRNGist(nn.Module):
         # GistExtractor.forward() now returns per-coarse-position gists:
         #   fresh_theta : (B, T2, dh)  where fresh_theta[j] encodes x_{0..2j}
         #   fresh_mag   : (B, T2, 1)
+        #   fresh_hyp   : (B, T2, d)  optional hyperbolic gist (v2.0)
         # This is strictly causal: coarse token j sees fine tokens 0..2j only.
         T2 = T // 2
-        fresh_theta, fresh_mag = self.gist_extractor(x)
+        fresh_theta, fresh_mag, fresh_hyp = self.gist_extractor(x)
         # fresh_theta shape: (B, T2, dh) — verify against T2
         assert fresh_theta.shape[1] == T2, (
             f"GistExtractor returned {fresh_theta.shape[1]} positions, expected {T2}")
@@ -636,8 +749,14 @@ class TSRNGist(nn.Module):
         # forward_single re-uses the same weights, attends to all of x (causal
         # because all of x is the current past window).
         if self.training:
-            store_theta, store_mag = self.gist_extractor.forward_single(x)
+            store_theta, store_mag, store_hyp = self.gist_extractor.forward_single(x)
             self.gist_buffer.store(store_theta, store_mag, ctx_summary)
+            # Gist chaining: store hyperbolic gists for infinite context (v2.0)
+            if self.gist_chaining and self.gist_chain_buffer is not None and store_hyp is not None:
+                # Convert hyperbolic gist to tangent for storage
+                hyp_tangent = poincare_to_tangent(store_hyp.unsqueeze(1))  # B 1 d
+                self.gist_chain_buffer.store(
+                    store_theta, store_mag, hyp_tangent.squeeze(1))
 
         # RG coarse-grain (now causal — see RGPool docstring)
         xc = self.rg_pool(x)
@@ -700,7 +819,8 @@ def train_gist(dataset, device, n_steps=100000, batch_size=8,
                n_blocks=3, n_heads=8, top_k=16, mem_depth=7,
                max_gists=64, gist_top_k=4,
                dropout=0.1, ckpt_every=10000, resume_from=None,
-               tag="", grad_accum_steps=1, gradient_checkpoint=False):
+               tag="", grad_accum_steps=1, gradient_checkpoint=False,
+               use_hyperbolic=False, gist_chaining=False):
     V = dataset.vocab_sz
     ctx = context_len
 
@@ -709,7 +829,9 @@ def train_gist(dataset, device, n_steps=100000, batch_size=8,
                      gradient_checkpoint=gradient_checkpoint,
                      n_blocks=n_blocks, top_k=top_k, n_heads=n_heads,
                      mem_depth=mem_depth, max_gists=max_gists,
-                     gist_top_k=gist_top_k, dropout=dropout)
+                     gist_top_k=gist_top_k, dropout=dropout,
+                     use_hyperbolic=use_hyperbolic,
+                     gist_chaining=gist_chaining)
 
     start_step = 0
     if resume_from and os.path.exists(resume_from):
@@ -914,6 +1036,8 @@ def main():
     parser.add_argument("--tag", type=str, default="")
     parser.add_argument("--grad_accum", type=int, default=1)
     parser.add_argument("--grad_ckpt", action="store_true")
+    parser.add_argument("--use_hyperbolic", action="store_true", help="Use hyperbolic gist vectors (v2.0)")
+    parser.add_argument("--gist_chaining", action="store_true", help="Enable gist chaining for infinite context (v2.0)")
     args = parser.parse_args()
 
     cfg = dict(PRESETS[args.preset])
@@ -957,6 +1081,8 @@ def main():
         resume_from=args.resume, tag=args.tag,
         grad_accum_steps=args.grad_accum,
         gradient_checkpoint=args.grad_ckpt,
+        use_hyperbolic=args.use_hyperbolic,
+        gist_chaining=args.gist_chaining,
     )
 
     # Final sequential test evaluation
