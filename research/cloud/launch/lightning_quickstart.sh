@@ -39,17 +39,42 @@ fi
 cd "${REPO}"
 
 # ---------------------------------------------------------------------------
-# 2. Install / upgrade PyTorch for CUDA (Lightning.ai has CUDA 12.x)
+# 2. Install / upgrade PyTorch for CUDA
 # ---------------------------------------------------------------------------
+# Lightning.ai Studios forbid creating new venvs — every Studio has exactly
+# one default conda env.  Detect that case and install into the active env.
 echo
 echo "==> Setting up Python environment..."
-if [ ! -d ".venv" ]; then
-    python3 -m venv .venv
+IS_LIGHTNING=0
+if [ -d "/teamspace" ] || [ -n "${LIGHTNING_CLOUD_URL:-}" ]; then
+    IS_LIGHTNING=1
+    echo "    Detected Lightning.ai Studio — using default conda env (no venv)."
 fi
-source .venv/bin/activate
-pip install -q --upgrade pip
-pip install -q --index-url https://download.pytorch.org/whl/cu121 \
-    "torch==2.4.1" "torchvision==0.19.1"
+
+if [ "${IS_LIGHTNING}" = "0" ]; then
+    if [ ! -d ".venv" ]; then
+        python3 -m venv .venv
+    fi
+    # shellcheck disable=SC1091
+    source .venv/bin/activate
+fi
+
+# Lightning.ai images already ship a CUDA-capable torch; only upgrade if
+# torch isn't installed or doesn't have CUDA available.
+NEEDS_TORCH=$(python -c 'import sys
+try:
+    import torch
+    sys.exit(0 if torch.cuda.is_available() else 1)
+except Exception:
+    sys.exit(1)') ; rc=$?
+if [ "${rc}" != "0" ]; then
+    echo "    Installing PyTorch (CUDA 12.1)..."
+    pip install -q --index-url https://download.pytorch.org/whl/cu121 \
+        "torch==2.4.1" "torchvision==0.19.1"
+else
+    echo "    PyTorch with CUDA already present — skipping torch install."
+fi
+
 pip install -q -r requirements.txt
 pip install -q -r research/cloud/requirements_cuda.txt
 echo "==> PyTorch version: $(python -c 'import torch; print(torch.__version__)')"
