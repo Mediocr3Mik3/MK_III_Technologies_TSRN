@@ -1335,50 +1335,58 @@ class KleeneSSM(nn.Module):
         return result
 
     def forward(self, x: Tensor) -> Tensor:
-        """Args: x: (B, T, d_model). Returns: (B, T, d_model)."""
+        """Args: x: (B, T, d_model). Returns: (B, T, d_model).
+
+        CAUSALITY (DATA-LEAKAGE AUDIT, kleene-star branch):
+            Earlier versions scaled A by ``delta.mean(dim=(0, 1))`` — a
+            statistic over ALL T positions — which leaked future inputs
+            into past outputs.  Fixed by:
+              (a) Computing the Kleene star from input-INDEPENDENT
+                  ``self.A`` (no scaling).  ``A_star`` therefore carries
+                  no future-token information.
+              (b) Applying per-position selectivity ONLY to the diagonal
+                  decay via the closed-form prefix-max scan, which is
+                  pointwise per t and therefore strictly causal.
+        """
         B, T, d = x.shape
 
-        # Input-dependent selectivity (Mamba delta).
+        # Per-position selectivity (Mamba S6 delta).
         delta = F.softplus(self.delta_proj(x))            # (B, T, d_state)
 
-        # Scale transition matrix by mean selectivity over batch+time.
-        # Per-position Kleene would cost O(T * d^2 * log d) -- too expensive.
-        # Mean-delta approximation: O(d^2 * log d) once per forward.
-        scale = (1.0 - delta.mean(dim=(0, 1))).clamp_min(0.05)  # (d_state,)
-        # Scale rows of A: row i is scaled by `scale[i]` (paths into state i).
-        A_scaled = self.A * scale.unsqueeze(-1)
-
-        # Compute Kleene star of the scaled transition matrix.
-        A_star = self.compute_kleene_star(A_scaled)       # (d_state, d_state)
-
-        # CAUSALITY: build a lower-triangular mask in the time domain.
-        # Only positions s <= t contribute to H_t.
-        # We compute U = B_proj(x) and accumulate via causal-masked tropical matmul.
+        # Input projection (B in Mamba notation).
         U = self.B_proj(x)                                # (B, T, d_state)
 
-        # Tropical max-plus accumulation along time, gated by selectivity.
-        # Equivalent recurrence: H_t = max(A_diag + H_{t-1}, U_t)
-        # Use cumulative-max trick (parallel prefix scan): the diagonal of A
-        # determines the per-step decay; off-diagonal mixing is applied via A_star.
-        #
-        # Step 1: per-step decay using diagonal of A_scaled (clamped <= 0 for stability).
-        A_diag = torch.diagonal(A_scaled).clamp(max=0.0)  # (d_state,)
-        t_idx = torch.arange(T, device=x.device, dtype=x.dtype).unsqueeze(-1)  # (T, 1)
-        shifted = U - t_idx * A_diag                      # (B, T, d_state)
-        # Prefix-max scan along time (DML-safe, O(log T) parallel scan).
-        cum = prefix_max(shifted, dim=1)                  # (B, T, d_state)
-        H_diag = cum + t_idx * A_diag                     # (B, T, d_state)
+        # Per-position decay, derived from the diagonal of the unscaled A.
+        # Clamped <=0 for stability; (1 - delta) gates per-position retention.
+        A_diag_const = torch.diagonal(self.A).clamp(max=0.0)        # (d_state,)
+        A_diag_t = (
+            A_diag_const.unsqueeze(0).unsqueeze(0)
+            * (1.0 - delta).clamp_min(0.05)
+        )                                                            # (B, T, d_state) <=0
 
-        # Step 2: apply Kleene-star mixing across state dimensions (no time mix).
-        # Position-independent: H_mix[t, i] = max_j (A_star[i, j] + H_diag[t, j])
-        # This is a max-plus matmul applied per time step in parallel.
+        # Closed form for h_t = max(a_t + h_{t-1}, u_t) with input-dependent
+        # decay a_t (≤0):
+        #     S_t = sum_{r=0..t} a_r          (cumsum INCLUSIVE)
+        #     h_t = S_t + max_{s<=t} (u_s - S_s)
+        # Verify: at s=t -> u_t - S_t + S_t = u_t. ✓
+        #         at s<t -> (u_s - S_s) + S_t = u_s + sum_{r=s+1..t} a_r. ✓
+        S = A_diag_t.cumsum(dim=1)                         # (B, T, d_state)
+        shifted = U - S                                    # (B, T, d_state)
+        cum = prefix_max(shifted, dim=1)                   # (B, T, d_state)
+        H_diag = S + cum                                   # (B, T, d_state)
+
+        # Kleene star uses input-INDEPENDENT A (no future-leak through mixing).
+        A_star = self.compute_kleene_star(self.A)          # (d_state, d_state)
+
+        # Apply Kleene-star mixing across state dimensions (no time mix).
+        # H_mix[t, i] = max_j (A_star[i, j] + H_diag[t, j])
         H_mix = (
-            A_star.unsqueeze(0).unsqueeze(0) +            # (1, 1, d_state, d_state)
-            H_diag.unsqueeze(-2)                          # (B, T, 1, d_state)
-        ).max(dim=-1).values                              # (B, T, d_state)
+            A_star.unsqueeze(0).unsqueeze(0) +             # (1, 1, d_state, d_state)
+            H_diag.unsqueeze(-2)                           # (B, T, 1, d_state)
+        ).max(dim=-1).values                               # (B, T, d_state)
 
         # Output projection + norm.
-        out = self.norm(self.C_proj(H_mix))               # (B, T, d_model)
+        out = self.norm(self.C_proj(H_mix))                # (B, T, d_model)
         return out
 
 

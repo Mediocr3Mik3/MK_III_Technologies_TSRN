@@ -727,8 +727,16 @@ class TSRNGist(nn.Module):
         pe = self.sheaf_pe(T, x.device, x.dtype)          # (T, d)
         x = x + pe.unsqueeze(0)                            # (B, T, d)
 
-        # Retrieve gists from buffer (strictly past windows — causal by construction)
-        ctx_summary = x.mean(dim=1)  # B d  (embedding mean; no future info here)
+        # Retrieve gists from buffer (strictly past windows — causal by construction).
+        #
+        # DATA-LEAKAGE FIX (kleene-star branch): the previous code used
+        # `x.mean(dim=1)` as the retrieval query, which averages over all T
+        # positions of the current window.  That made the gist *selection*
+        # at every position non-causal: at position t, the soft-weighted
+        # mixture of past gists depended on tokens at t' > t.  We now use
+        # `x[:, 0, :]` — the first-position embedding — which every
+        # position can causally observe.  See research/DATA_LEAKAGE_AUDIT.md.
+        ctx_summary = x[:, 0, :]                            # (B, d)
         gist_theta, gist_mag, gist_w = self.gist_buffer.retrieve(
             self.gist_buffer.key_proj(ctx_summary), top_k=self.gist_top_k)
         # gist_theta: (B, K, dh),  gist_mag: (B, K, 1),  gist_w: (B, K)

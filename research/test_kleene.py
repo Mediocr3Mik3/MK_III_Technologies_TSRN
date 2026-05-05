@@ -134,6 +134,10 @@ def test_kleene_ssm_causality():
     """KleeneSSM must not leak future information.
 
     Perturbing x[:, t0, :] must not affect output[:, t, :] for t < t0.
+
+    Post-fix (DATA_LEAKAGE_AUDIT): the global delta.mean was replaced with
+    per-position causal selectivity, so any residual leak is float32
+    precision only.  Threshold tightened from 1e-3 to 1e-5.
     """
     from tsrn_dml import KleeneSSM
     torch.manual_seed(0)
@@ -151,16 +155,93 @@ def test_kleene_ssm_causality():
         out_perturbed = model(x_perturbed)
 
     leak = (out_orig[:, :t0, :] - out_perturbed[:, :t0, :]).abs().max().item()
-    # Allow tiny numerical error from softplus mean over all positions
-    # being dependent on t0 (not a true future-info leak, but a global
-    # statistic). Compare to the post-t0 difference for context.
     post_diff = (out_orig[:, t0:, :] - out_perturbed[:, t0:, :]).abs().max().item()
-    assert leak < 1e-3, (
+    # Strict: with the global-mean leak removed, any residual is float32
+    # numerical noise (typically < 1e-6).
+    assert leak < 1e-5, (
         f"CAUSALITY VIOLATION: max leak = {leak:.3e} at positions < {t0} "
-        f"(post-t0 diff = {post_diff:.3e})"
+        f"(post-t0 diff = {post_diff:.3e}) — global-statistic leak likely returned"
     )
     print(f"OK  KleeneSSM causality: pre-t0 leak = {leak:.2e}, "
           f"post-t0 diff = {post_diff:.2e}")
+
+
+def test_kleene_ssm_per_position_selectivity():
+    """KleeneSSM must STILL be input-selective per position.
+
+    Sanity check that the causality fix didn't accidentally remove the
+    per-position delta selectivity entirely.  Perturbing x[:, t0, :]
+    MUST change output[:, t0:, :].
+
+    Note: KleeneSSM zero-initialises ``C_proj.weight`` so the SSM is a
+    no-op at the very first training step.  We unblock that here by
+    randomising C_proj before running, so we test the *forward channel*,
+    not the init.
+    """
+    from tsrn_dml import KleeneSSM
+    torch.manual_seed(0)
+    model = KleeneSSM(d_model=64, d_state=16, n_iters=3)
+    # Break the zero-init so the test exercises the actual channel.
+    with torch.no_grad():
+        model.C_proj.weight.normal_(0, 0.1)
+    model.eval()
+
+    B, T, d = 2, 32, 64
+    x = torch.randn(B, T, d)
+    t0 = 16
+
+    with torch.no_grad():
+        out_orig = model(x)
+        x_perturbed = x.clone()
+        x_perturbed[:, t0, :] += torch.randn(B, d) * 10.0
+        out_perturbed = model(x_perturbed)
+
+    post_diff = (out_orig[:, t0:, :] - out_perturbed[:, t0:, :]).abs().max().item()
+    assert post_diff > 1e-3, (
+        f"DEAD SELECTIVITY: perturbing x[:, {t0}, :] left output unchanged "
+        f"(post-t0 diff = {post_diff:.3e}). Fix removed too much."
+    )
+    print(f"OK  KleeneSSM selectivity: post-t0 response = {post_diff:.2e}")
+
+
+def test_tsrn_gist_query_causality():
+    """TSRNGist gist-retrieval query must be causal.
+
+    The query is `x[:, 0, :]` (post-fix).  Perturbing x at any position t>0
+    must NOT change the retrieval query, so the buffer-retrieval result is
+    invariant to future tokens.
+    """
+    import importlib, sys
+    sys.path.insert(0, os.path.dirname(__file__))
+    tsrn_gist = importlib.import_module("tsrn_gist")
+    TSRNGist = tsrn_gist.TSRNGist
+
+    torch.manual_seed(0)
+    V, ctx, d = 64, 32, 64
+    model = TSRNGist(vocab=V, d_model=d, context_len=ctx,
+                     n_blocks=1, n_heads=4, top_k=4, mem_depth=3,
+                     max_gists=8, gist_top_k=2)
+    model.eval()
+
+    B = 2
+    idx = torch.randint(0, V, (B, ctx))
+
+    # Compute query directly via the same path used in forward().
+    with torch.no_grad():
+        x0 = model.embed(idx) + model.sheaf_pe(ctx, idx.device, torch.float32).unsqueeze(0)
+        q0 = model.gist_buffer.key_proj(x0[:, 0, :])
+
+        idx_perturbed = idx.clone()
+        idx_perturbed[:, ctx // 2:] = torch.randint(0, V, (B, ctx - ctx // 2))
+        x1 = model.embed(idx_perturbed) + model.sheaf_pe(ctx, idx.device, torch.float32).unsqueeze(0)
+        q1 = model.gist_buffer.key_proj(x1[:, 0, :])
+
+    diff = (q0 - q1).abs().max().item()
+    assert diff < 1e-6, (
+        f"GIST-QUERY LEAK: changing future tokens altered the retrieval "
+        f"query by {diff:.3e}. ctx_summary may have reverted to x.mean(dim=1)."
+    )
+    print(f"OK  TSRNGist gist-query causal: future-perturbation diff = {diff:.2e}")
 
 
 def test_kleene_ssm_backward():
@@ -415,6 +496,8 @@ ALL_TESTS = [
     ("Kleene-star idempotence",     test_kleene_star_idempotence),
     ("KleeneSSM shape & finite",    test_kleene_ssm_shape_and_finite),
     ("KleeneSSM causality",         test_kleene_ssm_causality),
+    ("KleeneSSM selectivity",       test_kleene_ssm_per_position_selectivity),
+    ("TSRNGist gist-query causal",  test_tsrn_gist_query_causality),
     ("KleeneSSM backward",          test_kleene_ssm_backward),
     ("KleeneAttention shape & finite", test_kleene_attention_shape_and_finite),
     ("KleeneAttention causality",   test_kleene_attention_causality),
