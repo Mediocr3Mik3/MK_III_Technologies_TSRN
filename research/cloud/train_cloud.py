@@ -86,8 +86,11 @@ try:
 except Exception:
     ModelConfig = None  # type: ignore
     _TIER_MAP = {}
-# Import v2.0 components
-from tropical_tokenizer import TropicalMergingTokenizer                      # type: ignore
+# Import v2.0 components (optional — only required when use_tmt_tokenizer=True)
+try:
+    from tropical_tokenizer import TropicalMergingTokenizer                  # type: ignore
+except ImportError:
+    TropicalMergingTokenizer = None  # type: ignore
 try:
     from tsrn_inference import generate_with_stats, run_quality_benchmark  # type: ignore
 except Exception:  # pragma: no cover
@@ -238,6 +241,11 @@ def train(cfg: Dict[str, Any], args: argparse.Namespace) -> None:
     # --- TMT tokenizer (v2.0) ---
     tmt_tokenizer = None
     if cfg.get("use_tmt_tokenizer", False) and cfg.get("tmt_path"):
+        if TropicalMergingTokenizer is None:
+            raise ImportError(
+                "use_tmt_tokenizer=True but research/tropical_tokenizer.py is "
+                "not available in this checkout. Either disable the flag or "
+                "add the module to the branch.")
         if is_main:
             print(f"-- Loading TMT tokenizer from {cfg['tmt_path']} --")
         tmt_tokenizer = TropicalMergingTokenizer.load(cfg["tmt_path"])
