@@ -943,7 +943,7 @@ class RGPool(nn.Module):
         left  = x_sh[:, 0::2, :][:, :T//2, :].contiguous()   # (B, T/2, d)
         right = x_sh[:, 1::2, :][:, :T//2, :].contiguous()   # (B, T/2, d)
         pair  = torch.cat([left, right], dim=-1)              # (B, T/2, 2d)
-        pair  = torch.tanh(self.disentangle(pair))
+        pair  = torch.tanh(self.disentangle(pair)).clone()   # clone to prevent CUDAGraphs tensor overwriting
         return self.norm(self.pool(pair)).contiguous()
 
 

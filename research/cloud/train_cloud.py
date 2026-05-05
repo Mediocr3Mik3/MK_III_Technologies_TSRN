@@ -713,7 +713,7 @@ def main(argv: Optional[List[str]] = None) -> None:
         "context_len":     args.context,
         "ckpt_every":      args.ckpt_every,
         "eval_every":      args.eval_every,
-        "compile":         not args.no_compile,
+        "compile":         False if args.no_compile else None,  # None = use preset value
         "gradient_checkpoint": not args.no_grad_ckpt,
         "use_8bit_optimizer": args.use_8bit_optim,
         # v2.0 overrides
