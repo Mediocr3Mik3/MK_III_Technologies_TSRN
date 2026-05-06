@@ -1,0 +1,47 @@
+$schema: https://azuremlschemas.azureedge.net/latest/commandJob.schema.json
+type: command
+display_name: tropformer-sft
+experiment_name: tropformer-sft
+description: SFT (curriculum) on 8x H100, init from best pretrain checkpoint
+
+compute: azureml:h100-cluster
+resources:
+  instance_count: 1
+distribution:
+  type: pytorch
+  process_count_per_instance: 8
+
+environment: azureml:tropformer-cuda124@latest
+
+code: ../../../..
+
+inputs:
+  raw_sft:
+    type: uri_folder
+    mode: ro_mount
+    path: azureml://datastores/blobdata/paths/raw/sft
+  tokenizer:
+    type: uri_file
+    mode: ro_mount
+    path: azureml://datastores/blobdata/paths/tokenizers/tmt_32k.json
+  pretrain_ckpt:
+    type: uri_file
+    mode: ro_mount
+    path: azureml://datastores/blobdata/paths/checkpoints/pretrain/best.pt
+
+outputs:
+  ckpt_dir:
+    type: uri_folder
+    mode: rw_mount
+    path: azureml://datastores/blobdata/paths/checkpoints/sft
+
+environment_variables:
+  TROPFORMER_TMT_PATH: ${{inputs.tokenizer}}
+  WANDB_API_KEY: $WANDB_API_KEY
+
+command: >-
+  python -m research.cloud.azure.train_sft_cloud
+  --config    sft_h100x8
+  --tag       azure_run
+  --init-from ${{inputs.pretrain_ckpt}}
+  --wandb-project tropformer-sft

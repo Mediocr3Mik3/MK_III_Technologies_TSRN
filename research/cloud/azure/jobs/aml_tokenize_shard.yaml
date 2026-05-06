@@ -1,0 +1,34 @@
+$schema: https://azuremlschemas.azureedge.net/latest/commandJob.schema.json
+type: command
+display_name: tropformer-tokenize-shard
+experiment_name: tropformer-pretrain
+description: Tokenize raw shards with TMT, write packed token shards (.bin/.idx.npy)
+
+compute: azureml:cpu-cluster-large  # CPU-bound, scale by cores
+
+environment: azureml:tropformer-cuda124@latest
+
+code: ../../../..
+
+inputs:
+  raw_dir:
+    type: uri_folder
+    mode: ro_mount
+    path: azureml://datastores/blobdata/paths/raw/pretrain
+  tokenizer:
+    type: uri_file
+    mode: ro_mount
+    path: azureml://datastores/blobdata/paths/tokenizers/tmt_32k.json
+outputs:
+  tokens_dir:
+    type: uri_folder
+    mode: rw_mount
+    path: azureml://datastores/blobdata/paths/tokens/pretrain
+
+command: >-
+  python -m research.cloud.azure.data.tokenize_shard
+  --raw-dir       ${{inputs.raw_dir}}
+  --tokenizer     ${{inputs.tokenizer}}
+  --output        ${{outputs.tokens_dir}}
+  --workers       16
+  --shard-tokens  200000000

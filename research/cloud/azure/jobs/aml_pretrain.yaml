@@ -1,0 +1,46 @@
+$schema: https://azuremlschemas.azureedge.net/latest/commandJob.schema.json
+type: command
+display_name: tropformer-pretrain
+experiment_name: tropformer-pretrain
+description: 92B-token pretrain on 8x H100 (Standard_ND96isr_H100_v5)
+
+compute: azureml:h100-cluster   # 8x H100 80GB
+resources:
+  instance_count: 1             # single-node 8 GPU; raise for multi-node
+distribution:
+  type: pytorch
+  process_count_per_instance: 8
+
+environment: azureml:tropformer-cuda124@latest
+
+code: ../../../..
+
+inputs:
+  tokens_dir:
+    type: uri_folder
+    mode: ro_mount
+    path: azureml://datastores/blobdata/paths/tokens/pretrain
+  tokenizer:
+    type: uri_file
+    mode: ro_mount
+    path: azureml://datastores/blobdata/paths/tokenizers/tmt_32k.json
+outputs:
+  ckpt_dir:
+    type: uri_folder
+    mode: rw_mount
+    path: azureml://datastores/blobdata/paths/checkpoints/pretrain
+
+# The trainer reads tokens_dir + tmt_path from the config (pretrain_h100x8.py).
+# We override via env vars; the config picks them up at load time.
+environment_variables:
+  TROPFORMER_TOKENS_DIR: ${{inputs.tokens_dir}}
+  TROPFORMER_TMT_PATH: ${{inputs.tokenizer}}
+  TROPFORMER_OUTPUT_DIR: ${{outputs.ckpt_dir}}
+  WANDB_API_KEY: $WANDB_API_KEY
+  WANDB_PROJECT: tropformer-pretrain
+
+command: >-
+  python -m research.cloud.azure.train_pretrain_cloud
+  --config pretrain_h100x8
+  --tag    azure_run
+  --wandb-project tropformer-pretrain

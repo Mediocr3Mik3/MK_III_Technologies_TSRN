@@ -1,0 +1,118 @@
+# =====================================================================
+# Pretraining data mixture — 92B tokens total
+# =====================================================================
+# Each entry specifies:
+#   name           : human-readable identifier
+#   hf_dataset     : HuggingFace datasets path (or `null` if custom)
+#   hf_config      : HF config name (subset)
+#   split          : HF split
+#   tokens_b       : target token budget in billions
+#   weight         : sampling weight (sums to 1.0)
+#   purpose        : research notes
+#   text_field     : column containing raw text
+#   filter         : optional filter expression (string)
+# =====================================================================
+
+mixture:
+  - name: fineweb_edu
+    hf_dataset: HuggingFaceFW/fineweb-edu
+    hf_config: sample-100BT
+    split: train
+    tokens_b: 38.0
+    weight: 0.41
+    text_field: text
+    purpose: Foundation quality
+
+  - name: openwebmath
+    hf_dataset: open-web-math/open-web-math
+    hf_config: null
+    split: train
+    tokens_b: 7.0
+    weight: 0.08
+    text_field: text
+    purpose: Math reasoning
+
+  - name: finemath
+    hf_dataset: HuggingFaceTB/finemath
+    hf_config: finemath-4plus
+    split: train
+    tokens_b: 6.0
+    weight: 0.07
+    text_field: text
+    purpose: Curated math, higher quality
+
+  - name: stack_python
+    hf_dataset: bigcode/the-stack-v2-dedup
+    hf_config: Python
+    split: train
+    tokens_b: 12.0
+    weight: 0.13
+    text_field: content
+    purpose: Code reasoning
+
+  - name: stack_javascript
+    hf_dataset: bigcode/the-stack-v2-dedup
+    hf_config: JavaScript
+    split: train
+    tokens_b: 4.0
+    weight: 0.04
+    text_field: content
+    purpose: Event patterns
+
+  - name: stack_shell_md
+    hf_dataset: bigcode/the-stack-v2-dedup
+    hf_config: Shell
+    split: train
+    tokens_b: 5.0
+    weight: 0.05
+    text_field: content
+    purpose: Tool patterns (shell + markdown — markdown loaded separately and concatenated)
+
+  - name: dolma_books
+    hf_dataset: allenai/dolma
+    hf_config: v1_6-sample
+    split: train
+    tokens_b: 5.0
+    weight: 0.05
+    text_field: text
+    filter: "source == 'gutenberg' or source == 'books'"
+    purpose: Long-form coherence
+
+  - name: simple_wikipedia
+    hf_dataset: wikipedia
+    hf_config: 20220301.simple
+    split: train
+    tokens_b: 4.0
+    weight: 0.04
+    text_field: text
+    purpose: Factual grounding
+
+  - name: cosmopedia
+    hf_dataset: HuggingFaceTB/cosmopedia
+    hf_config: web_samples_v2
+    split: train
+    tokens_b: 5.0
+    weight: 0.05
+    text_field: text
+    purpose: Synthetic textbook quality
+
+  - name: proofpile2
+    hf_dataset: EleutherAI/proof-pile-2
+    hf_config: default
+    split: train
+    tokens_b: 3.0
+    weight: 0.03
+    text_field: text
+    purpose: Formal logical structure
+
+  - name: gutenberg
+    hf_dataset: sedthh/gutenberg_english
+    hf_config: null
+    split: train
+    tokens_b: 3.0
+    weight: 0.03
+    text_field: TEXT
+    purpose: Narrative coherence
+
+# Aggregate: 92.0B tokens, weights sum to 1.00
+total_tokens_b: 92.0

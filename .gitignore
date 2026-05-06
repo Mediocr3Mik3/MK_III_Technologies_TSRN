@@ -6,10 +6,14 @@ __pycache__/
 venv*/
 
 # Data files (too large for git)
-data/
+/data/
+/research/data/
 *.bin
 enwik8
 enwik8.zip
+# Allow the Azure pipeline data scaffolding (manifests, scripts, configs)
+!research/cloud/azure/data/
+!research/cloud/azure/data/**
 
 # Model checkpoints (binary, often hundreds of MB)
 checkpoints/

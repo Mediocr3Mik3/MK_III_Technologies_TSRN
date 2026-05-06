@@ -1,0 +1,23 @@
+channels:
+  - pytorch
+  - nvidia
+  - conda-forge
+dependencies:
+  - python=3.11
+  - pip
+  - pip:
+      - torch==2.6.0
+      - torchvision
+      - datasets>=2.20
+      - tokenizers>=0.20
+      - huggingface_hub>=0.24
+      - zstandard
+      - pyyaml
+      - numpy
+      - tqdm
+      - wandb
+      - bitsandbytes
+      - psutil
+      - tensorboard
+      - safetensors
+      - azureml-mlflow

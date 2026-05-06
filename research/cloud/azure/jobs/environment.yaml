@@ -1,0 +1,9 @@
+$schema: https://azuremlschemas.azureedge.net/latest/environment.schema.json
+name: tropformer-cuda124
+version: "1"
+description: TropFormer training env (PyTorch 2.6 + CUDA 12.4 + datasets + zstd)
+
+# Use the AzureML curated PyTorch image as base, then layer requirements
+image: mcr.microsoft.com/azureml/openmpi5.0-cuda12.4-ubuntu22.04:latest
+
+conda_file: environment.conda.yaml

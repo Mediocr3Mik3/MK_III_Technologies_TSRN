@@ -1,0 +1,29 @@
+$schema: https://azuremlschemas.azureedge.net/latest/commandJob.schema.json
+type: command
+display_name: tropformer-data-download
+experiment_name: tropformer-pretrain
+description: Stream HF datasets to blob (raw shards)
+
+# Edit these for your workspace:
+# az ml job create -f research/cloud/azure/jobs/aml_data_download.yaml
+compute: azureml:cpu-cluster
+
+environment: azureml:tropformer-cuda124@latest
+
+code: ../../../..   # repo root
+inputs:
+  manifest:
+    type: uri_file
+    path: ../data/manifests/pretrain_mix.yaml
+outputs:
+  raw_dir:
+    type: uri_folder
+    mode: rw_mount
+    path: azureml://datastores/blobdata/paths/raw/pretrain
+
+command: >-
+  pip install zstandard pyyaml datasets huggingface_hub &&
+  python -m research.cloud.azure.data.download
+  --manifest ${{inputs.manifest}}
+  --output   ${{outputs.raw_dir}}
+  --workers  4

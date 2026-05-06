@@ -1,0 +1,49 @@
+# =====================================================================
+# DPO data mixture — 25K preference pairs
+# =====================================================================
+# Strategy:
+#   1. Start from UltraFeedback as base pool (~60K pairs)
+#   2. Auto-rank from SFT model preference scoring
+#   3. Human review of 2K highest-ambiguity pairs
+#   4. Append Kyro-specific preferences (brevity vs completeness for voice)
+# =====================================================================
+
+mixture:
+  - name: ultrafeedback_base
+    hf_dataset: HuggingFaceH4/ultrafeedback_binarized
+    hf_config: null
+    split: train_prefs
+    pairs_k: 60
+    sampled_pairs_k: 21   # subset after auto-ranking + dedup
+    weight: 0.84
+    format: prompt_chosen_rejected
+    purpose: Base preference pool
+
+  - name: kyro_voice_brevity
+    hf_dataset: null
+    local_path: data/dpo/kyro_voice_brevity.jsonl
+    pairs_k: 2
+    sampled_pairs_k: 2
+    weight: 0.08
+    format: prompt_chosen_rejected
+    purpose: Brevity vs completeness in voice context
+
+  - name: human_reviewed_ambiguity
+    hf_dataset: null
+    local_path: data/dpo/human_reviewed_ambiguity.jsonl
+    pairs_k: 2
+    sampled_pairs_k: 2
+    weight: 0.08
+    format: prompt_chosen_rejected
+    purpose: Highest-ambiguity pairs reviewed by humans
+
+total_pairs_k: 25
+beta: 0.1   # DPO temperature
+
+# Auto-rank step: configured separately in jobs/dpo_autorank.yaml
+auto_rank:
+  enabled: true
+  source: ultrafeedback_base
+  ranking_model: latest_sft_checkpoint
+  filter_top_pct: 35   # keep top 35% by margin
+  top_ambiguity_for_review_k: 2

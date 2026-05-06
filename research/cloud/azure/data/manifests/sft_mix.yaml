@@ -1,0 +1,254 @@
+# =====================================================================
+# SFT data mixture — ~6.5M examples across 3 epochs
+# =====================================================================
+# Each entry:
+#   name        : identifier
+#   hf_dataset  : HuggingFace path (null for proprietary/local)
+#   hf_config   : HF config (or null)
+#   split       : HF split
+#   examples_k  : example count in thousands
+#   weight      : per-example weight (sums to ~1.00)
+#   format      : "instruction_response" | "messages" | "tool_call" | "preference"
+#   priority    : "reasoning" | "instruction" | "tool" | "kyro"
+#                 — reasoning trains FIRST (highest priority)
+#   local_path  : optional path to JSONL file (for proprietary data)
+# =====================================================================
+
+mixture:
+  # -------- Reasoning traces (train first, highest priority) --------
+  - name: am_deepseek_r1
+    hf_dataset: a-m-team/AM-DeepSeek-R1-Distilled-1.4M
+    hf_config: null
+    split: train
+    examples_k: 1400
+    weight: 0.22
+    format: messages
+    priority: reasoning
+    purpose: Verified thinking traces
+
+  - name: mixture_of_thoughts
+    hf_dataset: HuggingFaceH4/Mixture-of-Thoughts
+    hf_config: null
+    split: train
+    examples_k: 350
+    weight: 0.05
+    format: messages
+    priority: reasoning
+    purpose: HF curated R1 distillation
+
+  - name: ultrainteract
+    hf_dataset: openbmb/UltraInteract_sft
+    hf_config: null
+    split: train
+    examples_k: 289
+    weight: 0.04
+    format: instruction_response
+    priority: reasoning
+    purpose: Self-refinement reasoning
+
+  - name: metamathqa
+    hf_dataset: meta-math/MetaMathQA
+    hf_config: null
+    split: train
+    examples_k: 395
+    weight: 0.06
+    format: instruction_response
+    priority: reasoning
+    purpose: Math decomposition
+
+  - name: open_math_instruct
+    hf_dataset: nvidia/OpenMathInstruct-2
+    hf_config: null
+    split: train
+    examples_k: 500
+    weight: 0.07
+    format: instruction_response
+    priority: reasoning
+    purpose: Math + code verification
+
+  # -------- Instruction following --------
+  - name: openhermes_2_5
+    hf_dataset: teknium/OpenHermes-2.5
+    hf_config: null
+    split: train
+    examples_k: 900
+    weight: 0.14
+    format: messages
+    priority: instruction
+    purpose: General instructions
+
+  - name: tulu3_sft
+    hf_dataset: allenai/tulu-3-sft-mixture
+    hf_config: null
+    split: train
+    examples_k: 500
+    weight: 0.08
+    format: messages
+    priority: instruction
+    purpose: Curated diversity
+
+  - name: wizardlm_evol
+    hf_dataset: WizardLMTeam/WizardLM_evol_instruct_V2_196k
+    hf_config: null
+    split: train
+    examples_k: 196
+    weight: 0.03
+    format: instruction_response
+    priority: instruction
+    purpose: Complexity scaling
+
+  - name: magpie_pro
+    hf_dataset: Magpie-Align/Magpie-Pro-300K-Filtered
+    hf_config: null
+    split: train
+    examples_k: 400
+    weight: 0.06
+    format: messages
+    priority: instruction
+    purpose: Instruction variety
+
+  - name: slimorca
+    hf_dataset: Open-Orca/SlimOrca
+    hf_config: null
+    split: train
+    examples_k: 400
+    weight: 0.06
+    format: messages
+    priority: instruction
+    purpose: Reasoning chains
+
+  # -------- Tool use and agent --------
+  - name: orca_agent
+    hf_dataset: microsoft/orca-agentinstruct-1M-v1
+    hf_config: null
+    split: train
+    examples_k: 400
+    weight: 0.06
+    format: messages
+    priority: tool
+    purpose: Multi-step agent trajectories
+
+  - name: glaive_function
+    hf_dataset: glaiveai/glaive-function-calling-v2
+    hf_config: null
+    split: train
+    examples_k: 113
+    weight: 0.02
+    format: tool_call
+    priority: tool
+    purpose: Best tool calling
+
+  - name: xlam_function
+    hf_dataset: Salesforce/xlam-function-calling-60k
+    hf_config: null
+    split: train
+    examples_k: 60
+    weight: 0.01
+    format: tool_call
+    priority: tool
+    purpose: API diversity
+
+  - name: hermes_function
+    hf_dataset: NousResearch/hermes-function-calling-v1
+    hf_config: null
+    split: train
+    examples_k: 11
+    weight: 0.005
+    format: tool_call
+    priority: tool
+    purpose: JSON format
+
+  - name: code_feedback
+    hf_dataset: m-a-p/Code-Feedback
+    hf_config: null
+    split: train
+    examples_k: 500
+    weight: 0.07
+    format: messages
+    priority: tool
+    purpose: Self-correction
+
+  # -------- Kyro-specific (proprietary, highest per-example weight) --------
+  - name: kyro_synthetic_tools
+    hf_dataset: null
+    hf_config: null
+    split: null
+    local_path: data/sft/kyro_synthetic_tools.jsonl
+    examples_k: 50
+    weight: 0.03
+    format: tool_call
+    priority: kyro
+    sample_weight_multiplier: 5.0   # boost per example during loss
+    purpose: 47 Kyro tools, exact format
+
+  - name: kyro_temporal_reasoning
+    hf_dataset: null
+    hf_config: null
+    split: null
+    local_path: data/sft/kyro_temporal_reasoning.jsonl
+    examples_k: 10
+    weight: 0.02
+    format: instruction_response
+    priority: kyro
+    sample_weight_multiplier: 5.0
+    purpose: Scheduling chain-of-thought
+
+  - name: kyro_memory_reasoning
+    hf_dataset: null
+    hf_config: null
+    split: null
+    local_path: data/sft/kyro_memory_reasoning.jsonl
+    examples_k: 8
+    weight: 0.01
+    format: instruction_response
+    priority: kyro
+    sample_weight_multiplier: 5.0
+    purpose: Memory retrieval reasoning
+
+  - name: kyro_uncertainty
+    hf_dataset: null
+    hf_config: null
+    split: null
+    local_path: data/sft/kyro_uncertainty.jsonl
+    examples_k: 5
+    weight: 0.01
+    format: instruction_response
+    priority: kyro
+    sample_weight_multiplier: 5.0
+    purpose: Ask vs act reasoning
+
+  - name: kyro_consequence
+    hf_dataset: null
+    hf_config: null
+    split: null
+    local_path: data/sft/kyro_consequence.jsonl
+    examples_k: 5
+    weight: 0.01
+    format: instruction_response
+    priority: kyro
+    sample_weight_multiplier: 5.0
+    purpose: Reversibility reasoning
+
+  - name: kyro_voice_patterns
+    hf_dataset: null
+    hf_config: null
+    split: null
+    local_path: data/sft/kyro_voice_patterns.jsonl
+    examples_k: 20
+    weight: 0.02
+    format: messages
+    priority: kyro
+    sample_weight_multiplier: 5.0
+    purpose: Natural voice interaction
+
+# Aggregate: ~6.5M examples, 3 epochs, weights sum to ~1.00
+total_examples_k: 6512
+epochs: 3
+
+# Curriculum order: reasoning -> instruction -> tool -> kyro
+# Each priority block trained sequentially; within each block, shuffle.
+curriculum_order:
+  - reasoning
+  - instruction
+  - tool
+  - kyro

@@ -1,0 +1,30 @@
+$schema: https://azuremlschemas.azureedge.net/latest/commandJob.schema.json
+type: command
+display_name: tropformer-train-tmt
+experiment_name: tropformer-pretrain
+description: Train Tropical Merging Tokenizer on a 5 GiB sample of pretrain corpus
+
+compute: azureml:gpu-small  # 1x L4/A10 is fine for tokenizer training
+
+environment: azureml:tropformer-cuda124@latest
+
+code: ../../../..
+
+inputs:
+  raw_dir:
+    type: uri_folder
+    mode: ro_mount
+    path: azureml://datastores/blobdata/paths/raw/pretrain
+outputs:
+  tokenizer_dir:
+    type: uri_folder
+    mode: rw_mount
+    path: azureml://datastores/blobdata/paths/tokenizers
+
+command: >-
+  python -m research.cloud.azure.data.train_tmt
+  --raw-dir       ${{inputs.raw_dir}}
+  --output        ${{outputs.tokenizer_dir}}/tmt_32k.json
+  --vocab-size    32000
+  --sample-bytes  5e9
+  --rounds        14
