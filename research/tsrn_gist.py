@@ -255,28 +255,73 @@ class GistBuffer(nn.Module):
         B = theta.shape[0]
         with torch.no_grad():
             key = self.key_proj(ctx_repr.detach())
-            for b in range(B):
-                ptr = self.write_ptr.item() % self.max_gists
-                self.stored_theta[ptr] = theta[b].detach()
-                self.stored_mag[ptr] = mag[b].detach()
-                self.stored_keys[ptr] = key[b].detach()
-                self.write_ptr.add_(1)
-            self.count.fill_(min(self.write_ptr.item(), self.max_gists))
+            
+            # Vectorize: compute all write indices at once
+            indices = torch.arange(B, device=theta.device)  # [0, 1, ..., B-1]
+            ptrs = (self.write_ptr + indices) % self.max_gists  # (B,)
+            
+            # Batch scatter writes using index_put_
+            self.stored_theta.index_put_((ptrs,), theta.detach())
+            self.stored_mag.index_put_((ptrs,), mag.detach())
+            self.stored_keys.index_put_((ptrs,), key.detach())
+            
+            # Update write_ptr and count using tensor ops
+            self.write_ptr.add_(B)
+            new_count = torch.minimum(self.write_ptr, 
+                                      torch.tensor(self.max_gists, device=self.write_ptr.device))
+            self.count.copy_(new_count)
 
     def retrieve(self, query: Tensor, top_k: int = 4):
-        n, B = self.count.item(), query.shape[0]
-        if n == 0:
-            return (torch.zeros(B,1,self.dh, device=query.device),
-                    torch.zeros(B,1,1, device=query.device),
-                    torch.ones(B,1, device=query.device))
-        keys = self.stored_keys[:n]
-        # Detach: buffer is a non-differentiable cache; avoids DML scatter in topk backward
-        scores = torch.logsumexp(
-            query.detach().unsqueeze(1) + keys.unsqueeze(0), dim=-1)
-        k = min(top_k, n)
-        topk_s, topk_i = scores.topk(k, dim=-1)
+        B = query.shape[0]
+        n = self.count.long()  # Keep as tensor (0-d or 1-d)
+        
+        # Use torch.where instead of Python conditional for n==0 check
+        n_clamped = n.clamp(max=self.max_gists)
+        
+        # Create masks for empty vs non-empty buffer
+        is_empty = (n == 0)
+        
+        # Compute scores for all possible gists (use full buffer, mask later)
+        keys = self.stored_keys  # (max_gists, d_model)
+        
+        # Pad query to match max_gists for broadcasting
+        query_expanded = query.detach().unsqueeze(1)  # (B, 1, d_model)
+        keys_expanded = keys.unsqueeze(0)  # (1, max_gists, d_model)
+        
+        # Compute scores for all positions
+        scores = torch.logsumexp(query_expanded + keys_expanded, dim=-1)  # (B, max_gists)
+        
+        # Mask out unused positions (where index >= n)
+        indices = torch.arange(self.max_gists, device=query.device).unsqueeze(0)  # (1, max_gists)
+        valid_mask = (indices < n_clamped.unsqueeze(1))  # (B, max_gists)
+        scores = scores.masked_fill(~valid_mask, float('-inf'))
+        
+        # Compute k using tensor min
+        k_tensor = torch.tensor(top_k, device=query.device, dtype=torch.long)
+        k_clamped = torch.minimum(k_tensor, n_clamped)  # (B,) broadcasted
+        
+        # Get topk - handle empty case via masked scores
+        k_safe = k_clamped.max()  # scalar for topk
+        topk_s, topk_i = scores.topk(k_safe, dim=-1)  # (B, k_safe)
+        
+        # For empty buffers, topk will be all -inf; replace with default outputs
         w = torch.softmax(topk_s, dim=-1)
-        return self.stored_theta[:n][topk_i], self.stored_mag[:n][topk_i], w
+        
+        # Index into stored tensors
+        theta_out = self.stored_theta[topk_i]  # (B, k_safe, dh)
+        mag_out = self.stored_mag[topk_i]     # (B, k_safe, 1)
+        
+        # For empty case, return zeros/ones
+        theta_default = torch.zeros(B, 1, self.dh, device=query.device)
+        mag_default = torch.zeros(B, 1, 1, device=query.device)
+        w_default = torch.ones(B, 1, device=query.device)
+        
+        # Use torch.where to select based on is_empty
+        theta_out = torch.where(is_empty.view(-1, 1, 1), theta_default, theta_out)
+        mag_out = torch.where(is_empty.view(-1, 1, 1), mag_default, mag_out)
+        w_out = torch.where(is_empty.view(-1, 1), w_default, w)
+        
+        return theta_out, mag_out, w_out
 
     def reset(self):
         self.stored_theta.zero_(); self.stored_mag.zero_()
