@@ -293,7 +293,7 @@ class GistBuffer(nn.Module):
         
         # Mask out unused positions (where index >= n)
         indices = torch.arange(self.max_gists, device=query.device).unsqueeze(0)  # (1, max_gists)
-        valid_mask = (indices < n_clamped.unsqueeze(1))  # (B, max_gists)
+        valid_mask = (indices < n_clamped)  # (1, max_gists) → broadcasts to (B, max_gists)
         scores = scores.masked_fill(~valid_mask, float('-inf'))
         
         # Compute k using tensor min
