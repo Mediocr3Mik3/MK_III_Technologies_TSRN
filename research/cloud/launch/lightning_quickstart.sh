@@ -19,10 +19,15 @@ set -euo pipefail
 
 REPO="${REPO:-/teamspace/studios/this_studio/TropFormer}"
 BRANCH="${BRANCH:-kleene-star}"
+LOG_FILE="${LOG_FILE:-logs/lightning_validation_$(date +%Y%m%d_%H%M%S).log}"
+
+mkdir -p logs
+exec > >(tee -a "${LOG_FILE}") 2>&1
 
 echo "=================================================================="
 echo "  TropFormer Lightning.ai CUDA Validation"
 echo "=================================================================="
+echo "  Full terminal output being logged to: ${LOG_FILE}"
 
 # ---------------------------------------------------------------------------
 # 1. Clone / update repo
