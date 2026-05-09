@@ -22,24 +22,28 @@ BRANCH="${BRANCH:-kleene-star}"
 LOG_FILE="${LOG_FILE:-logs/lightning_validation_$(date +%Y%m%d_%H%M%S).log}"
 
 mkdir -p logs
-exec > >(tee -a "${LOG_FILE}") 2>&1
 
-echo "=================================================================="
-echo "  TropFormer Lightning.ai CUDA Validation"
-echo "=================================================================="
-echo "  Full terminal output being logged to: ${LOG_FILE}"
+# Logging function - use this for all echo statements
+log() {
+    echo "$@" | tee -a "${LOG_FILE}"
+}
+
+log "=================================================================="
+log "  TropFormer Lightning.ai CUDA Validation"
+log "=================================================================="
+log "  Full terminal output being logged to: ${LOG_FILE}"
 
 # ---------------------------------------------------------------------------
 # 1. Clone / update repo
 # ---------------------------------------------------------------------------
 if [ ! -d "${REPO}" ]; then
-    echo "==> Cloning TropFormer (${BRANCH} branch)..."
+    log "==> Cloning TropFormer (${BRANCH} branch)..."
     git clone -b "${BRANCH}" \
         https://github.com/Mediocr3Mik3/MK_III_Technologies_TSRN.git \
-        "${REPO}"
+        "${REPO}" | tee -a "${LOG_FILE}"
 else
-    echo "==> Updating existing repo..."
-    cd "${REPO}" && git fetch origin && git checkout "${BRANCH}" && git pull
+    log "==> Updating existing repo..."
+    cd "${REPO}" && git fetch origin && git checkout "${BRANCH}" && git pull | tee -a "${LOG_FILE}"
 fi
 cd "${REPO}"
 
@@ -48,12 +52,12 @@ cd "${REPO}"
 # ---------------------------------------------------------------------------
 # Lightning.ai Studios forbid creating new venvs — every Studio has exactly
 # one default conda env.  Detect that case and install into the active env.
-echo
-echo "==> Setting up Python environment..."
+log ""
+log "==> Setting up Python environment..."
 IS_LIGHTNING=0
 if [ -d "/teamspace" ] || [ -n "${LIGHTNING_CLOUD_URL:-}" ]; then
     IS_LIGHTNING=1
-    echo "    Detected Lightning.ai Studio — using default conda env (no venv)."
+    log "    Detected Lightning.ai Studio — using default conda env (no venv)."
 fi
 
 if [ "${IS_LIGHTNING}" = "0" ]; then
@@ -73,49 +77,49 @@ try:
 except Exception:
     sys.exit(1)') ; rc=$?
 if [ "${rc}" != "0" ]; then
-    echo "    Installing PyTorch (CUDA 12.1)..."
+    log "    Installing PyTorch (CUDA 12.1)..."
     pip install -q --index-url https://download.pytorch.org/whl/cu121 \
-        "torch==2.4.1" "torchvision==0.19.1"
+        "torch==2.4.1" "torchvision==0.19.1" 2>&1 | tee -a "${LOG_FILE}"
 else
-    echo "    PyTorch with CUDA already present — skipping torch install."
+    log "    PyTorch with CUDA already present — skipping torch install."
 fi
 
-pip install -q -r requirements.txt
-pip install -q -r research/cloud/requirements_cuda.txt
-echo "==> PyTorch version: $(python -c 'import torch; print(torch.__version__)')"
-echo "==> CUDA available: $(python -c 'import torch; print(torch.cuda.is_available())')"
-echo "==> GPU: $(python -c 'import torch; print(torch.cuda.get_device_name(0) if torch.cuda.is_available() else "CPU")')"
+pip install -q -r requirements.txt 2>&1 | tee -a "${LOG_FILE}"
+pip install -q -r research/cloud/requirements_cuda.txt 2>&1 | tee -a "${LOG_FILE}"
+log "==> PyTorch version: $(python -c 'import torch; print(torch.__version__)')"
+log "==> CUDA available: $(python -c 'import torch; print(torch.cuda.is_available())')"
+log "==> GPU: $(python -c 'import torch; print(torch.cuda.get_device_name(0) if torch.cuda.is_available() else "CPU")')"
 
 # ---------------------------------------------------------------------------
 # 3. Download enwik8 (validation dataset, 36MB, fast)
 # ---------------------------------------------------------------------------
-echo
-echo "==> Downloading enwik8..."
+log ""
+log "==> Downloading enwik8..."
 mkdir -p data
 if [ ! -f data/enwik8 ]; then
-    wget -q -O data/enwik8.zip http://mattmahoney.net/dc/enwik8.zip
-    (cd data && unzip -q -o enwik8.zip)
-    echo "   enwik8 downloaded."
+    wget -q -O data/enwik8.zip http://mattmahoney.net/dc/enwik8.zip 2>&1 | tee -a "${LOG_FILE}"
+    (cd data && unzip -q -o enwik8.zip) 2>&1 | tee -a "${LOG_FILE}"
+    log "   enwik8 downloaded."
 fi
 
 # ---------------------------------------------------------------------------
 # 4. Run the full test suite on GPU
 # ---------------------------------------------------------------------------
-echo
-echo "=================================================================="
-echo "  STEP 1/3 — Correctness tests (GPU)"
-echo "=================================================================="
-python research/test_kleene.py
-echo
-echo ">>> TEST SUITE COMPLETE"
+log ""
+log "=================================================================="
+log "  STEP 1/3 — Correctness tests (GPU)"
+log "=================================================================="
+python research/test_kleene.py 2>&1 | tee -a "${LOG_FILE}"
+log ""
+log ">>> TEST SUITE COMPLETE"
 
 # ---------------------------------------------------------------------------
 # 5. 2000-step smoke train: baseline (TropicalSSM) vs Kleene
 # ---------------------------------------------------------------------------
-echo
-echo "=================================================================="
-echo "  STEP 2/3 — 2000-step baseline smoke run (TropicalSSM)"
-echo "=================================================================="
+log ""
+log "=================================================================="
+log "  STEP 2/3 — 2000-step baseline smoke run (TropicalSSM)"
+log "=================================================================="
 mkdir -p checkpoints results logs
 
 # Baseline: TropicalSSM (no Kleene flag)
@@ -123,29 +127,29 @@ python -m research.cloud.train_cloud \
     --preset small_24gb \
     --steps 2000 \
     --tag smoke_baseline \
-    2>&1 | tee logs/smoke_baseline.log
+    2>&1 | tee logs/smoke_baseline.log | tee -a "${LOG_FILE}"
 
-echo
-echo "=================================================================="
-echo "  STEP 3/3 — 2000-step KleeneSSM smoke run"
-echo "=================================================================="
+log ""
+log "=================================================================="
+log "  STEP 3/3 — 2000-step KleeneSSM smoke run"
+log "=================================================================="
 # KleeneSSM run (tier=nano, Kleene SSM enabled)
 python -m research.cloud.train_cloud \
     --preset small_24gb \
     --steps 2000 \
     --tag smoke_kleene \
     --use-kleene-ssm \
-    2>&1 | tee logs/smoke_kleene.log
+    2>&1 | tee logs/smoke_kleene.log | tee -a "${LOG_FILE}"
 
 # ---------------------------------------------------------------------------
 # 6. Extract and compare results
 # ---------------------------------------------------------------------------
-echo
-echo "=================================================================="
-echo "  RESULTS SUMMARY"
-echo "=================================================================="
+log ""
+log "=================================================================="
+log "  RESULTS SUMMARY"
+log "=================================================================="
 
-python3 - <<'PYEOF'
+python3 - <<'PYEOF' 2>&1 | tee -a "${LOG_FILE}"
 import glob, json, os
 
 def extract_stats(tag):
@@ -180,8 +184,8 @@ if kleene and "step_time_ms" in kleene:
         print(f"    A100 spot cost : ${cost_a100:.0f}")
 PYEOF
 
-echo
-echo "=================================================================="
-echo "  Lightning.ai validation complete."
-echo "  Review logs: smoke_baseline.log, smoke_kleene.log"
-echo "=================================================================="
+log ""
+log "=================================================================="
+log "  Lightning.ai validation complete."
+log "  Review logs: smoke_baseline.log, smoke_kleene.log, ${LOG_FILE}"
+log "=================================================================="
