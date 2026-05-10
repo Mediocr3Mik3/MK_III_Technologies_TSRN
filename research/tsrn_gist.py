@@ -277,15 +277,19 @@ class GistBuffer(nn.Module):
         
         # Handle empty buffer with torch.where (no Python conditional)
         is_empty = (n == 0)
-        
-        # For non-empty case: dynamic slicing using tensor ops
         n_clamped = n.clamp(max=self.max_gists)
         
-        # Compute scores only for actual positions (dynamic slicing)
-        keys = self.stored_keys[:n_clamped]  # (n, d_model) - dynamic slice
+        # Use full buffer with masking to avoid dynamic shapes (torch.compile friendly)
+        # Dynamic slicing [:n_clamped] causes graph breaks and recompilation
+        keys = self.stored_keys  # (max_gists, d_model) - fixed size
         query_expanded = query.detach().unsqueeze(1)  # (B, 1, d_model)
-        keys_expanded = keys.unsqueeze(0)  # (1, n, d_model)
-        scores = torch.logsumexp(query_expanded + keys_expanded, dim=-1)  # (B, n)
+        keys_expanded = keys.unsqueeze(0)  # (1, max_gists, d_model)
+        scores = torch.logsumexp(query_expanded + keys_expanded, dim=-1)  # (B, max_gists)
+        
+        # Mask out unused positions (where index >= n)
+        indices = torch.arange(self.max_gists, device=query.device).unsqueeze(0)  # (1, max_gists)
+        valid_mask = (indices < n_clamped)  # (1, max_gists) - broadcasts to (B, max_gists)
+        scores = scores.masked_fill(~valid_mask, float('-inf'))
         
         # Compute k using tensor min
         k_tensor = torch.tensor(top_k, device=query.device, dtype=torch.long)
@@ -296,9 +300,9 @@ class GistBuffer(nn.Module):
         topk_s, topk_i = scores.topk(k_safe, dim=-1)  # (B, k_safe)
         w = torch.softmax(topk_s, dim=-1)
         
-        # Index into stored tensors
-        theta_out = self.stored_theta[:n_clamped][topk_i]  # (B, k_safe, dh)
-        mag_out = self.stored_mag[:n_clamped][topk_i]     # (B, k_safe, 1)
+        # Index into stored tensors (use full buffer, indices handle selection)
+        theta_out = self.stored_theta[topk_i]  # (B, k_safe, dh)
+        mag_out = self.stored_mag[topk_i]     # (B, k_safe, 1)
         
         # For empty case, return zeros/ones
         theta_default = torch.zeros(B, 1, self.dh, device=query.device)
