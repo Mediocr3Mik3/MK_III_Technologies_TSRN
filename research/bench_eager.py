@@ -17,8 +17,43 @@ Usage:
 from __future__ import annotations
 import argparse
 import inspect
-import time
+import sys
+import types
+from pathlib import Path
 import torch
+
+# ---------------------------------------------------------------------------
+# Compatibility shims — injected BEFORE any research.* imports
+# ---------------------------------------------------------------------------
+
+# 1. nvidia-cloud's tsrn_dml.py calls torch.utils.checkpoint.checkpoint()
+#    without importing the submodule.  Pre-import it here.
+import torch.utils.checkpoint  # noqa: F401
+
+# 2. tsrn_gist.py imports `from hyperbolic_embeddings import ...` at module
+#    level, but the package may not be installed.  Since bench_eager never
+#    sets use_hyperbolic=True, the two functions are never called — we just
+#    need the names to exist so the import doesn't crash.
+if "hyperbolic_embeddings" not in sys.modules:
+    _stub = types.ModuleType("hyperbolic_embeddings")
+
+    def _poincare_to_tangent(x):  # identity stub (never actually called)
+        return x
+
+    def _tangent_to_poincare(x):
+        return x
+
+    _stub.poincare_to_tangent = _poincare_to_tangent
+    _stub.tangent_to_poincare = _tangent_to_poincare
+    sys.modules["hyperbolic_embeddings"] = _stub
+
+# 3. nvidia-cloud's tsrn_gist.py uses bare `from tsrn_dml import ...` (no
+#    `research.` prefix) because it was developed to be run from the research/
+#    directory.  Add the research/ dir to path so that import works when this
+#    script is invoked via `python -m research.bench_eager` from repo root.
+_research_dir = str(Path(__file__).parent)
+if _research_dir not in sys.path:
+    sys.path.insert(0, _research_dir)
 
 
 def _filter_kwargs(cls, kwargs: dict) -> dict:
@@ -48,17 +83,26 @@ def main():
     device = torch.device("cuda")
 
     # Try the new TSRNGist first; fall back to TSRN if unavailable.
+    # We try three import paths to cover both current branch (research.*
+    # package) and older branches (bare module names, nvidia-cloud style).
     Model = None
-    try:
-        from research.tsrn_gist import TSRNGist as Model
-        print(f"  using TSRNGist from research.tsrn_gist")
-    except Exception:
+    for mod_path, cls_name in [
+        ("research.tsrn_gist", "TSRNGist"),
+        ("tsrn_gist",          "TSRNGist"),  # nvidia-cloud bare-name style
+        ("research.tsrn_dml",  "TSRN"),
+        ("tsrn_dml",           "TSRN"),
+    ]:
         try:
-            from research.tsrn_dml import TSRN as Model
-            print(f"  using TSRN from research.tsrn_dml")
-        except Exception as e:
-            print(f"  ERROR: could not import a model class: {e}")
-            return
+            import importlib
+            mod = importlib.import_module(mod_path)
+            Model = getattr(mod, cls_name)
+            print(f"  using {cls_name} from {mod_path}")
+            break
+        except Exception:
+            continue
+    if Model is None:
+        print("  ERROR: could not import any model class")
+        return
 
     base_kwargs = dict(
         vocab=args.vocab,
