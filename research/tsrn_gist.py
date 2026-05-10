@@ -263,10 +263,12 @@ class GistBuffer(nn.Module):
             indices = torch.arange(B, device=theta.device)  # [0, 1, ..., B-1]
             ptrs = (self.write_ptr + indices) % self.max_gists  # (B,)
             
-            # Batch scatter writes using index_put_
-            self.stored_theta.index_put_((ptrs,), theta.detach())
-            self.stored_mag.index_put_((ptrs,), mag.detach())
-            self.stored_keys.index_put_((ptrs,), key.detach())
+            # Batch scatter writes using index_put_.
+            # Cast inputs to buffer dtype (buffers are fp32; AMP forward
+            # produces bf16/fp16) — index_put_ requires matching dtype.
+            self.stored_theta.index_put_((ptrs,), theta.detach().to(self.stored_theta.dtype))
+            self.stored_mag.index_put_((ptrs,), mag.detach().to(self.stored_mag.dtype))
+            self.stored_keys.index_put_((ptrs,), key.detach().to(self.stored_keys.dtype))
             
             # Update write_ptr and count using tensor ops
             self.write_ptr.add_(B)
@@ -307,10 +309,10 @@ class GistBuffer(nn.Module):
         theta_out = self.stored_theta[topk_i]  # (B, k_safe, dh)
         mag_out = self.stored_mag[topk_i]     # (B, k_safe, 1)
         
-        # For empty case, return zeros/ones
-        theta_default = torch.zeros(B, 1, self.dh, device=query.device)
-        mag_default = torch.zeros(B, 1, 1, device=query.device)
-        w_default = torch.ones(B, 1, device=query.device)
+        # For empty case, return zeros/ones (match buffer dtype to avoid mismatches)
+        theta_default = torch.zeros(B, 1, self.dh, device=query.device, dtype=self.stored_theta.dtype)
+        mag_default = torch.zeros(B, 1, 1, device=query.device, dtype=self.stored_mag.dtype)
+        w_default = torch.ones(B, 1, device=query.device, dtype=w.dtype)
         
         # Use torch.where to select based on is_empty
         theta_out = torch.where(is_empty.view(-1, 1, 1), theta_default, theta_out)
