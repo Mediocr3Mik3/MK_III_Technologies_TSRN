@@ -106,41 +106,77 @@ def analyze(events: list[dict], top_n: int = 20) -> None:
         pct = 100 * t / total_cuda
         print(f"  {name:30s} {n:>10,} {t/1000:>10.1f} {pct:>6.1f}%")
 
-    # Heuristic attribution to TropFormer modules.  We look for the
-    # ``UserAnnotation`` / module-class strings that PyTorch profiler
-    # emits when modules are forward-hooked.
+    # ----- Per-MODULE attribution ------------------------------------------
+    # PyTorch profiler with ``with_modules=True`` emits parent events whose
+    # name starts with ``"nn.Module: ClassName_<idx>"`` (cat="user_annotation"
+    # in 2.4+, "cpu_op" in 2.6).  These wrap their child aten ops in time, so
+    # we can attribute each aten event to the deepest enclosing module event.
+    module_events = []
+    for e in events:
+        if e.get("ph") != "X":
+            continue
+        name = e.get("name", "")
+        if name.startswith("nn.Module:"):
+            tid = e.get("tid", 0)
+            ts = float(e.get("ts", 0.0))
+            dur = float(e.get("dur", 0.0))
+            # Strip "nn.Module: " prefix and trailing "_N" index.
+            cls = name.split(":", 1)[1].strip()
+            cls = cls.rsplit("_", 1)[0] if "_" in cls else cls
+            module_events.append((tid, ts, ts + dur, cls))
+    # Sort module events by tid then start so containment lookup is fast.
+    module_events.sort(key=lambda t: (t[0], t[1]))
+
+    # For each aten op, binary-search the deepest module event that contains it.
+    import bisect
+    by_tid: dict[int, list[tuple[float, float, str]]] = defaultdict(list)
+    for tid, s, e_, cls in module_events:
+        by_tid[tid].append((s, e_, cls))
+    starts_by_tid = {tid: [s for s, _, _ in lst] for tid, lst in by_tid.items()}
+
     module_count: Counter = Counter()
     module_cuda: Counter = Counter()
-    INTERESTING_NAMES = (
-        "TropicalAttention", "PAdicAttention", "PAdicMemory",
-        "HyperbolicEmbedding", "CliffordFFN", "SheafRotorDiffusion",
-        "KleeneSSM", "TropicalSSM", "KleeneAttention",
-        "EchoStateReservoir", "GistBuffer", "GistExtractor",
-        "RGPool", "PAdicHarmonicPE", "PAdicContextScaling",
-        "TSRNGistBlock",
-    )
     for e in cpu_events:
         name = e.get("name", "")
-        for m in INTERESTING_NAMES:
-            if m in name:
-                module_count[m] += 1
-                args = e.get("args") or {}
-                ext = args.get("External id")
-                if ext is not None and ext in cuda_by_corr:
-                    module_cuda[m] += cuda_by_corr[ext]
+        if not name.startswith("aten::"):
+            continue
+        tid = e.get("tid", 0)
+        ts = float(e.get("ts", 0.0))
+        dur = float(e.get("dur", 0.0))
+        end = ts + dur
+        starts = starts_by_tid.get(tid)
+        if not starts:
+            continue
+        # Find rightmost module whose start <= ts.
+        idx = bisect.bisect_right(starts, ts) - 1
+        deepest_cls = None
+        # Walk back finding the smallest enclosing module.
+        while idx >= 0:
+            ms, me, cls = by_tid[tid][idx]
+            if me >= end:
+                deepest_cls = cls
                 break
+            idx -= 1
+        if deepest_cls is None:
+            continue
+        module_count[deepest_cls] += 1
+        args = e.get("args") or {}
+        ext = args.get("External id")
+        if ext is not None and ext in cuda_by_corr:
+            module_cuda[deepest_cls] += cuda_by_corr[ext]
 
     if module_count:
-        print("\n  Per-MODULE breakdown (matched on event name):")
-        print(f"  {'module':30s} {'events':>10s} {'cuda_ms':>10s}")
-        print("  " + "-" * 55)
-        for m, n in module_count.most_common():
-            print(f"  {m:30s} {n:>10,} {module_cuda[m]/1000:>10.1f}")
+        print("\n  Per-MODULE breakdown (deepest enclosing nn.Module per aten op):")
+        print(f"  {'module':32s} {'aten_evts':>10s} {'cuda_ms':>10s} {'%cuda':>7s}")
+        print("  " + "-" * 65)
+        total_attr_cuda = sum(module_cuda.values()) or 1
+        for m, n in module_count.most_common(20):
+            cuda_ms = module_cuda[m] / 1000
+            pct = 100 * module_cuda[m] / total_attr_cuda
+            print(f"  {m:32s} {n:>10,} {cuda_ms:>10.1f} {pct:>6.1f}%")
     else:
-        print("\n  [No module-level annotations found; profile was captured "
-              "without record_function() hooks.  Run with_stack=True or wrap "
-              "modules with torch.profiler.record_function('Name') for "
-              "per-module attribution.]")
+        print("\n  [No 'nn.Module: ...' events found; run profile_forward "
+              "with with_modules=True (already default in HEAD).]")
 
 
 def main():
