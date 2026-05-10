@@ -43,6 +43,13 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
+# Tropical matmul kernels (Tensor-Core soft path + Triton hard kernel).
+# Importable from both `research.tropical_kernels` and the package root.
+try:
+    from research.tropical_kernels import tropical_matmul as _tropical_matmul
+except Exception:                                         # pragma: no cover
+    from tropical_kernels import tropical_matmul as _tropical_matmul  # type: ignore
+
 # Import v2.0 components.  Imported lazily below to keep DML-only test
 # environments importable when these modules' side-deps are missing.
 from hyperbolic_embeddings import HyperbolicEmbedding
@@ -1263,10 +1270,21 @@ class KleeneSSM(nn.Module):
         Computed in parallel: H = A_star (max-plus matmul) U
     """
 
-    def __init__(self, d_model: int, d_state: int = 64, n_iters: int = 4):
+    def __init__(self, d_model: int, d_state: int = 64, n_iters: int = 4,
+                 tropical_mode: str = "auto", tropical_h: float = 1.0):
+        """Args:
+            tropical_mode: backend for max-plus matmul. One of
+                {'auto', 'soft', 'triton', 'naive'}.  See research.tropical_kernels.
+                'soft' (default in 'auto' when h>0) routes through Tensor Cores
+                at the cost of a bounded gap to true max-plus that closes as
+                h -> 0+.  'triton' is the hard-max-plus Triton kernel.
+            tropical_h: Maslov temperature for the soft path.  Lower = sharper.
+        """
         super().__init__()
         self.d_model = d_model
         self.d_state = d_state
+        self.tropical_mode = tropical_mode
+        self.tropical_h = float(tropical_h)
         # log2(d_state) iterations is sufficient for convergence on acyclic graphs.
         # bit_length() gives ceil(log2) + 1 for powers of two; clamp lower bound.
         min_iters = max(1, (d_state - 1).bit_length())
@@ -1324,15 +1342,14 @@ class KleeneSSM(nn.Module):
         # Fixed n_iters loop (no dynamic break) — torch.compile friendly.
         # log2(d_state) iterations are sufficient for full convergence on
         # acyclic graphs, so we don't lose correctness by removing early exit.
+        # Each squaring step is a tropical matmul; route through dispatcher so
+        # we can pick the Tensor-Core soft path or the Triton hard kernel.
         for _ in range(self.n_iters):
-            # One squaring step:
             # (R (X) R)_ij = max_k (R_ik + R_kj)
-            # Captures paths through one additional intermediate node.
-            squared = (
-                result.unsqueeze(-1) +   # (d, d, 1)
-                result.unsqueeze(-3)     # (1, d, d)
-            ).max(dim=-2).values         # (d, d)
-
+            squared = _tropical_matmul(
+                result, result,
+                mode=self.tropical_mode, h=self.tropical_h,
+            )
             result = torch.maximum(result, squared)
 
         return result
@@ -1383,11 +1400,12 @@ class KleeneSSM(nn.Module):
         A_star = self.compute_kleene_star(self.A)          # (d_state, d_state)
 
         # Apply Kleene-star mixing across state dimensions (no time mix).
-        # H_mix[t, i] = max_j (A_star[i, j] + H_diag[t, j])
-        H_mix = (
-            A_star.unsqueeze(0).unsqueeze(0) +             # (1, 1, d_state, d_state)
-            H_diag.unsqueeze(-2)                           # (B, T, 1, d_state)
-        ).max(dim=-1).values                               # (B, T, d_state)
+        # H_mix[b, t, i] = max_j (A_star[i, j] + H_diag[b, t, j])
+        # Cast as a tropical matmul: H_mix = H_diag (B,T,d) X A_star^T (d,d).
+        H_mix = _tropical_matmul(
+            H_diag, A_star.transpose(-1, -2),
+            mode=self.tropical_mode, h=self.tropical_h,
+        )                                                  # (B, T, d_state)
 
         # Output projection + norm.
         out = self.norm(self.C_proj(H_mix))                # (B, T, d_model)
@@ -1583,6 +1601,8 @@ def build_ssm(config) -> nn.Module:
             d_model=config.d_model,
             d_state=getattr(config, "kleene_ssm_d_state", 64),
             n_iters=getattr(config, "kleene_ssm_iters", 4),
+            tropical_mode=getattr(config, "tropical_matmul_mode", "auto"),
+            tropical_h=getattr(config, "tropical_matmul_h", 1.0),
         )
     else:
         return TropicalSSM(d_model=config.d_model)

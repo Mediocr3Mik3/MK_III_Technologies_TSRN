@@ -52,6 +52,13 @@ class ModelConfig:
     kleene_ssm_d_state: int = 64     # state dimension for KleeneSSM
     kleene_ssm_iters: int = 4        # Kleene star iterations (log2 of d_state)
 
+    # Tropical matmul backend used inside KleeneSSM.
+    # 'soft' routes through Tensor Cores (fast, slight upper-envelope bias);
+    # 'triton' is the hard max-plus Triton kernel (exact, ~CUDA-core bound);
+    # 'auto' picks soft when tropical_matmul_h>0 else triton/naive.
+    tropical_matmul_mode: str = "auto"
+    tropical_matmul_h: float = 1.0
+
     # KleeneAttention: replaces TropicalAttention. Pro and above only.
     # Increases per-layer cost by ~k* but reduces required depth.
     # Set False for Nano to keep O(Tkd) attention cost.
