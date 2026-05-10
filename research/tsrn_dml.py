@@ -1295,6 +1295,11 @@ class KleeneSSM(nn.Module):
         # Output normalization keeps activations stable across depth.
         self.norm = nn.LayerNorm(d_model)
 
+        # Cache Kleene star at init (depends only on self.A, not input)
+        # This avoids calling compute_kleene_star() in forward pass which has
+        # a for loop with dynamic break condition that breaks torch.compile.
+        self.register_buffer("A_star", self.compute_kleene_star(self.A))
+
     def compute_kleene_star(self, A: Tensor) -> Tensor:
         """Tropical Kleene star A* via repeated squaring.
 
@@ -1376,7 +1381,8 @@ class KleeneSSM(nn.Module):
         H_diag = S + cum                                   # (B, T, d_state)
 
         # Kleene star uses input-INDEPENDENT A (no future-leak through mixing).
-        A_star = self.compute_kleene_star(self.A)          # (d_state, d_state)
+        # Use cached A_star from __init__ to avoid dynamic break in compute_kleene_star()
+        A_star = self.A_star  # (d_state, d_state) - cached at init
 
         # Apply Kleene-star mixing across state dimensions (no time mix).
         # H_mix[t, i] = max_j (A_star[i, j] + H_diag[t, j])
