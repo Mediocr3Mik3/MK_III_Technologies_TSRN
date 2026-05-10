@@ -124,6 +124,8 @@ log "=================================================================="
 log "  STEP 2/5 — Forward-pass profiler (TropicalSSM baseline)"
 log "=================================================================="
 python -m research.profile_forward --preset small_24gb \
+    --profiler-active 1 --profiler-rows 12 \
+    --trace-file logs/profile_tropical_ssm.json \
     2>&1 | tee logs/profile_tropical_ssm.log | tee -a "${LOG_FILE}"
 
 log ""
@@ -133,6 +135,8 @@ log "=================================================================="
 python -m research.profile_forward --preset small_24gb \
     --use-kleene-ssm --tier nano \
     --tropical-mode soft --tropical-h 1.0 \
+    --profiler-active 1 --profiler-rows 12 \
+    --trace-file logs/profile_kleene_soft.json \
     2>&1 | tee logs/profile_kleene_soft.log | tee -a "${LOG_FILE}"
 
 log ""
@@ -142,6 +146,8 @@ log "=================================================================="
 python -m research.profile_forward --preset small_24gb \
     --use-kleene-ssm --tier nano \
     --tropical-mode triton --tropical-h 0 \
+    --profiler-active 1 --profiler-rows 12 \
+    --trace-file logs/profile_kleene_triton.json \
     2>&1 | tee logs/profile_kleene_triton.log | tee -a "${LOG_FILE}" || \
     log "  [warn] triton profile failed (kernel issue?) — continuing"
 

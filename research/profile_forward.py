@@ -110,6 +110,16 @@ def main():
                    choices=["auto", "soft", "triton", "naive"])
     p.add_argument("--tropical-h", type=float, default=1.0)
     p.add_argument("--steps", type=int, default=10)
+    p.add_argument("--no-profiler", action="store_true",
+                   help="Skip torch.profiler section (avoids long key_averages "
+                        "merge when the trace has many small ops).")
+    p.add_argument("--profiler-active", type=int, default=2,
+                   help="Number of active profiler steps. Smaller = faster "
+                        "post-processing.")
+    p.add_argument("--profiler-rows", type=int, default=15)
+    p.add_argument("--trace-file", type=str, default=None,
+                   help="If set, export chrome trace JSON to this path "
+                        "instead of (or in addition to) printing the table.")
     args = p.parse_args()
 
     if not torch.cuda.is_available():
@@ -155,24 +165,47 @@ def main():
     print(f"  fwd+bwd: {ms:.2f} ms / micro-step  (target on L4: ~150-300 ms)")
 
     # --- torch.profiler key-averages -------------------------------------
-    print("\n[torch.profiler key-averages]")
+    if args.no_profiler:
+        print("\n[profile] --no-profiler set; skipping torch.profiler section.")
+        return
+
+    print("\n[torch.profiler] capturing %d active step(s)..." % args.profiler_active)
     from torch.profiler import profile, ProfilerActivity, schedule
+    n_iters = args.profiler_active + 1   # +1 for warmup
     with profile(
         activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA],
         record_shapes=False,
         profile_memory=False,
         with_stack=False,
-        schedule=schedule(wait=0, warmup=1, active=3, repeat=1),
+        schedule=schedule(wait=0, warmup=1, active=args.profiler_active, repeat=1),
     ) as prof:
-        for _ in range(4):
+        for _ in range(n_iters):
             with amp:
                 _, loss = model(x, y)
             loss.backward()
             model.zero_grad(set_to_none=True)
             prof.step()
-    print(prof.key_averages().table(
-        sort_by="self_cuda_time_total", row_limit=20,
-    ))
+
+    # Export chrome trace BEFORE the slow key_averages merge so the artifact
+    # is preserved even if we time out / Ctrl-C below.
+    if args.trace_file:
+        try:
+            print(f"[profile] exporting chrome trace -> {args.trace_file}")
+            prof.export_chrome_trace(args.trace_file)
+        except Exception as e:
+            print(f"[profile] WARN: chrome trace export failed: {e}")
+
+    # key_averages can be slow on traces with many small ops (the soft tropical
+    # matmul adds ~10 elementwise kernels per call).  Time-box it.
+    print("[profile] computing key_averages table (may take 30-90s on busy traces)...")
+    t0 = time.time()
+    try:
+        kavg = prof.key_averages()
+        table = kavg.table(sort_by="self_cuda_time_total", row_limit=args.profiler_rows)
+        print(table)
+    except Exception as e:
+        print(f"[profile] WARN: key_averages failed ({e}); falling back to summary")
+    print(f"[profile] key_averages took {time.time() - t0:.1f}s")
 
 
 if __name__ == "__main__":
