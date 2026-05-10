@@ -611,6 +611,7 @@ class TSRNGistBlock(nn.Module):
 #  RG scale, so the ultrametric IS the inter-scale distance.
 # ---------------------------------------------------------------------------
 
+@torch._dynamo.disable
 class TSRNGist(nn.Module):
     def __init__(self, vocab: int, d_model: int, context_len: int,
                  gradient_checkpoint: bool = False,
