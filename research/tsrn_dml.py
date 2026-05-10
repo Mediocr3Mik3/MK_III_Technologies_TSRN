@@ -1342,14 +1342,19 @@ class KleeneSSM(nn.Module):
         # Fixed n_iters loop (no dynamic break) — torch.compile friendly.
         # log2(d_state) iterations are sufficient for full convergence on
         # acyclic graphs, so we don't lose correctness by removing early exit.
-        # Each squaring step is a tropical matmul; route through dispatcher so
-        # we can pick the Tensor-Core soft path or the Triton hard kernel.
+        #
+        # CRITICAL: A_star encodes the *graph structure* (which paths exist).
+        # The soft (Tensor-Core) tropical matmul is an upper envelope of the
+        # hard max — for h=1 it lifts -1e9 "infinity" entries to small finite
+        # values, destroying the lower-triangular structure and breaking
+        # idempotence (A_star (X) A_star == A_star) tests.
+        # We therefore force the *hard* path here regardless of self.tropical_mode.
+        # The soft path is only used for the input-dependent H_mix step in
+        # forward(), where a bounded gap is mathematically acceptable.
+        ks_mode = "triton" if self.tropical_mode in ("auto", "soft") else self.tropical_mode
         for _ in range(self.n_iters):
             # (R (X) R)_ij = max_k (R_ik + R_kj)
-            squared = _tropical_matmul(
-                result, result,
-                mode=self.tropical_mode, h=self.tropical_h,
-            )
+            squared = _tropical_matmul(result, result, mode=ks_mode, h=0.0)
             result = torch.maximum(result, squared)
 
         return result
