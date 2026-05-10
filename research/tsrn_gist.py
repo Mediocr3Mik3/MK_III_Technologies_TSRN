@@ -236,6 +236,9 @@ class GistExtractor(nn.Module):
 #  Gist Buffer — ring buffer with tropical retrieval
 # ---------------------------------------------------------------------------
 
+import torch._dynamo
+
+@torch._dynamo.disable
 class GistBuffer(nn.Module):
     def __init__(self, d_model: int, max_gists: int = 64, use_hyperbolic: bool = False):
         super().__init__()
