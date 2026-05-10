@@ -255,14 +255,16 @@ def train(cfg: Dict[str, Any], args: argparse.Namespace) -> None:
     model_cfg = None
     if _TIER_MAP and (cfg.get("use_kleene_ssm") or cfg.get("tier")):
         tier_name = cfg.get("tier", "nano")
-        model_cfg = _TIER_MAP.get(tier_name)
-        if model_cfg is not None and cfg.get("use_kleene_ssm"):
-            from dataclasses import replace  # type: ignore
-            model_cfg = replace(model_cfg,
-                                d_model=cfg["d_model"],
-                                n_heads=cfg["n_heads"],
-                                context_len=cfg["context_len"],
-                                top_k=cfg.get("top_k", 16))
+        tier_func = _TIER_MAP.get(tier_name)
+        if tier_func is not None:
+            model_cfg = tier_func()  # Call function to get dataclass instance
+            if cfg.get("use_kleene_ssm"):
+                from dataclasses import replace  # type: ignore
+                model_cfg = replace(model_cfg,
+                                    d_model=cfg["d_model"],
+                                    n_heads=cfg["n_heads"],
+                                    context_len=cfg["context_len"],
+                                    top_k=cfg.get("top_k", 16))
 
     # --- model ---
     model = TSRNGist(
