@@ -1295,10 +1295,10 @@ class KleeneSSM(nn.Module):
         # Output normalization keeps activations stable across depth.
         self.norm = nn.LayerNorm(d_model)
 
-        # Cache Kleene star at init (depends only on self.A, not input)
-        # This avoids calling compute_kleene_star() in forward pass which has
-        # a for loop with dynamic break condition that breaks torch.compile.
-        self.register_buffer("A_star", self.compute_kleene_star(self.A))
+        # NOTE: A_star is recomputed every forward pass (NOT cached) so that
+        # gradients flow through self.A during training. The compute_kleene_star
+        # method has been made torch.compile-friendly by removing the dynamic
+        # `torch.equal()` early-exit break; it now runs a fixed n_iters loop.
 
     def compute_kleene_star(self, A: Tensor) -> Tensor:
         """Tropical Kleene star A* via repeated squaring.
@@ -1321,6 +1321,9 @@ class KleeneSSM(nn.Module):
         # Initialize: include identity (zero-length paths) and direct edges.
         result = torch.maximum(I, A)
 
+        # Fixed n_iters loop (no dynamic break) — torch.compile friendly.
+        # log2(d_state) iterations are sufficient for full convergence on
+        # acyclic graphs, so we don't lose correctness by removing early exit.
         for _ in range(self.n_iters):
             # One squaring step:
             # (R (X) R)_ij = max_k (R_ik + R_kj)
@@ -1330,12 +1333,7 @@ class KleeneSSM(nn.Module):
                 result.unsqueeze(-3)     # (1, d, d)
             ).max(dim=-2).values         # (d, d)
 
-            new_result = torch.maximum(result, squared)
-            # Early exit if converged (no path improvements).
-            if torch.equal(new_result, result):
-                result = new_result
-                break
-            result = new_result
+            result = torch.maximum(result, squared)
 
         return result
 
@@ -1381,8 +1379,8 @@ class KleeneSSM(nn.Module):
         H_diag = S + cum                                   # (B, T, d_state)
 
         # Kleene star uses input-INDEPENDENT A (no future-leak through mixing).
-        # Use cached A_star from __init__ to avoid dynamic break in compute_kleene_star()
-        A_star = self.A_star  # (d_state, d_state) - cached at init
+        # Recomputed every forward so gradients flow through self.A.
+        A_star = self.compute_kleene_star(self.A)          # (d_state, d_state)
 
         # Apply Kleene-star mixing across state dimensions (no time mix).
         # H_mix[t, i] = max_j (A_star[i, j] + H_diag[t, j])
