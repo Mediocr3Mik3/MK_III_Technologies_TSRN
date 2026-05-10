@@ -117,6 +117,16 @@ log ""
 log ">>> TEST SUITE COMPLETE"
 
 # ---------------------------------------------------------------------------
+# 4.5  A/B eager benchmark: current branch vs nvidia-cloud
+# ---------------------------------------------------------------------------
+log ""
+log "=================================================================="
+log "  STEP 1.5 — A/B benchmark: HEAD vs nvidia-cloud (eager fwd+bwd)"
+log "=================================================================="
+bash research/cloud/launch/bench_branches.sh \
+    2>&1 | tee logs/bench_branches.log | tee -a "${LOG_FILE}"
+
+# ---------------------------------------------------------------------------
 # 5. Forward-pass profiler — finds the eager bottleneck for each backend
 # ---------------------------------------------------------------------------
 log ""
