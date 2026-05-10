@@ -15,6 +15,7 @@ gist_extractor, gist_buffer, sheaf_pe, s1 blocks, rg_pool, s2 loop, head.
 from __future__ import annotations
 import argparse
 import importlib
+import os
 import sys
 import time
 from pathlib import Path
@@ -22,8 +23,25 @@ from pathlib import Path
 import torch
 import torch.nn.functional as F
 
-# Make 'research' importable when run as a script.
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+# --- import-path setup ---------------------------------------------------
+# The legacy DML stack uses bare top-level imports (``from tsrn_dml import``).
+# A stale ``tsrn_dml.py`` at the repo ROOT shadows ``research/tsrn_dml.py``
+# unless we prepend ``research/`` to sys.path FIRST.  Mirror the same fix
+# already in ``research/cloud/train_cloud.py``.
+_RESEARCH_DIR = str(Path(__file__).resolve().parent)
+_REPO_ROOT = str(Path(__file__).resolve().parents[1])
+if _RESEARCH_DIR not in sys.path:
+    sys.path.insert(0, _RESEARCH_DIR)
+if _REPO_ROOT not in sys.path:
+    sys.path.insert(1, _REPO_ROOT)
+
+# Install CUDA fastpaths (torch.cummax replacing the Hillis-Steele scan,
+# which is a major eager-mode bottleneck) before importing the model.
+try:
+    from research.cloud import tsrn_cuda
+    tsrn_cuda.install_cuda_fastpaths()
+except Exception as e:
+    print(f"[profile] WARN: could not install CUDA fastpaths: {e}")
 
 from research.tsrn_gist import TSRNGist
 

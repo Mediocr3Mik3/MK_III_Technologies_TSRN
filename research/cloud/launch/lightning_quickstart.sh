@@ -107,18 +107,50 @@ fi
 # ---------------------------------------------------------------------------
 log ""
 log "=================================================================="
-log "  STEP 1/3 — Correctness tests (GPU)"
+log "  STEP 1/5 — Correctness tests: kleene + tropical kernels (GPU)"
 log "=================================================================="
 python research/test_kleene.py 2>&1 | tee -a "${LOG_FILE}"
+log ""
+log "  -- tropical_kernels correctness tests --"
+python -m research.test_tropical_kernels 2>&1 | tee -a "${LOG_FILE}"
 log ""
 log ">>> TEST SUITE COMPLETE"
 
 # ---------------------------------------------------------------------------
-# 5. 2000-step smoke train: baseline (TropicalSSM) vs Kleene
+# 5. Forward-pass profiler — finds the eager bottleneck for each backend
 # ---------------------------------------------------------------------------
 log ""
 log "=================================================================="
-log "  STEP 2/3 — 2000-step baseline smoke run (TropicalSSM)"
+log "  STEP 2/5 — Forward-pass profiler (TropicalSSM baseline)"
+log "=================================================================="
+python -m research.profile_forward --preset small_24gb \
+    2>&1 | tee logs/profile_tropical_ssm.log | tee -a "${LOG_FILE}"
+
+log ""
+log "=================================================================="
+log "  STEP 3/5 — Forward-pass profiler (KleeneSSM, soft Tensor-Core path)"
+log "=================================================================="
+python -m research.profile_forward --preset small_24gb \
+    --use-kleene-ssm --tier nano \
+    --tropical-mode soft --tropical-h 1.0 \
+    2>&1 | tee logs/profile_kleene_soft.log | tee -a "${LOG_FILE}"
+
+log ""
+log "=================================================================="
+log "  STEP 3b/5 — Forward-pass profiler (KleeneSSM, hard Triton)"
+log "=================================================================="
+python -m research.profile_forward --preset small_24gb \
+    --use-kleene-ssm --tier nano \
+    --tropical-mode triton --tropical-h 0 \
+    2>&1 | tee logs/profile_kleene_triton.log | tee -a "${LOG_FILE}" || \
+    log "  [warn] triton profile failed (kernel issue?) — continuing"
+
+# ---------------------------------------------------------------------------
+# 6. 2000-step smoke train: baseline (TropicalSSM) vs Kleene
+# ---------------------------------------------------------------------------
+log ""
+log "=================================================================="
+log "  STEP 4/5 — 2000-step baseline smoke run (TropicalSSM)"
 log "=================================================================="
 mkdir -p checkpoints results logs
 
@@ -131,14 +163,15 @@ python -m research.cloud.train_cloud \
 
 log ""
 log "=================================================================="
-log "  STEP 3/3 — 2000-step KleeneSSM smoke run"
+log "  STEP 5/5 — 2000-step KleeneSSM smoke run (soft Tensor-Core path)"
 log "=================================================================="
-# KleeneSSM run (tier=nano, Kleene SSM enabled)
+# KleeneSSM run (tier=nano, Kleene SSM enabled, soft tropical matmul)
 python -m research.cloud.train_cloud \
     --preset small_24gb \
     --steps 2000 \
     --tag smoke_kleene \
     --use-kleene-ssm \
+    --tier nano \
     2>&1 | tee logs/smoke_kleene.log | tee -a "${LOG_FILE}"
 
 # ---------------------------------------------------------------------------

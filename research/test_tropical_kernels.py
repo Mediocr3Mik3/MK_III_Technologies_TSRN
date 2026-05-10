@@ -11,8 +11,47 @@ or:
 """
 from __future__ import annotations
 import math
+import sys
+from pathlib import Path
 
-import pytest
+# Allow running directly (`python -m research.test_tropical_kernels`) on
+# Lightning AI / cloud envs that don't have pytest installed.
+try:
+    import pytest
+    _HAS_PYTEST = True
+except ImportError:
+    _HAS_PYTEST = False
+
+    class _PytestShim:
+        """Minimal shim so the @pytest.mark.skipif decorator and pytest.raises
+        context manager keep working when pytest is not installed."""
+        class mark:
+            @staticmethod
+            def skipif(cond, reason=""):
+                def deco(fn):
+                    def wrapper(*a, **kw):
+                        if cond:
+                            print(f"  [skip] {fn.__name__}: {reason}")
+                            return None
+                        return fn(*a, **kw)
+                    wrapper.__name__ = fn.__name__
+                    return wrapper
+                return deco
+
+        class raises:
+            def __init__(self, exc): self.exc = exc
+            def __enter__(self): return self
+            def __exit__(self, et, ev, tb):
+                if et is None:
+                    raise AssertionError(f"expected {self.exc.__name__}, got nothing")
+                return issubclass(et, self.exc)
+
+    pytest = _PytestShim()
+
+# Make sibling imports work whether invoked as ``python -m research.foo`` or
+# ``pytest research/foo.py`` from the repo root.
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
 import torch
 
 from research.tropical_kernels import (
