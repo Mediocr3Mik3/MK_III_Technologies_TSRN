@@ -156,29 +156,64 @@ python -m research.profile_forward --preset small_24gb \
 # ---------------------------------------------------------------------------
 log ""
 log "=================================================================="
-log "  STEP 4/5 — 2000-step baseline smoke run (TropicalSSM)"
+log "  STEP 4a/6 — Chrome-trace per-module attribution analysis"
+log "=================================================================="
+# Slurps the JSON trace files dumped in steps 2/3/3b and groups events
+# by aten op + nn.Module class so we can see which sub-modules own the
+# ~5,800 kernel launches per micro-step.
+python -m research.analyze_trace \
+    logs/profile_tropical_ssm.json \
+    logs/profile_kleene_soft.json \
+    logs/profile_kleene_triton.json \
+    --top 15 2>&1 | tee logs/trace_analysis.log | tee -a "${LOG_FILE}"
+
+# ---------------------------------------------------------------------------
+# 6. Short smoke train: baseline (TropicalSSM) vs Kleene vs Kleene+compile
+# ---------------------------------------------------------------------------
+log ""
+log "=================================================================="
+log "  STEP 4/6 — 200-step baseline smoke run (TropicalSSM, COMPILED)"
 log "=================================================================="
 mkdir -p checkpoints results logs
 
-# Baseline: TropicalSSM (no Kleene flag)
+# small_24gb preset has compile=True by default, so this exercises the
+# torch.compile (Inductor) fast path.  Use --no-compile to compare eager.
+# We trim to 200 steps so the L4 finishes in a reasonable time.
 python -m research.cloud.train_cloud \
     --preset small_24gb \
-    --steps 2000 \
+    --steps 200 \
+    --eval-every 100 \
     --tag smoke_baseline \
     2>&1 | tee logs/smoke_baseline.log | tee -a "${LOG_FILE}"
 
 log ""
 log "=================================================================="
-log "  STEP 5/5 — 2000-step KleeneSSM smoke run (soft Tensor-Core path)"
+log "  STEP 5/6 — 200-step KleeneSSM smoke run (COMPILED, soft kernel)"
 log "=================================================================="
-# KleeneSSM run (tier=nano, Kleene SSM enabled, soft tropical matmul)
 python -m research.cloud.train_cloud \
     --preset small_24gb \
-    --steps 2000 \
+    --steps 200 \
+    --eval-every 100 \
     --tag smoke_kleene \
     --use-kleene-ssm \
     --tier nano \
     2>&1 | tee logs/smoke_kleene.log | tee -a "${LOG_FILE}"
+
+log ""
+log "=================================================================="
+log "  STEP 6/6 — 200-step KleeneSSM smoke run (EAGER, --no-compile)"
+log "=================================================================="
+# Same config as STEP 5 but with --no-compile so we can measure the
+# torch.compile speedup on the same model.  Expect ~5-8x slowdown vs STEP 5.
+python -m research.cloud.train_cloud \
+    --preset small_24gb \
+    --steps 200 \
+    --eval-every 100 \
+    --tag smoke_kleene_eager \
+    --use-kleene-ssm \
+    --tier nano \
+    --no-compile \
+    2>&1 | tee logs/smoke_kleene_eager.log | tee -a "${LOG_FILE}"
 
 # ---------------------------------------------------------------------------
 # 6. Extract and compare results
@@ -198,15 +233,22 @@ def extract_stats(tag):
     d = json.load(open(files[-1]))
     return d
 
-baseline = extract_stats("smoke_baseline")
-kleene   = extract_stats("smoke_kleene")
+baseline      = extract_stats("smoke_baseline")
+kleene        = extract_stats("smoke_kleene")
+kleene_eager  = extract_stats("smoke_kleene_eager")
 
-print("  Metric           Baseline (TropSSM)   KleeneSSM")
-print("  " + "-"*52)
+print("  Metric           TropSSM(comp)   Kleene(comp)   Kleene(eager)")
+print("  " + "-"*70)
 for k in ["val_bpc", "step_time_ms", "tokens_per_sec"]:
-    b = baseline.get(k, "n/a") if baseline else "n/a"
-    kl = kleene.get(k, "n/a") if kleene else "n/a"
-    print(f"  {k:<20} {str(b):<20} {str(kl):<20}")
+    b  = baseline.get(k, "n/a")     if baseline     else "n/a"
+    kl = kleene.get(k, "n/a")       if kleene       else "n/a"
+    ke = kleene_eager.get(k, "n/a") if kleene_eager else "n/a"
+    print(f"  {k:<18} {str(b):<15} {str(kl):<14} {str(ke):<14}")
+
+# Compile speedup (Kleene compiled vs Kleene eager).
+if kleene and kleene_eager and "step_time_ms" in kleene and "step_time_ms" in kleene_eager:
+    sp = kleene_eager["step_time_ms"] / max(kleene["step_time_ms"], 1e-6)
+    print(f"\n  torch.compile speedup (Kleene): {sp:.2f}x")
 
 # Extrapolate full-run cost
 if kleene and "step_time_ms" in kleene:

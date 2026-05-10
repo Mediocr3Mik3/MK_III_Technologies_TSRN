@@ -177,6 +177,7 @@ def main():
         record_shapes=False,
         profile_memory=False,
         with_stack=False,
+        with_modules=True,            # attach module class names to events
         schedule=schedule(wait=0, warmup=1, active=args.profiler_active, repeat=1),
     ) as prof:
         for _ in range(n_iters):
