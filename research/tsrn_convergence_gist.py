@@ -20,6 +20,9 @@ from tsrn_gist import (
 from tsrn_dml import AdamWDML
 from tsrn_inference import generate_with_stats, run_quality_benchmark
 
+# Import v2.0 components
+from tropical_tokenizer import TropicalMergingTokenizer
+
 
 # ---------------------------------------------------------------------------
 #  Filename tag — YYYYMMDD_<script>[_<user_tag>]
@@ -76,16 +79,32 @@ def train_convergence(dataset, device, n_steps=70000, batch_size=8,
                       top_k=16, mem_depth=7, dropout=0.1,
                       max_gists=64, gist_top_k=4,
                       ckpt_every=5000, resume_from=None, tag="",
-                      grad_accum_steps=1, gradient_checkpoint=False):
+                      grad_accum_steps=1, gradient_checkpoint=False,
+                      use_tmt_tokenizer: bool = False,
+                      tmt_path: str = None,
+                      log_padic_pe: bool = False,
+                      log_pacs: bool = False,
+                      use_hyperbolic: bool = False,
+                      gist_chaining: bool = False):
     V = dataset.vocab_sz
     ctx = context_len
+
+    # Load TMT tokenizer if requested (v2.0).  ``vocab_size`` returns the
+    # current (not target) size of the merge-augmented vocabulary.
+    tmt_tokenizer = None
+    if use_tmt_tokenizer and tmt_path and os.path.exists(tmt_path):
+        tmt_tokenizer = TropicalMergingTokenizer.load(tmt_path)
+        print(f"  Loaded TMT tokenizer from {tmt_path}")
+        V = tmt_tokenizer.vocab_size
 
     torch.manual_seed(42)
     model = TSRNGist(vocab=V, d_model=d_model, context_len=ctx,
                      gradient_checkpoint=gradient_checkpoint,
                      n_blocks=n_blocks, top_k=top_k, n_heads=n_heads,
                      mem_depth=mem_depth, max_gists=max_gists,
-                     gist_top_k=gist_top_k, dropout=dropout)
+                     gist_top_k=gist_top_k, dropout=dropout,
+                     use_hyperbolic=use_hyperbolic,
+                     gist_chaining=gist_chaining)
 
     # Load model weights first (optimizer state restored below, after it's built).
     start_step = 0
@@ -221,10 +240,20 @@ def train_convergence(dataset, device, n_steps=70000, batch_size=8,
             tr_bpc = loss_val / math.log(2)
             elapsed = time.time() - t0
             ms_step = elapsed / (step - start_step) * 1000
-            print(f"{step:>6}  {loss_val:>10.4f}  {tr_bpc:>8.4f}  "
-                  f"{val_loss:>9.4f}  {val_ppl:>9.2f}  {val_bpc:>8.4f}  "
-                  f"{float(gnorm):>7.3f}  {ms_step:>8.1f}ms")
-            log.append({
+            
+            # v2.0 logging: PAdicPE norms and PaCS effective context
+            padic_pe_norm = None
+            pacs_effective_ctx = None
+            if log_padic_pe and hasattr(model, 'sheaf_pe'):
+                with torch.no_grad():
+                    pe = model.sheaf_pe(ctx, device, torch.float32)
+                    padic_pe_norm = pe.norm().item()
+            
+            if log_pacs:
+                # Log effective context from PaCS if enabled
+                pacs_effective_ctx = model.inference_ctx if hasattr(model, 'inference_ctx') else ctx
+            
+            log_entry = {
                 "step": step,
                 "train_loss": round(loss_val, 5),
                 "train_bpc": round(tr_bpc, 4),
@@ -237,7 +266,20 @@ def train_convergence(dataset, device, n_steps=70000, batch_size=8,
                 "ms_per_step": round(ms_step, 1),
                 "maslov_h": round(h_now, 4),
                 "s2_iters_used": int(model._last_s2_iters.item()),
-            })
+            }
+            if padic_pe_norm is not None:
+                log_entry["padic_pe_norm"] = round(padic_pe_norm, 4)
+            if pacs_effective_ctx is not None:
+                log_entry["pacs_effective_ctx"] = pacs_effective_ctx
+            log.append(log_entry)
+            
+            print(f"{step:>6}  {loss_val:>10.4f}  {tr_bpc:>8.4f}  "
+                  f"{val_loss:>9.4f}  {val_ppl:>9.2f}  {val_bpc:>8.4f}  "
+                  f"{float(gnorm):>7.3f}  {ms_step:>8.1f}ms")
+            if padic_pe_norm is not None:
+                print(f"         PAdicPE norm: {padic_pe_norm:.4f}")
+            if pacs_effective_ctx is not None:
+                print(f"         PaCS effective ctx: {pacs_effective_ctx}")
 
             if val_bpc < best_val_bpc:
                 best_val_bpc = val_bpc
@@ -471,6 +513,27 @@ def main():
                         help="Gradient accumulation steps (effective batch = batch * grad_accum)")
     parser.add_argument("--grad-ckpt", action="store_true",
                         help="Enable gradient checkpointing on TSRNGist blocks to save VRAM")
+    # v2.0 parameters
+    parser.add_argument("--use-tmt-tokenizer", action="store_true",
+                        help="Use Tropical Merging Tokenization (v2.0)")
+    parser.add_argument("--tmt-path", type=str, default=None,
+                        help="Path to TMT tokenizer file")
+    parser.add_argument("--use-hyperbolic", action="store_true",
+                        help="Enable hyperbolic gist representations (v2.0)")
+    parser.add_argument("--gist-chaining", action="store_true",
+                        help="Enable cross-window hyperbolic gist chaining (v2.0). "
+                             "Requires --use-hyperbolic.")
+    parser.add_argument("--log-padic-pe", action="store_true",
+                        help="Log PAdicPE norms during training (v2.0)")
+    parser.add_argument("--log-pacs", action="store_true",
+                        help="Log PaCS effective context during training (v2.0)")
+    parser.add_argument("--lr", type=float, default=2e-4,
+                        help="Peak learning rate (cosine warmup+decay)")
+    parser.add_argument("--top-k", type=int, default=16,
+                        help="Tropical attention top-k")
+    parser.add_argument("--mem-depth", type=int, default=7,
+                        help="P-adic memory tree depth")
+    parser.add_argument("--dropout", type=float, default=0.1)
     args = parser.parse_args()
 
     device = detect_device()
@@ -483,10 +546,14 @@ def main():
         dataset, device,
         n_steps=args.steps,
         batch_size=args.batch,
+        lr_max=args.lr,
         d_model=args.d_model,
         context_len=args.context,
         n_blocks=args.n_blocks,
         n_heads=args.n_heads,
+        top_k=args.top_k,
+        mem_depth=args.mem_depth,
+        dropout=args.dropout,
         max_gists=args.max_gists,
         gist_top_k=args.gist_top_k,
         resume_from=args.resume,
@@ -494,6 +561,12 @@ def main():
         tag=args.tag,
         grad_accum_steps=args.grad_accum,
         gradient_checkpoint=args.grad_ckpt,
+        use_tmt_tokenizer=args.use_tmt_tokenizer,
+        tmt_path=args.tmt_path,
+        log_padic_pe=args.log_padic_pe,
+        log_pacs=args.log_pacs,
+        use_hyperbolic=args.use_hyperbolic,
+        gist_chaining=args.gist_chaining,
     )
 
 

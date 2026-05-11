@@ -1,0 +1,829 @@
+{
+  "run": "tsrn_gist_enwik8_convergence",
+  "config": {
+    "d_model": 32,
+    "context": 32,
+    "n_blocks": 1,
+    "n_heads": 2,
+    "top_k": 16,
+    "mem_depth": 7,
+    "max_gists": 64,
+    "gist_top_k": 4,
+    "n_steps": 100000,
+    "batch_size": 8,
+    "lr": 0.0002,
+    "vocab_size": 205,
+    "tokenization": "byte-level (latin-1)"
+  },
+  "params": 60929,
+  "val": {
+    "bpc": 0.8993,
+    "ppl": 1.865
+  },
+  "test": {
+    "bpc": 0.8995,
+    "ppl": 1.865
+  },
+  "best_val_bpc": 0.8374,
+  "training_log": [
+    {
+      "step": 1,
+      "train_loss": 5.30067,
+      "train_bpc": 7.6473,
+      "val_loss": 5.30306,
+      "val_ppl": 200.951,
+      "val_bpc": 7.6507,
+      "grad_norm": 1.1912,
+      "lr": 1e-07,
+      "wall_time_s": 1.3,
+      "ms_per_step": 1295.9
+    },
+    {
+      "step": 2000,
+      "train_loss": 3.44936,
+      "train_bpc": 4.9764,
+      "val_loss": 3.42891,
+      "val_ppl": 30.843,
+      "val_bpc": 4.9469,
+      "grad_norm": 0.4691,
+      "lr": 0.0001,
+      "wall_time_s": 286.3,
+      "ms_per_step": 143.1
+    },
+    {
+      "step": 4000,
+      "train_loss": 2.09385,
+      "train_bpc": 3.0208,
+      "val_loss": 2.37972,
+      "val_ppl": 10.802,
+      "val_bpc": 3.4332,
+      "grad_norm": 1.3305,
+      "lr": 0.0002,
+      "wall_time_s": 573.3,
+      "ms_per_step": 143.3
+    },
+    {
+      "step": 6000,
+      "train_loss": 1.51217,
+      "train_bpc": 2.1816,
+      "val_loss": 1.62,
+      "val_ppl": 5.053,
+      "val_bpc": 2.3372,
+      "grad_norm": 1.7498,
+      "lr": 0.0001998,
+      "wall_time_s": 862.2,
+      "ms_per_step": 143.7
+    },
+    {
+      "step": 8000,
+      "train_loss": 1.32345,
+      "train_bpc": 1.9093,
+      "val_loss": 1.37021,
+      "val_ppl": 3.936,
+      "val_bpc": 1.9768,
+      "grad_norm": 1.7028,
+      "lr": 0.0001992,
+      "wall_time_s": 1142.0,
+      "ms_per_step": 142.7
+    },
+    {
+      "step": 10000,
+      "train_loss": 1.32744,
+      "train_bpc": 1.9151,
+      "val_loss": 1.29679,
+      "val_ppl": 3.658,
+      "val_bpc": 1.8709,
+      "grad_norm": 2.3956,
+      "lr": 0.0001983,
+      "wall_time_s": 1419.5,
+      "ms_per_step": 142.0
+    },
+    {
+      "step": 12000,
+      "train_loss": 1.19605,
+      "train_bpc": 1.7255,
+      "val_loss": 1.2131,
+      "val_ppl": 3.364,
+      "val_bpc": 1.7501,
+      "grad_norm": 2.4814,
+      "lr": 0.0001969,
+      "wall_time_s": 1695.7,
+      "ms_per_step": 141.3
+    },
+    {
+      "step": 14000,
+      "train_loss": 0.99491,
+      "train_bpc": 1.4353,
+      "val_loss": 1.17281,
+      "val_ppl": 3.231,
+      "val_bpc": 1.692,
+      "grad_norm": 2.7005,
+      "lr": 0.0001952,
+      "wall_time_s": 1972.9,
+      "ms_per_step": 140.9
+    },
+    {
+      "step": 16000,
+      "train_loss": 1.27505,
+      "train_bpc": 1.8395,
+      "val_loss": 1.10337,
+      "val_ppl": 3.014,
+      "val_bpc": 1.5918,
+      "grad_norm": 2.8818,
+      "lr": 0.0001931,
+      "wall_time_s": 2250.3,
+      "ms_per_step": 140.6
+    },
+    {
+      "step": 18000,
+      "train_loss": 1.17213,
+      "train_bpc": 1.691,
+      "val_loss": 1.04563,
+      "val_ppl": 2.845,
+      "val_bpc": 1.5085,
+      "grad_norm": 3.1353,
+      "lr": 0.0001907,
+      "wall_time_s": 2527.7,
+      "ms_per_step": 140.4
+    },
+    {
+      "step": 20000,
+      "train_loss": 1.12831,
+      "train_bpc": 1.6278,
+      "val_loss": 1.00638,
+      "val_ppl": 2.736,
+      "val_bpc": 1.4519,
+      "grad_norm": 3.0935,
+      "lr": 0.0001879,
+      "wall_time_s": 2804.8,
+      "ms_per_step": 140.2
+    },
+    {
+      "step": 22000,
+      "train_loss": 0.98312,
+      "train_bpc": 1.4183,
+      "val_loss": 0.93727,
+      "val_ppl": 2.553,
+      "val_bpc": 1.3522,
+      "grad_norm": 3.7663,
+      "lr": 0.0001848,
+      "wall_time_s": 3086.6,
+      "ms_per_step": 140.3
+    },
+    {
+      "step": 24000,
+      "train_loss": 1.00373,
+      "train_bpc": 1.4481,
+      "val_loss": 0.9452,
+      "val_ppl": 2.573,
+      "val_bpc": 1.3636,
+      "grad_norm": 4.73,
+      "lr": 0.0001814,
+      "wall_time_s": 3373.9,
+      "ms_per_step": 140.6
+    },
+    {
+      "step": 26000,
+      "train_loss": 0.97199,
+      "train_bpc": 1.4023,
+      "val_loss": 0.93913,
+      "val_ppl": 2.558,
+      "val_bpc": 1.3549,
+      "grad_norm": 3.74,
+      "lr": 0.0001777,
+      "wall_time_s": 3660.6,
+      "ms_per_step": 140.8
+    },
+    {
+      "step": 28000,
+      "train_loss": 1.00204,
+      "train_bpc": 1.4456,
+      "val_loss": 0.88251,
+      "val_ppl": 2.417,
+      "val_bpc": 1.2732,
+      "grad_norm": 5.4704,
+      "lr": 0.0001736,
+      "wall_time_s": 3948.3,
+      "ms_per_step": 141.0
+    },
+    {
+      "step": 30000,
+      "train_loss": 1.02791,
+      "train_bpc": 1.483,
+      "val_loss": 0.87599,
+      "val_ppl": 2.401,
+      "val_bpc": 1.2638,
+      "grad_norm": 5.0008,
+      "lr": 0.0001693,
+      "wall_time_s": 4235.8,
+      "ms_per_step": 141.2
+    },
+    {
+      "step": 32000,
+      "train_loss": 0.84322,
+      "train_bpc": 1.2165,
+      "val_loss": 0.82559,
+      "val_ppl": 2.283,
+      "val_bpc": 1.1911,
+      "grad_norm": 4.8355,
+      "lr": 0.0001648,
+      "wall_time_s": 4522.0,
+      "ms_per_step": 141.3
+    },
+    {
+      "step": 34000,
+      "train_loss": 0.8996,
+      "train_bpc": 1.2978,
+      "val_loss": 0.78816,
+      "val_ppl": 2.199,
+      "val_bpc": 1.1371,
+      "grad_norm": 6.4337,
+      "lr": 0.00016,
+      "wall_time_s": 4808.3,
+      "ms_per_step": 141.4
+    },
+    {
+      "step": 36000,
+      "train_loss": 1.04961,
+      "train_bpc": 1.5143,
+      "val_loss": 0.7989,
+      "val_ppl": 2.223,
+      "val_bpc": 1.1526,
+      "grad_norm": 8.5347,
+      "lr": 0.000155,
+      "wall_time_s": 5093.5,
+      "ms_per_step": 141.5
+    },
+    {
+      "step": 38000,
+      "train_loss": 0.84034,
+      "train_bpc": 1.2124,
+      "val_loss": 0.80626,
+      "val_ppl": 2.24,
+      "val_bpc": 1.1632,
+      "grad_norm": 5.6926,
+      "lr": 0.0001498,
+      "wall_time_s": 5375.4,
+      "ms_per_step": 141.5
+    },
+    {
+      "step": 40000,
+      "train_loss": 0.77585,
+      "train_bpc": 1.1193,
+      "val_loss": 0.78145,
+      "val_ppl": 2.185,
+      "val_bpc": 1.1274,
+      "grad_norm": 7.7316,
+      "lr": 0.0001444,
+      "wall_time_s": 5651.7,
+      "ms_per_step": 141.3
+    },
+    {
+      "step": 42000,
+      "train_loss": 0.84447,
+      "train_bpc": 1.2183,
+      "val_loss": 0.76955,
+      "val_ppl": 2.159,
+      "val_bpc": 1.1102,
+      "grad_norm": 8.8536,
+      "lr": 0.0001389,
+      "wall_time_s": 5927.6,
+      "ms_per_step": 141.1
+    },
+    {
+      "step": 44000,
+      "train_loss": 0.91605,
+      "train_bpc": 1.3216,
+      "val_loss": 0.75887,
+      "val_ppl": 2.136,
+      "val_bpc": 1.0948,
+      "grad_norm": 8.0235,
+      "lr": 0.0001333,
+      "wall_time_s": 6203.9,
+      "ms_per_step": 141.0
+    },
+    {
+      "step": 46000,
+      "train_loss": 0.6993,
+      "train_bpc": 1.0089,
+      "val_loss": 0.74069,
+      "val_ppl": 2.097,
+      "val_bpc": 1.0686,
+      "grad_norm": 5.9872,
+      "lr": 0.0001276,
+      "wall_time_s": 6479.4,
+      "ms_per_step": 140.9
+    },
+    {
+      "step": 48000,
+      "train_loss": 0.80435,
+      "train_bpc": 1.1604,
+      "val_loss": 0.75497,
+      "val_ppl": 2.128,
+      "val_bpc": 1.0892,
+      "grad_norm": 10.2847,
+      "lr": 0.0001217,
+      "wall_time_s": 6755.1,
+      "ms_per_step": 140.7
+    },
+    {
+      "step": 50000,
+      "train_loss": 0.74833,
+      "train_bpc": 1.0796,
+      "val_loss": 0.7395,
+      "val_ppl": 2.095,
+      "val_bpc": 1.0669,
+      "grad_norm": 10.5985,
+      "lr": 0.0001159,
+      "wall_time_s": 7030.8,
+      "ms_per_step": 140.6
+    },
+    {
+      "step": 52000,
+      "train_loss": 0.63322,
+      "train_bpc": 0.9135,
+      "val_loss": 0.69387,
+      "val_ppl": 2.001,
+      "val_bpc": 1.001,
+      "grad_norm": 12.2234,
+      "lr": 0.00011,
+      "wall_time_s": 7306.8,
+      "ms_per_step": 140.5
+    },
+    {
+      "step": 54000,
+      "train_loss": 0.7413,
+      "train_bpc": 1.0695,
+      "val_loss": 0.6775,
+      "val_ppl": 1.969,
+      "val_bpc": 0.9774,
+      "grad_norm": 9.2605,
+      "lr": 0.0001041,
+      "wall_time_s": 7582.3,
+      "ms_per_step": 140.4
+    },
+    {
+      "step": 56000,
+      "train_loss": 0.80931,
+      "train_bpc": 1.1676,
+      "val_loss": 0.68379,
+      "val_ppl": 1.981,
+      "val_bpc": 0.9865,
+      "grad_norm": 12.1302,
+      "lr": 9.83e-05,
+      "wall_time_s": 7858.0,
+      "ms_per_step": 140.3
+    },
+    {
+      "step": 58000,
+      "train_loss": 0.75503,
+      "train_bpc": 1.0893,
+      "val_loss": 0.67896,
+      "val_ppl": 1.972,
+      "val_bpc": 0.9795,
+      "grad_norm": 18.5244,
+      "lr": 9.24e-05,
+      "wall_time_s": 8133.6,
+      "ms_per_step": 140.2
+    },
+    {
+      "step": 60000,
+      "train_loss": 0.68779,
+      "train_bpc": 0.9923,
+      "val_loss": 0.69178,
+      "val_ppl": 1.997,
+      "val_bpc": 0.998,
+      "grad_norm": 15.9792,
+      "lr": 8.67e-05,
+      "wall_time_s": 8410.1,
+      "ms_per_step": 140.2
+    },
+    {
+      "step": 62000,
+      "train_loss": 0.96156,
+      "train_bpc": 1.3872,
+      "val_loss": 0.68456,
+      "val_ppl": 1.983,
+      "val_bpc": 0.9876,
+      "grad_norm": 21.9891,
+      "lr": 8.11e-05,
+      "wall_time_s": 8685.1,
+      "ms_per_step": 140.1
+    },
+    {
+      "step": 64000,
+      "train_loss": 0.80508,
+      "train_bpc": 1.1615,
+      "val_loss": 0.63392,
+      "val_ppl": 1.885,
+      "val_bpc": 0.9146,
+      "grad_norm": 14.7708,
+      "lr": 7.56e-05,
+      "wall_time_s": 8961.8,
+      "ms_per_step": 140.0
+    },
+    {
+      "step": 66000,
+      "train_loss": 0.62453,
+      "train_bpc": 0.901,
+      "val_loss": 0.66836,
+      "val_ppl": 1.951,
+      "val_bpc": 0.9642,
+      "grad_norm": 18.172,
+      "lr": 7.02e-05,
+      "wall_time_s": 9236.8,
+      "ms_per_step": 140.0
+    },
+    {
+      "step": 68000,
+      "train_loss": 0.85396,
+      "train_bpc": 1.232,
+      "val_loss": 0.64277,
+      "val_ppl": 1.902,
+      "val_bpc": 0.9273,
+      "grad_norm": 17.4922,
+      "lr": 6.5e-05,
+      "wall_time_s": 9512.0,
+      "ms_per_step": 139.9
+    },
+    {
+      "step": 70000,
+      "train_loss": 0.63994,
+      "train_bpc": 0.9232,
+      "val_loss": 0.62681,
+      "val_ppl": 1.872,
+      "val_bpc": 0.9043,
+      "grad_norm": 17.6503,
+      "lr": 6e-05,
+      "wall_time_s": 9786.0,
+      "ms_per_step": 139.8
+    },
+    {
+      "step": 72000,
+      "train_loss": 0.61855,
+      "train_bpc": 0.8924,
+      "val_loss": 0.64289,
+      "val_ppl": 1.902,
+      "val_bpc": 0.9275,
+      "grad_norm": 19.2752,
+      "lr": 5.52e-05,
+      "wall_time_s": 10061.2,
+      "ms_per_step": 139.7
+    },
+    {
+      "step": 74000,
+      "train_loss": 0.78357,
+      "train_bpc": 1.1305,
+      "val_loss": 0.64785,
+      "val_ppl": 1.911,
+      "val_bpc": 0.9346,
+      "grad_norm": 21.3043,
+      "lr": 5.07e-05,
+      "wall_time_s": 10336.8,
+      "ms_per_step": 139.7
+    },
+    {
+      "step": 76000,
+      "train_loss": 0.67097,
+      "train_bpc": 0.968,
+      "val_loss": 0.65681,
+      "val_ppl": 1.929,
+      "val_bpc": 0.9476,
+      "grad_norm": 18.4482,
+      "lr": 4.64e-05,
+      "wall_time_s": 10612.8,
+      "ms_per_step": 139.6
+    },
+    {
+      "step": 78000,
+      "train_loss": 0.64449,
+      "train_bpc": 0.9298,
+      "val_loss": 0.67861,
+      "val_ppl": 1.971,
+      "val_bpc": 0.979,
+      "grad_norm": 21.1421,
+      "lr": 4.23e-05,
+      "wall_time_s": 10888.4,
+      "ms_per_step": 139.6
+    },
+    {
+      "step": 80000,
+      "train_loss": 0.56347,
+      "train_bpc": 0.8129,
+      "val_loss": 0.62304,
+      "val_ppl": 1.865,
+      "val_bpc": 0.8989,
+      "grad_norm": 19.0402,
+      "lr": 3.86e-05,
+      "wall_time_s": 11164.9,
+      "ms_per_step": 139.6
+    },
+    {
+      "step": 82000,
+      "train_loss": 0.75033,
+      "train_bpc": 1.0825,
+      "val_loss": 0.62012,
+      "val_ppl": 1.859,
+      "val_bpc": 0.8946,
+      "grad_norm": 18.9939,
+      "lr": 3.52e-05,
+      "wall_time_s": 11440.3,
+      "ms_per_step": 139.5
+    },
+    {
+      "step": 84000,
+      "train_loss": 0.69536,
+      "train_bpc": 1.0032,
+      "val_loss": 0.64179,
+      "val_ppl": 1.9,
+      "val_bpc": 0.9259,
+      "grad_norm": 16.7632,
+      "lr": 3.21e-05,
+      "wall_time_s": 11715.4,
+      "ms_per_step": 139.5
+    },
+    {
+      "step": 86000,
+      "train_loss": 0.87147,
+      "train_bpc": 1.2573,
+      "val_loss": 0.64701,
+      "val_ppl": 1.91,
+      "val_bpc": 0.9334,
+      "grad_norm": 20.1109,
+      "lr": 2.93e-05,
+      "wall_time_s": 11992.8,
+      "ms_per_step": 139.5
+    },
+    {
+      "step": 88000,
+      "train_loss": 0.75993,
+      "train_bpc": 1.0963,
+      "val_loss": 0.61112,
+      "val_ppl": 1.842,
+      "val_bpc": 0.8817,
+      "grad_norm": 18.1528,
+      "lr": 2.69e-05,
+      "wall_time_s": 12268.9,
+      "ms_per_step": 139.4
+    },
+    {
+      "step": 90000,
+      "train_loss": 0.71268,
+      "train_bpc": 1.0282,
+      "val_loss": 0.6044,
+      "val_ppl": 1.83,
+      "val_bpc": 0.872,
+      "grad_norm": 19.0202,
+      "lr": 2.48e-05,
+      "wall_time_s": 12544.3,
+      "ms_per_step": 139.4
+    },
+    {
+      "step": 92000,
+      "train_loss": 0.61956,
+      "train_bpc": 0.8938,
+      "val_loss": 0.62096,
+      "val_ppl": 1.861,
+      "val_bpc": 0.8959,
+      "grad_norm": 16.2264,
+      "lr": 2.31e-05,
+      "wall_time_s": 12820.7,
+      "ms_per_step": 139.4
+    },
+    {
+      "step": 94000,
+      "train_loss": 0.73165,
+      "train_bpc": 1.0555,
+      "val_loss": 0.63278,
+      "val_ppl": 1.883,
+      "val_bpc": 0.9129,
+      "grad_norm": 33.7352,
+      "lr": 2.17e-05,
+      "wall_time_s": 13097.3,
+      "ms_per_step": 139.3
+    },
+    {
+      "step": 96000,
+      "train_loss": 0.87994,
+      "train_bpc": 1.2695,
+      "val_loss": 0.65546,
+      "val_ppl": 1.926,
+      "val_bpc": 0.9456,
+      "grad_norm": 24.4851,
+      "lr": 2.08e-05,
+      "wall_time_s": 13373.0,
+      "ms_per_step": 139.3
+    },
+    {
+      "step": 98000,
+      "train_loss": 0.81951,
+      "train_bpc": 1.1823,
+      "val_loss": 0.64864,
+      "val_ppl": 1.913,
+      "val_bpc": 0.9358,
+      "grad_norm": 21.0608,
+      "lr": 2.02e-05,
+      "wall_time_s": 13649.3,
+      "ms_per_step": 139.3
+    },
+    {
+      "step": 100000,
+      "train_loss": 0.85836,
+      "train_bpc": 1.2383,
+      "val_loss": 0.58048,
+      "val_ppl": 1.787,
+      "val_bpc": 0.8374,
+      "grad_norm": 28.1155,
+      "lr": 2e-05,
+      "wall_time_s": 13924.8,
+      "ms_per_step": 139.2
+    }
+  ],
+  "quality_benchmark": {
+    "label": "TSRNGist",
+    "prompts": [
+      {
+        "prompt": "The history of mathematics ",
+        "generated": "xt\u00b9uf Crals berofom to ch the nof of Mettes and to tore grol or the was site well anger porest of the ceriros the Fed Neon the bens of ans the so gent in the of thatiris leluly ast dencand [[As wite destofration ('s the the (Af ang the ond boon [[micatinuld]]\n  af [[Athorate Apecosond bloll an Paly]",
+        "generation_stats": {
+          "chars_per_sec": 30.5,
+          "mean_entropy": 2.072,
+          "mean_top1_prob": 0.4084
+        },
+        "text_metrics": {
+          "n_chars": 300,
+          "n_words": 58,
+          "unique_word_ratio": 0.776,
+          "avg_word_length": 4.16,
+          "trigram_repeat_ratio": 0.0,
+          "alpha_ratio": 0.76,
+          "sentence_count": 0,
+          "avg_sentence_length": 58.0,
+          "max_char_run": 2,
+          "degenerate": false
+        }
+      },
+      {
+        "prompt": "In the year 1776, ",
+        "generated": "fur\u0080Ul Ely jrom cor amprestere verore mors wex ramily]]\n[[hico remor the a Gurordino por frerina the the capor of a for to riturer the racores to diniond of serolice Aowes omaditurate a to the treed [[Coted]] for at anire orre borten wasse of there Curranteronn or [[centeros thens trecelon Corlent t",
+        "generation_stats": {
+          "chars_per_sec": 31.5,
+          "mean_entropy": 2.137,
+          "mean_top1_prob": 0.387
+        },
+        "text_metrics": {
+          "n_chars": 300,
+          "n_words": 52,
+          "unique_word_ratio": 0.788,
+          "avg_word_length": 4.79,
+          "trigram_repeat_ratio": 0.0,
+          "alpha_ratio": 0.793,
+          "sentence_count": 0,
+          "avg_sentence_length": 52.0,
+          "max_char_run": 2,
+          "degenerate": false
+        }
+      },
+      {
+        "prompt": "The quantum mechanical ",
+        "generated": "\u00b8\u00d0\"*\u00d0\u00be\u00e8\u00e2\u00e4ure [[romad entencularion]] cor of thed a Shene fracer Cors thes the pored the rand (larsy thise of shatho ind end sentire gred portas of the thes owinte, ind the thens, amesic of (oro sorres cons.  \n\n  [[canguto the sense on | Porlen cored of Asthine wis trinate frome mag thenir [[Cerigen ",
+        "generation_stats": {
+          "chars_per_sec": 29.2,
+          "mean_entropy": 2.079,
+          "mean_top1_prob": 0.4158
+        },
+        "text_metrics": {
+          "n_chars": 300,
+          "n_words": 51,
+          "unique_word_ratio": 0.804,
+          "avg_word_length": 4.78,
+          "trigram_repeat_ratio": 0.0,
+          "alpha_ratio": 0.753,
+          "sentence_count": 1,
+          "avg_sentence_length": 51.0,
+          "max_char_run": 2,
+          "degenerate": false
+        }
+      },
+      {
+        "prompt": "Once upon a time, there was a ",
+        "generated": "run of pentror the the ind alle as ans wo porer fortel the the to forret fire to and fer thes wo win atre patinon of the to the ines of allorown, wal owe of the semangolien]\n          <intenteroutheroed of tor at anentan ghe anthes are and to and to to ander [[Core sometins ther of the Boritung inco",
+        "generation_stats": {
+          "chars_per_sec": 29.6,
+          "mean_entropy": 1.921,
+          "mean_top1_prob": 0.4533
+        },
+        "text_metrics": {
+          "n_chars": 300,
+          "n_words": 58,
+          "unique_word_ratio": 0.655,
+          "avg_word_length": 4.02,
+          "trigram_repeat_ratio": 0.0,
+          "alpha_ratio": 0.76,
+          "sentence_count": 0,
+          "avg_sentence_length": 58.0,
+          "max_char_run": 10,
+          "degenerate": false
+        }
+      },
+      {
+        "prompt": "The old man walked slowly through the ",
+        "generated": "wate sharings of thes the mates aners bale of se ot the beso is olle sed into penonter for mated the of the to les of tran of or to the the to [[Maloom or of to [[rentes, to socontit perorger bestory the [[Jare bunn of thel]] thernornas ''' Ebas caltar be corinfent [[rige Lonild there to alin se Je ",
+        "generation_stats": {
+          "chars_per_sec": 30.0,
+          "mean_entropy": 1.985,
+          "mean_top1_prob": 0.4352
+        },
+        "text_metrics": {
+          "n_chars": 300,
+          "n_words": 60,
+          "unique_word_ratio": 0.683,
+          "avg_word_length": 4.0,
+          "trigram_repeat_ratio": 0.0,
+          "alpha_ratio": 0.753,
+          "sentence_count": 0,
+          "avg_sentence_length": 60.0,
+          "max_char_run": 3,
+          "degenerate": false
+        }
+      },
+      {
+        "prompt": "A system of linear equations can be solved by ",
+        "generated": "line of an cosser bate sof pren in thes, therel in thore the as deriss word of istorees inte to monde prepatitic]]\n*[[tate tron Mich the Pacter [[19975]]\n\n\n* Destras to as reel of Radesonde pultary as bomine Soresoming in or ingr are in [[Gor [[Als of the the portion the are nces tint the of mole an",
+        "generation_stats": {
+          "chars_per_sec": 29.7,
+          "mean_entropy": 2.043,
+          "mean_top1_prob": 0.4124
+        },
+        "text_metrics": {
+          "n_chars": 300,
+          "n_words": 58,
+          "unique_word_ratio": 0.707,
+          "avg_word_length": 4.16,
+          "trigram_repeat_ratio": 0.0,
+          "alpha_ratio": 0.737,
+          "sentence_count": 0,
+          "avg_sentence_length": 58.0,
+          "max_char_run": 3,
+          "degenerate": false
+        }
+      },
+      {
+        "prompt": "The algorithm processes each element in ",
+        "generated": "pater the to pore wateler aly], or whilition owde weresing of on whe colathe blire fore ore rintecles the ase thacorst the pentes, the peror gor intaters as bal oves espuren on forses thes of is of the or to diles or the Cofrolrils pow sed to monter freturofic a Gas [[1994 the Jotoon, bigutes [[enom",
+        "generation_stats": {
+          "chars_per_sec": 30.0,
+          "mean_entropy": 2.003,
+          "mean_top1_prob": 0.4251
+        },
+        "text_metrics": {
+          "n_chars": 300,
+          "n_words": 56,
+          "unique_word_ratio": 0.768,
+          "avg_word_length": 4.38,
+          "trigram_repeat_ratio": 0.0,
+          "alpha_ratio": 0.777,
+          "sentence_count": 0,
+          "avg_sentence_length": 56.0,
+          "max_char_run": 2,
+          "degenerate": false
+        }
+      },
+      {
+        "prompt": "The relationship between structure and function ",
+        "generated": "and therionto punisitare nis thater of wor meacirtes or ot com of ind lac the Bre Fo th int or (dorted, wily the thes catrentint the of porthe colerens thored the ferratire therntres of of the of thathe whe Berntorane offort of ant [[re Lagiranty ans of corto a Cicrise annicise fore con whe [[Garial",
+        "generation_stats": {
+          "chars_per_sec": 30.6,
+          "mean_entropy": 1.981,
+          "mean_top1_prob": 0.4307
+        },
+        "text_metrics": {
+          "n_chars": 300,
+          "n_words": 55,
+          "unique_word_ratio": 0.764,
+          "avg_word_length": 4.47,
+          "trigram_repeat_ratio": 0.0,
+          "alpha_ratio": 0.8,
+          "sentence_count": 0,
+          "avg_sentence_length": 55.0,
+          "max_char_run": 2,
+          "degenerate": false
+        }
+      }
+    ],
+    "aggregate": {
+      "avg_unique_word_ratio": 0.743,
+      "avg_trigram_repeat": 0.0,
+      "avg_word_length": 4.34,
+      "degenerate_count": 0,
+      "total_prompts": 8
+    }
+  },
+  "hardware": {
+    "gpu": "AMD RX 6750 XT (12GB, DirectML)",
+    "gpu_tdp_watts": 186,
+    "wall_time_hours": 3.89,
+    "gpu_energy_kwh": 0.724,
+    "ms_per_step_avg": 140.2
+  }
+}

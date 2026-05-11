@@ -86,6 +86,8 @@ def main():
     # We try three import paths to cover both current branch (research.*
     # package) and older branches (bare module names, nvidia-cloud style).
     Model = None
+    import importlib, traceback
+    errors = []
     for mod_path, cls_name in [
         ("research.tsrn_gist", "TSRNGist"),
         ("tsrn_gist",          "TSRNGist"),  # nvidia-cloud bare-name style
@@ -93,15 +95,19 @@ def main():
         ("tsrn_dml",           "TSRN"),
     ]:
         try:
-            import importlib
             mod = importlib.import_module(mod_path)
             Model = getattr(mod, cls_name)
             print(f"  using {cls_name} from {mod_path}")
             break
-        except Exception:
+        except Exception as e:
+            errors.append((mod_path, cls_name, repr(e),
+                           traceback.format_exc(limit=3)))
             continue
     if Model is None:
-        print("  ERROR: could not import any model class")
+        print("  ERROR: could not import any model class. Attempts:")
+        for mp, cn, er, tb in errors:
+            print(f"    - {mp}.{cn}: {er}")
+            print("      " + tb.replace("\n", "\n      "))
         return
 
     base_kwargs = dict(

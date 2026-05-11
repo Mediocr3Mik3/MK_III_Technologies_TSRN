@@ -1,23 +1,23 @@
 {
   "evaluation": "full_sequential",
-  "checkpoint": "checkpoints/tsrn_enwik8_v6_100k_best.pt",
-  "model_params": 22628400,
+  "checkpoint": "checkpoints/tsrn_gist_enwik8_best.pt",
+  "model_params": 25925943,
   "context_len": 256,
   "protocol": "non-overlapping windows, full test set coverage",
   "dataset": "enwik8 byte-level (latin-1), standard 90M/5M/5M split",
   "vocab_size": 205,
   "test": {
-    "bpc_sequential": 0.8073,
-    "ppl_sequential": 1.75,
-    "bpc_random_sampling": 0.8096,
-    "ppl_random_sampling": 1.753,
-    "difference_bpc": 0.0023
+    "bpc_sequential": 0.4275,
+    "ppl_sequential": 1.345,
+    "bpc_random_sampling": 0.4293,
+    "ppl_random_sampling": 1.347,
+    "difference_bpc": 0.0018
   },
   "val": {
-    "bpc_sequential": 0.8142,
-    "ppl_sequential": 1.758
+    "bpc_sequential": 0.4244,
+    "ppl_sequential": 1.342
   },
-  "best_val_bpc_training": 0.7905,
+  "best_val_bpc_training": 0.4178,
   "config": {
     "vocab": 205,
     "d_model": 512,
@@ -25,6 +25,8 @@
     "n_blocks": 3,
     "top_k": 16,
     "n_heads": 8,
-    "mem_depth": 7
+    "mem_depth": 7,
+    "max_gists": 64,
+    "gist_top_k": 4
   }
 }
