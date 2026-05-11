@@ -30,30 +30,32 @@ import torch
 #    without importing the submodule.  Pre-import it here.
 import torch.utils.checkpoint  # noqa: F401
 
-# 2. tsrn_gist.py imports `from hyperbolic_embeddings import ...` at module
-#    level, but the package may not be installed.  Since bench_eager never
-#    sets use_hyperbolic=True, the two functions are never called — we just
-#    need the names to exist so the import doesn't crash.
-if "hyperbolic_embeddings" not in sys.modules:
+# 2. nvidia-cloud's tsrn_gist.py uses bare `from tsrn_dml import ...` and
+#    bare `from hyperbolic_embeddings import ...`.  Add the research/ dir to
+#    sys.path so those imports resolve to whichever real files exist in the
+#    current worktree.  This must happen BEFORE any stubs are registered.
+_research_dir = Path(__file__).parent
+if str(_research_dir) not in sys.path:
+    sys.path.insert(0, str(_research_dir))
+
+# 3. Stub out `hyperbolic_embeddings` ONLY IF the real module is not present
+#    in the current worktree (nvidia-cloud lacks it; HEAD has it).  If we
+#    stubbed unconditionally, sys.modules would shadow the real module and
+#    block legitimate symbols like `HyperbolicEmbedding`.  Since bench_eager
+#    sets use_hyperbolic=False, identity-function stubs for the two functions
+#    referenced at module-import time are sufficient when stubbing is needed.
+if (
+    "hyperbolic_embeddings" not in sys.modules
+    and not (_research_dir / "hyperbolic_embeddings.py").exists()
+):
     _stub = types.ModuleType("hyperbolic_embeddings")
 
-    def _poincare_to_tangent(x):  # identity stub (never actually called)
+    def _identity(x):  # never actually called (use_hyperbolic=False)
         return x
 
-    def _tangent_to_poincare(x):
-        return x
-
-    _stub.poincare_to_tangent = _poincare_to_tangent
-    _stub.tangent_to_poincare = _tangent_to_poincare
+    _stub.poincare_to_tangent = _identity
+    _stub.tangent_to_poincare = _identity
     sys.modules["hyperbolic_embeddings"] = _stub
-
-# 3. nvidia-cloud's tsrn_gist.py uses bare `from tsrn_dml import ...` (no
-#    `research.` prefix) because it was developed to be run from the research/
-#    directory.  Add the research/ dir to path so that import works when this
-#    script is invoked via `python -m research.bench_eager` from repo root.
-_research_dir = str(Path(__file__).parent)
-if _research_dir not in sys.path:
-    sys.path.insert(0, _research_dir)
 
 
 def _filter_kwargs(cls, kwargs: dict) -> dict:
