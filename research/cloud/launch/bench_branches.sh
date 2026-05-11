@@ -1,65 +1,88 @@
 #!/usr/bin/env bash
 # ============================================================================
-# bench_branches.sh — A/B eager-mode benchmark: kleene-star vs nvidia-cloud
+# bench_branches.sh — N-way eager-mode benchmark across branches
 # ============================================================================
-# Times one fwd+bwd micro-step of TSRNGist on the same L4 GPU, on both
-# branches, using the same self-contained `research.bench_eager` script.
-# Uses git worktrees so the current checkout is undisturbed.
+# Times one fwd+bwd micro-step of TSRNGist on the same GPU, across the
+# current branch and every branch listed in $COMPARE_BRANCHES (default:
+# "main nvidia-cloud").  Uses git worktrees so the current checkout is
+# undisturbed.  bench_eager.py from the current branch is copied into
+# each worktree because older branches don't have it.
 #
 # Usage (from repo root):
 #   bash research/cloud/launch/bench_branches.sh
+#   COMPARE_BRANCHES="main nvidia-cloud" bash research/cloud/launch/bench_branches.sh
 #
-# Output: ms/step for each branch, side by side.
+# Output: ms/step for each branch.
 # ============================================================================
 
 set -e
 cd "$(git rev-parse --show-toplevel)"
 
 CURRENT_BRANCH="$(git rev-parse --abbrev-ref HEAD)"
+COMPARE_BRANCHES="${COMPARE_BRANCHES:-main nvidia-cloud}"
+
+BENCH_ARGS=(--steps 10 --warmup 3 --batch 8 --ctx 512
+            --d-model 512 --n-blocks 3 --n-heads 8)
+
 echo ""
 echo "=================================================================="
-echo "  Eager fwd+bwd A/B benchmark"
+echo "  Eager fwd+bwd N-way benchmark"
 echo "=================================================================="
-echo "  current : ${CURRENT_BRANCH}"
-echo "  comparing against: nvidia-cloud"
+echo "  current  : ${CURRENT_BRANCH}"
+echo "  vs       : ${COMPARE_BRANCHES}"
 echo ""
 
 # ----------------------------------------------------------------------------
-# 1.  Run on the current branch (already checked out).
+# 1. Current branch (already checked out).
 # ----------------------------------------------------------------------------
 echo "------------------------------------------------------------------"
-echo "  [A] ${CURRENT_BRANCH} (HEAD)"
+echo "  [HEAD] ${CURRENT_BRANCH}"
 echo "------------------------------------------------------------------"
-python -m research.bench_eager --steps 10 --warmup 3 \
-    --batch 8 --ctx 512 --d-model 512 --n-blocks 3 --n-heads 8 \
-    --label "${CURRENT_BRANCH}"
+python -m research.bench_eager "${BENCH_ARGS[@]}" --label "${CURRENT_BRANCH}"
 
 # ----------------------------------------------------------------------------
-# 2.  Spin up a worktree at /tmp/tropformer_nvidia_cloud, copy bench_eager.py
-#     in (it doesn't exist on nvidia-cloud), and run.
+# 2. Each comparison branch via its own worktree.
 # ----------------------------------------------------------------------------
-WT_DIR="${TMPDIR:-/tmp}/tropformer_nvidia_cloud_$$"
-echo ""
-echo "------------------------------------------------------------------"
-echo "  [B] nvidia-cloud (worktree at ${WT_DIR})"
-echo "------------------------------------------------------------------"
-
-# Make sure we have the latest nvidia-cloud ref locally.
-git fetch origin nvidia-cloud:nvidia-cloud 2>/dev/null || true
-git worktree add --detach "${WT_DIR}" nvidia-cloud
-cleanup() { git worktree remove --force "${WT_DIR}" 2>/dev/null || rm -rf "${WT_DIR}"; }
+WORKTREES=()
+cleanup() {
+    for wt in "${WORKTREES[@]}"; do
+        git worktree remove --force "$wt" 2>/dev/null || rm -rf "$wt"
+    done
+}
 trap cleanup EXIT
 
-# bench_eager.py only exists on the current branch — copy it in.
-cp research/bench_eager.py "${WT_DIR}/research/bench_eager.py"
+for branch in ${COMPARE_BRANCHES}; do
+    # Skip if the branch is the same as current.
+    if [ "${branch}" = "${CURRENT_BRANCH}" ]; then
+        echo "  (skipping ${branch}: same as current)"
+        continue
+    fi
 
-# Run from the worktree using its tsrn_dml / tsrn_gist.
-(
-    cd "${WT_DIR}"
-    python -m research.bench_eager --steps 10 --warmup 3 \
-        --batch 8 --ctx 512 --d-model 512 --n-blocks 3 --n-heads 8 \
-        --label "nvidia-cloud"
-)
+    WT_DIR="${TMPDIR:-/tmp}/tropformer_${branch//\//_}_$$"
+    WORKTREES+=("${WT_DIR}")
+
+    echo ""
+    echo "------------------------------------------------------------------"
+    echo "  [${branch}] (worktree ${WT_DIR})"
+    echo "------------------------------------------------------------------"
+
+    # Fetch latest ref (non-fatal if offline).
+    git fetch origin "${branch}:${branch}" 2>/dev/null || true
+    if ! git worktree add --detach "${WT_DIR}" "${branch}" 2>/dev/null; then
+        # Branch may only exist on origin.
+        git worktree add --detach "${WT_DIR}" "origin/${branch}"
+    fi
+
+    # Copy current bench_eager.py + research/__init__.py if missing.
+    cp research/bench_eager.py "${WT_DIR}/research/bench_eager.py"
+    [ -f "${WT_DIR}/research/__init__.py" ] || \
+        touch "${WT_DIR}/research/__init__.py"
+
+    (
+        cd "${WT_DIR}"
+        python -m research.bench_eager "${BENCH_ARGS[@]}" --label "${branch}"
+    )
+done
 
 echo ""
 echo "=================================================================="
