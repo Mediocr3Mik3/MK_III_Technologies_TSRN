@@ -27,14 +27,14 @@ mixture:
     purpose: Verified thinking traces
 
   - name: mixture_of_thoughts
-    hf_dataset: HuggingFaceH4/Mixture-of-Thoughts
+    hf_dataset: open-r1/Mixture-of-Thoughts
     hf_config: null
     split: train
     examples_k: 350
     weight: 0.05
     format: messages
     priority: reasoning
-    purpose: HF curated R1 distillation
+    purpose: Open-R1 curated reasoning traces (renamed from HuggingFaceH4)
 
   - name: ultrainteract
     hf_dataset: openbmb/UltraInteract_sft

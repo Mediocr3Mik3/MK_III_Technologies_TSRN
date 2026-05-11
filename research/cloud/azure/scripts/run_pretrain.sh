@@ -25,6 +25,12 @@ TAG="${TAG:-azure_run}"
 mkdir -p "${RAW_DIR}" "${TOK_DIR}" "${TOKENS_DIR}" "${CKPT_DIR}"
 
 echo "=================================================="
+echo "  Step 0/4: verify all dataset URLs reachable (no download)"
+echo "=================================================="
+python -m research.cloud.azure.data.verify_manifests \
+    --manifest pretrain_mix
+
+echo "=================================================="
 echo "  Step 1/4: download raw pretrain shards"
 echo "=================================================="
 python -m research.cloud.azure.data.download \

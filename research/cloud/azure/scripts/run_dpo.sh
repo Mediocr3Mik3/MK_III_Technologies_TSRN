@@ -22,6 +22,12 @@ if [ ! -f "${SFT_BEST}" ]; then
 fi
 
 echo "=================================================="
+echo "  Step 0/2: verify DPO dataset URLs (no download)"
+echo "=================================================="
+python -m research.cloud.azure.data.verify_manifests \
+    --manifest dpo_mix
+
+echo "=================================================="
 echo "  Step 1/2: download DPO preference pairs"
 echo "=================================================="
 python -m research.cloud.azure.data.download \

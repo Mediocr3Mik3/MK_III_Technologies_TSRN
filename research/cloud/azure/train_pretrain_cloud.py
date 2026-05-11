@@ -77,10 +77,17 @@ def build_run_tag(user_tag: str = "") -> str:
 
 
 def _unwrap(m: nn.Module) -> nn.Module:
-    if hasattr(m, "module"):
-        return m.module
-    if hasattr(m, "_orig_mod"):
-        return m._orig_mod
+    """Strip every torch.compile (`._orig_mod`) and DDP (`.module`) layer.
+    Safe under any stacking order (compile(DDP(m)) or DDP(compile(m)))."""
+    seen = 0
+    while seen < 8:  # bounded to prevent any pathological cycle
+        if hasattr(m, "_orig_mod"):
+            m = m._orig_mod
+        elif hasattr(m, "module"):
+            m = m.module
+        else:
+            return m
+        seen += 1
     return m
 
 
@@ -220,16 +227,20 @@ def train(cfg: Dict[str, Any], args: argparse.Namespace) -> None:
 
     model.to(device).train()
 
-    # compile
-    if cfg.get("compile") and world == 1:
-        model = tsrn_cuda.maybe_compile(model, mode=cfg.get("compile_mode", "max-autotune"))
-
-    # DDP
+    # DDP first, then compile (PyTorch >=2.0 recommended order for
+    # mode=max-autotune; the DDP allreduce hooks are graph-captured
+    # inside the compiled region).
     if world > 1:
         model = nn.parallel.DistributedDataParallel(
             model, device_ids=[local_rank], output_device=local_rank,
             find_unused_parameters=False, gradient_as_bucket_view=True,
         )
+    if cfg.get("compile"):
+        model = tsrn_cuda.maybe_compile(
+            model, mode=cfg.get("compile_mode", "max-autotune"))
+        if is_main:
+            logger.info("torch.compile enabled (mode=%s, world=%d)",
+                        cfg.get("compile_mode", "max-autotune"), world)
 
     optimizer = tsrn_cuda.make_optimizer(
         _unwrap(model), lr=cfg["lr"],

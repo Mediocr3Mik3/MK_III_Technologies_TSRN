@@ -23,6 +23,12 @@ if [ ! -f "${TMT_PATH}" ]; then
 fi
 
 echo "=================================================="
+echo "  Step 0/2: verify SFT dataset URLs (no download)"
+echo "=================================================="
+python -m research.cloud.azure.data.verify_manifests \
+    --manifest sft_mix
+
+echo "=================================================="
 echo "  Step 1/2: download SFT raw shards"
 echo "=================================================="
 python -m research.cloud.azure.data.download \

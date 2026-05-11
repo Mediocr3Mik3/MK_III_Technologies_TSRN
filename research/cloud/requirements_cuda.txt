@@ -17,6 +17,8 @@ datasets>=2.20
 huggingface_hub>=0.24
 tokenizers>=0.20
 transformers>=4.45        # used by some quality-eval helpers
+pyyaml>=6.0               # manifest parsing (verify_manifests, download)
+zstandard>=0.22           # shard compression (download.py)
 
 # Distributed / mixed-precision tooling
 accelerate>=0.34          # optional convenience wrapper

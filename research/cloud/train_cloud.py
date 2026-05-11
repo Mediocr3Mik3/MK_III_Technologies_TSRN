@@ -160,11 +160,17 @@ def maslov_h_schedule(step: int, n_steps: int,
 # ---------------------------------------------------------------------------
 
 def _unwrap(model: nn.Module) -> nn.Module:
-    """Return underlying module if wrapped in DDP/compile."""
-    if hasattr(model, "module"):
-        return model.module  # DDP
-    if hasattr(model, "_orig_mod"):
-        return model._orig_mod  # torch.compile
+    """Strip every torch.compile (`._orig_mod`) and DDP (`.module`) layer.
+    Safe under any stacking order (compile(DDP(m)) or DDP(compile(m)))."""
+    seen = 0
+    while seen < 8:
+        if hasattr(model, "_orig_mod"):
+            model = model._orig_mod
+        elif hasattr(model, "module"):
+            model = model.module
+        else:
+            return model
+        seen += 1
     return model
 
 
@@ -293,12 +299,7 @@ def train(cfg: Dict[str, Any], args: argparse.Namespace) -> None:
     model.to(device)
     model.train()
 
-    # --- compile (optional, single-GPU-only by default) ---
-    compile_enabled = cfg.get("compile", False) and world == 1
-    if compile_enabled:
-        model = tsrn_cuda.maybe_compile(model, mode=cfg.get("compile_mode", "reduce-overhead"))
-
-    # --- DDP wrap ---
+    # --- DDP wrap (must precede compile for max-autotune mode) ---
     if world > 1:
         model = nn.parallel.DistributedDataParallel(
             model,
@@ -307,6 +308,14 @@ def train(cfg: Dict[str, Any], args: argparse.Namespace) -> None:
             find_unused_parameters=False,
             gradient_as_bucket_view=True,
         )
+
+    # --- compile (PyTorch 2.x): now works on multi-GPU + DDP ---
+    if cfg.get("compile", False):
+        model = tsrn_cuda.maybe_compile(
+            model, mode=cfg.get("compile_mode", "reduce-overhead"))
+        if is_main:
+            print(f"  Compile : enabled "
+                  f"(mode={cfg.get('compile_mode', 'reduce-overhead')}, world={world})")
 
     # --- optimizer ---
     optimizer = tsrn_cuda.make_optimizer(
