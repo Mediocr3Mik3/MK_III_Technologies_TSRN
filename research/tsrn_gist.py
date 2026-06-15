@@ -39,7 +39,7 @@ if _RESEARCH_DIR not in _sys.path:
 
 from tsrn_dml import (
     TropicalAttention, CliffordFFN, RGPool, PAdicMemory,
-    EchoStateReservoir, PAdicAttention, TropicalSSM,
+    EchoStateReservoir, OscillatoryMemory, PAdicAttention, TropicalSSM,
     KleeneSSM, KleeneAttention, build_attention, build_ssm,
     SheafHarmonicPE,
 )
@@ -645,7 +645,13 @@ class TSRNGistBlock(nn.Module):
         self.use_reservoir = use_reservoir
         if use_reservoir:
             self.ln_res = nn.LayerNorm(d_model)
-            self.reservoir = EchoStateReservoir(d_model, d_reservoir=d_model // 2)
+            kind = getattr(config, "reservoir_kind", "echo") if config is not None else "echo"
+            if kind == "oscillatory":
+                # Damped oscillatory state-space memory (LinOSS/LRU modal form):
+                # the smooth Hamiltonian complement to the tropical KleeneSSM.
+                self.reservoir = OscillatoryMemory(d_model, n_osc=d_model // 2)
+            else:
+                self.reservoir = EchoStateReservoir(d_model, d_reservoir=d_model // 2)
 
         # Tropical / Kleene SSM (optional, parallel to reservoir).
         # When config is provided, we always build via build_ssm() because the

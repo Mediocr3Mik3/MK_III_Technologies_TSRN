@@ -1191,6 +1191,101 @@ class EchoStateReservoir(nn.Module):
 
 
 # ---------------------------------------------------------------------------
+#  6b. Oscillatory State-Space Memory  (LinOSS / LRU modal realization)
+#
+#     A bank of `n_osc` independent DAMPED HARMONIC OSCILLATORS. Each channel
+#     k is a complex pole  lambda_k = r_k * exp(i*theta_k)  realised in real
+#     2D modal coordinates (p, q) as a damped rotation:
+#
+#         [p_n]          [cos t_k  -sin t_k] [p_{n-1}]   [dp_n]
+#         [q_n] = r_k *  [sin t_k   cos t_k] [q_{n-1}] + [dq_n]
+#
+#     This is the smooth, energy-dissipating ("Hamiltonian") complement to the
+#     tropical (Bellman / min-plus) KleeneSSM: together they instantiate the
+#     two characteristic flows of the Hamilton-Jacobi-Bellman equation.
+#
+#     Control-theory reading: a bank of 2nd-order LTI modes with natural
+#     frequency theta_k and damping set by r_k.  Because r_k in (0,1) STRICTLY
+#     (r = exp(-exp(alpha)), alpha = exp(log_alpha) > 0), every mode is a
+#     strict contraction => BIBO stable, bounded state, and -- the coRNN
+#     guarantee -- bounded gradients:  ||d h_n / d h_{n-k}|| = r^k -> 0, so no
+#     vanishing/exploding gradients regardless of sequence length.
+#
+#     theta_k -> 0 recovers a pure leaky integrator (what the GRU-ESN
+#     approximates); theta_k > 0 adds the resonant memory the ESN lacks.
+#
+#     Refs: Rusch & Rus, "Oscillatory State-Space Models" (LinOSS, ICLR 2025);
+#     Rusch & Mishra, coRNN (ICLR 2021) / UnICORNN (ICML 2021); Orvieto et al.,
+#     "Resurrecting RNNs for Long Sequences" (LRU, ICML 2023).
+# ---------------------------------------------------------------------------
+
+class OscillatoryMemory(nn.Module):
+    """Damped oscillatory state-space memory (linear, non-selective).
+
+    Drop-in replacement for EchoStateReservoir: maps (B, T, d) -> (B, T, d),
+    strictly causal, batch-independent (zero initial state), residual-safe
+    (zero-init readout). All real-valued elementwise ops + 2 matmuls (no
+    complex tensors), so it runs natively on DirectML.
+    """
+
+    def __init__(self, d_model: int, n_osc: int = None,
+                 r_min: float = 0.9, r_max: float = 0.999,
+                 max_phase: float = math.pi / 2):
+        super().__init__()
+        m = n_osc or (d_model // 2)
+        self.m = m
+
+        # Pole magnitude r_k in (0,1): stable-exponential parameterisation
+        #   r = exp(-exp(log_alpha))  =>  alpha = exp(log_alpha) > 0  =>  r < 1
+        # always (guaranteed stability). Init r ~ U[r_min, r_max] (long memory).
+        u = torch.rand(m)
+        r_init = r_min + (r_max - r_min) * u
+        alpha_init = -torch.log(r_init)                       # > 0
+        self.log_alpha = nn.Parameter(torch.log(alpha_init))
+
+        # Pole phase theta_k (natural frequency), init ~ U[0, max_phase].
+        self.theta = nn.Parameter(torch.rand(m) * max_phase)
+
+        # Input drive (d_model -> 2m: dp, dq) and readout (2m -> d_model).
+        self.W_in = nn.Linear(d_model, 2 * m, bias=False)
+        self.readout = nn.Linear(2 * m, d_model, bias=False)
+        nn.init.zeros_(self.readout.weight)                   # residual-safe no-op at init
+
+    def _poles(self):
+        r = torch.exp(-torch.exp(self.log_alpha))             # (m,) in (0,1)
+        return r, self.theta
+
+    def forward(self, x: Tensor) -> Tensor:
+        B, T, d = x.shape
+        m = self.m
+        r, theta = self._poles()
+        rc = r * torch.cos(theta)                             # (m,)
+        rs = r * torch.sin(theta)
+        # LRU-style variance normalisation: scale the input drive by
+        # sqrt(1 - r^2) so the stationary state variance stays ~constant
+        # across the wide range of pole magnitudes.
+        gamma = torch.sqrt(torch.clamp(1.0 - r * r, min=1e-6))  # (m,)
+
+        drive = self.W_in(x)                                  # (B, T, 2m)
+        dp = drive[..., :m] * gamma                           # (B, T, m)
+        dq = drive[..., m:] * gamma
+
+        p = x.new_zeros(B, m)
+        q = x.new_zeros(B, m)
+        ps, qs = [], []
+        for t in range(T):
+            p_new = rc * p - rs * q + dp[:, t, :]
+            q_new = rs * p + rc * q + dq[:, t, :]
+            p, q = p_new, q_new
+            ps.append(p)
+            qs.append(q)
+        P = torch.stack(ps, dim=1)                            # (B, T, m)
+        Q = torch.stack(qs, dim=1)
+        H = torch.cat([P, Q], dim=-1)                         # (B, T, 2m)
+        return self.readout(H)
+
+
+# ---------------------------------------------------------------------------
 #  7. Non-Archimedean p-adic Attention  (Whitepaper Sec 2.5, Appendix A.3)
 #
 #     Similarity = shared prefix length in learned binary tree encoding.

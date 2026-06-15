@@ -208,6 +208,12 @@ def main(argv: Optional[List[str]] = None) -> None:
                    default=0 if os.name == "nt" else 2,
                    help="DataLoader workers (default 0 on Windows, 2 on Linux)")
     p.add_argument("--no-curriculum", action="store_true")
+    p.add_argument("--no-reservoir", action="store_true",
+                   help="Ablate the echo-state reservoir (s1 block 0); KleeneSSM carries state mixing")
+    p.add_argument("--linear-attn", action="store_true",
+                   help="Use exact O(T) linear tropical attention instead of the O(T^2) path")
+    p.add_argument("--oscillatory", action="store_true",
+                   help="Use damped oscillatory state-space memory (LinOSS) instead of the GRU-ESN reservoir")
     args = p.parse_args(argv)
 
     device = detect_device()
@@ -244,6 +250,9 @@ def main(argv: Optional[List[str]] = None) -> None:
         top_k=args.top_k,
         padic_depth=args.mem_depth,
         max_gists=args.max_gists,
+        use_reservoir=not args.no_reservoir,
+        reservoir_kind=("oscillatory" if args.oscillatory else "echo"),
+        use_linear_attention=args.linear_attn,
         use_mixed_precision=False,
     )
 

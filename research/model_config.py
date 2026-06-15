@@ -75,6 +75,7 @@ class ModelConfig:
     # -- Memory Components -------------------------------------------------
     use_reservoir: bool = True       # GRU-gated echo state reservoir
     d_reservoir: int = 256           # reservoir dimension (d_model // 2 for Nano)
+    reservoir_kind: str = "echo"     # "echo" (GRU-ESN) | "oscillatory" (LinOSS damped oscillator bank)
     use_padic_memory: bool = True    # p-adic hierarchical key-value memory
     padic_depth: int = 7             # tree depth: 7=Nano, 9=Pro, 12=Kyro
     use_padic_attention: bool = True # non-Archimedean path attention
