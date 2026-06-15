@@ -44,6 +44,12 @@ class ModelConfig:
     use_alibi: bool = True           # ALiBi distance bias
     use_differential_attention: bool = False  # noise-cancelling attention
                                               # Pro: True, Nano: False
+    # Exact linear (log-semiring) tropical attention: O(T) chunked scan instead
+    # of O(T^2). Equivalent to the quadratic path at maslov_h=1 (sans top-k);
+    # ALiBi folds in as a per-head decay. Verified by research/_linattn_equiv.py
+    # and research/_linattn_module_test.py.
+    use_linear_attention: bool = False
+    linear_attn_chunk: int = 64      # chunk size for the linear-attention scan
 
     # -- Kleene Star -------------------------------------------------------
     # KleeneSSM: replaces TropicalSSM. Recommended ON for all tiers.

@@ -890,6 +890,15 @@ class TSRNGist(nn.Module):
     def get_maslov_h(self) -> float:
         return float(self.s1_blocks[0].attn.maslov_h.item())
 
+    def set_linear_attn(self, flag: bool):
+        """Toggle exact O(T) linear tropical attention on every TropicalAttention
+        layer at runtime. No-op on KleeneAttention layers (Pro/Kyro tiers)."""
+        for block in self.s1_blocks:
+            if hasattr(block.attn, "linear_attn"):
+                block.attn.linear_attn = bool(flag)
+        if hasattr(self.s2_block.attn, "linear_attn"):
+            self.s2_block.attn.linear_attn = bool(flag)
+
     def forward(self, idx: Tensor, targets: Optional[Tensor] = None):
         B, T = idx.shape
         x = self.embed(idx)

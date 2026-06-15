@@ -41,6 +41,7 @@ from typing import Dict, List, Optional, Tuple
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import torch.utils.checkpoint  # explicit: torch.utils.checkpoint is not auto-imported
 from torch import Tensor
 
 # Tropical matmul kernels (Tensor-Core soft path + Triton hard kernel).
@@ -578,12 +579,18 @@ class TropicalAttention(nn.Module):
     def __init__(self, d_model: int, top_k: int = 8, n_heads: int = 4,
                  dropout: float = 0.0, max_seq_len: int = 4096,
                  use_pacs: bool = False, training_ctx: int = 512,
-                 sink_tokens: int = 4):
+                 sink_tokens: int = 4, linear_attn: bool = False,
+                 linear_chunk: int = 64):
         super().__init__()
         assert d_model % n_heads == 0
         self.H = n_heads
         self.dh = d_model // n_heads
         self.top_k = top_k
+        # Exact linear (log-semiring) tropical attention: O(T) chunked scan
+        # instead of O(T^2).  Equivalent to the quadratic path at h=1 (sans
+        # top-k) -- see _linear_attend and research/_linattn_equiv.py.
+        self.linear_attn = linear_attn
+        self.linear_chunk = linear_chunk
         self.Wq = nn.Linear(d_model, d_model, bias=False)
         self.Wk = nn.Linear(d_model, d_model, bias=False)
         self.Wv = nn.Linear(d_model, d_model, bias=False)
@@ -697,6 +704,62 @@ class TropicalAttention(nn.Module):
             del chunk_lse
         return scores.contiguous()
 
+    def _linear_attend(self, Q: Tensor, K: Tensor, V: Tensor) -> Tensor:
+        """Exact log-semiring (soft-tropical) attention as an O(T) chunked scan.
+
+        The Maslov score h*lse_c((Q_i+K_j)/h) makes the attention weight a
+        SEPARABLE kernel <phi(Q_i), phi(K_j)> with phi(z)=exp(z/h), so the
+        causal aggregation factorizes into a prefix scan over phi(K) (x) V.
+        ALiBi's -slope*(i-j) bias folds exactly into a per-head decay
+        gamma=exp(-slope).  The chunked (matmul-only) form is DirectML-safe and
+        avoids the (B,H,T,dh,dv) state blow-up of a naive cumsum.
+
+        Causality: query i only ever reads keys j<=i (intra-chunk lower-tri
+        mask + running state of strictly earlier chunks).  The per-(B,H) max
+        shift in phi cancels exactly in the num/den ratio, so it cannot leak
+        future information.  Matches the quadratic path at h=1 (verified by
+        research/_linattn_equiv.py), minus top-k.
+        """
+        B, H, T, dh = Q.shape
+        dv = V.shape[-1]
+        dt = Q.dtype
+        h = self.maslov_h.to(dt)
+        phiQ = torch.exp((Q - Q.amax(dim=(-2, -1), keepdim=True)) / h)
+        phiK = torch.exp((K - K.amax(dim=(-2, -1), keepdim=True)) / h)
+        gamma = torch.exp(-self.alibi_slopes.to(Q.device, dt)).view(1, H, 1, 1)
+        C = max(1, min(self.linear_chunk, T))
+        idx = torch.arange(C, device=Q.device)
+        S = torch.zeros(B, H, dh, dv, device=Q.device, dtype=dt)
+        z = torch.zeros(B, H, dh, 1, device=Q.device, dtype=dt)
+        gC = gamma ** C
+        outs = []
+        for s in range(0, T, C):
+            e = min(s + C, T)
+            c = e - s
+            ai = idx[:c]
+            qn = phiQ[:, :, s:e, :]
+            kn = phiK[:, :, s:e, :]
+            vn = V[:, :, s:e, :]
+            # intra-chunk: causal lower-tri, decayed by gamma^(a-b)
+            A = torch.matmul(qn, kn.transpose(-1, -2))            # (B,H,c,c)
+            rel = ai.view(c, 1) - ai.view(1, c)                   # a-b
+            Dloc = gamma ** rel.clamp(min=0).to(dt)               # (1,H,c,c)
+            A = A * Dloc * (rel >= 0).to(dt)
+            num = torch.matmul(A, vn)                             # (B,H,c,dv)
+            den = A.sum(dim=-1, keepdim=True)                     # (B,H,c,1)
+            # inter-chunk: read decayed running state, weight gamma^(a+1)
+            gq = gamma ** (ai + 1).view(1, 1, c, 1).to(dt)        # (1,H,c,1)
+            num = num + gq * torch.matmul(qn, S)
+            den = den + gq * torch.matmul(qn, z)
+            outs.append(num / den.clamp_min(1e-20))
+            # state update: gamma^c * state + sum_b gamma^(c-1-b) phi(K_b)(x)V_b
+            omega = gamma ** (c - 1 - ai).view(1, 1, c, 1).to(dt)  # (1,H,c,1)
+            kw = kn * omega                                        # (B,H,c,dh)
+            S = gC * S + torch.matmul(kw.transpose(-1, -2), vn)    # (B,H,dh,dv)
+            z = gC * z + kw.sum(dim=-2).unsqueeze(-1)              # (B,H,dh,1)
+        ctx = torch.cat(outs, dim=2).permute(0, 2, 1, 3).contiguous().reshape(B, T, H * dv)
+        return self.drop(ctx)
+
     def forward(self, x: Tensor, causal: bool = True, inference_ctx: int = None) -> Tensor:
         B, T, d = x.shape
         H, dh = self.H, self.dh
@@ -760,7 +823,10 @@ class TropicalAttention(nn.Module):
         score_bytes = B * H * T * T_kv * 4
         use_fast = score_bytes <= 96 * 1024 * 1024
 
-        if use_fast:
+        if self.linear_attn and causal and pacs_temp is None and T_c == 0:
+            # Exact O(T) log-semiring path (training / no eval-cache case).
+            ctx = self._linear_attend(Q, K, V)
+        elif use_fast:
             scores = self._channel_chunked_scores(Q, K, B, H, T_kv, dh)
 
             # Extended ALiBi: q_pos=[0..T-1], k_pos=[-T_c..T-1]
@@ -1620,6 +1686,8 @@ def build_attention(config) -> nn.Module:
             max_seq_len=max(4096, config.context_len * 8),
             use_pacs=getattr(config, "use_padic_context_scaling", False),
             training_ctx=config.context_len,
+            linear_attn=getattr(config, "use_linear_attention", False),
+            linear_chunk=getattr(config, "linear_attn_chunk", 64),
         )
 
 
