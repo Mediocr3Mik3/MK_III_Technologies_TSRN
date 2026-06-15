@@ -24,7 +24,7 @@ outputs:
 command: >-
   python -m research.cloud.azure.data.train_tmt
   --raw-dir       ${{inputs.raw_dir}}
-  --output        ${{outputs.tokenizer_dir}}/tmt_32k.json
-  --vocab-size    32000
+  --output        ${{outputs.tokenizer_dir}}/tmt_48k.json
+  --vocab-size    48000
   --sample-bytes  5e9
-  --rounds        14
+  --rounds        22

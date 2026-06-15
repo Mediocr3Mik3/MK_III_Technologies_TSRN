@@ -1,118 +1,299 @@
 # =====================================================================
-# Pretraining data mixture — 92B tokens total
+# Pretraining data mixture — quality-first, component-resonant (~28B)
 # =====================================================================
-# Each entry specifies:
-#   name           : human-readable identifier
-#   hf_dataset     : HuggingFace datasets path (or `null` if custom)
-#   hf_config      : HF config name (subset)
-#   split          : HF split
-#   tokens_b       : target token budget in billions
-#   weight         : sampling weight (sums to 1.0)
-#   purpose        : research notes
-#   text_field     : column containing raw text
-#   filter         : optional filter expression (string)
+# Phi-extreme philosophy: the 90B per-component quotas in
+# component_quota_tracker.py are CAPS. We train first on the best ~28B
+# resonant tokens, expanding only if quality holds.
+#
+# Each entry:
+#   name        : identifier (== tokenized shard subdir under tokens_dir)
+#   component   : kleene|sheaf|padic|gist|rg|general  (drives the curriculum)
+#   hf_dataset  : HuggingFace path (null for synthetic/local sources)
+#   hf_config   : HF config (subset) or null
+#   split       : HF split
+#   tokens_b    : target token budget in billions
+#   weight      : sampling weight (sums to ~1.00)
+#   text_field  : column with raw text (for download.py)
+#   source_formatter : formatter used to build processed shards (or null)
+#   download    : pipeline/download_sources.py key(s) to fetch raw -> E: (or null
+#                 for already-present / synthetic sources)
+#   purpose     : research note
+#
+# Local prep flow (all on E:, CPU):
+#   1. python pipeline/download_sources.py --only <keys>   (missing curated)
+#   2. python pipeline/prepare_corpus.py   --manifest <this file>
+#   3. python pipeline/extend_tokenizer.py (freeze tmt_48k.json)
+#   4. python pipeline/create_shards.py    (score+split+tokenize -> shards)
+# Present locally already: fineweb_edu, finemath, openwebmath, all syn_type_*,
+#   go.obo+chebi.obo, wordnet, nli. Remaining: cosmopedia, simple_wikipedia,
+#   stack_python, proofpile2, arxiv_gist (run step 1 for these).
+#
+# Component budgets (scaled from the 90B caps to ~28B):
+#   general 11.0 | kleene 4.7 | gist 3.7 | sheaf 2.8 | padic 2.8 | rg 2.8
 # =====================================================================
 
 mixture:
+  # -------------------- general foundation (11.0B) --------------------
   - name: fineweb_edu
+    component: general
     hf_dataset: HuggingFaceFW/fineweb-edu
-    hf_config: sample-100BT
-    split: train
-    tokens_b: 38.0
-    weight: 0.41
-    text_field: text
-    purpose: Foundation quality
-
-  - name: openwebmath
-    hf_dataset: open-web-math/open-web-math
-    hf_config: null
-    split: train
-    tokens_b: 7.0
-    weight: 0.08
-    text_field: text
-    purpose: Math reasoning
-
-  - name: finemath
-    hf_dataset: HuggingFaceTB/finemath
-    hf_config: finemath-4plus
+    hf_config: sample-10BT
     split: train
     tokens_b: 6.0
-    weight: 0.07
+    weight: 0.216
     text_field: text
-    purpose: Curated math, higher quality
-
-  - name: stack_python
-    hf_dataset: bigcode/the-stack-v2-dedup
-    hf_config: Python
-    split: train
-    tokens_b: 12.0
-    weight: 0.13
-    text_field: content
-    purpose: Code reasoning
-
-  - name: stack_javascript
-    hf_dataset: bigcode/the-stack-v2-dedup
-    hf_config: JavaScript
-    split: train
-    tokens_b: 4.0
-    weight: 0.04
-    text_field: content
-    purpose: Event patterns
-
-  - name: stack_shell_md
-    hf_dataset: bigcode/the-stack-v2-dedup
-    hf_config: Shell
-    split: train
-    tokens_b: 5.0
-    weight: 0.05
-    text_field: content
-    purpose: Tool patterns (shell + markdown — markdown loaded separately and concatenated)
-
-  - name: dolma_books
-    hf_dataset: allenai/dolma
-    hf_config: v1_6-sample
-    split: train
-    tokens_b: 5.0
-    weight: 0.05
-    text_field: text
-    filter: "source == 'gutenberg' or source == 'books'"
-    purpose: Long-form coherence
-
-  - name: simple_wikipedia
-    hf_dataset: wikipedia
-    hf_config: 20220301.simple
-    split: train
-    tokens_b: 4.0
-    weight: 0.04
-    text_field: text
-    purpose: Factual grounding
+    source_formatter: null
+    purpose: High-quality educational web foundation
 
   - name: cosmopedia
+    component: general
     hf_dataset: HuggingFaceTB/cosmopedia
     hf_config: web_samples_v2
     split: train
-    tokens_b: 5.0
-    weight: 0.05
+    tokens_b: 2.5
+    weight: 0.090
     text_field: text
-    purpose: Synthetic textbook quality
+    source_formatter: null
+    download: cosmopedia
+    purpose: Synthetic textbook-quality prose
 
+  - name: simple_wikipedia
+    component: general
+    hf_dataset: wikipedia
+    hf_config: 20220301.simple
+    split: train
+    tokens_b: 1.5
+    weight: 0.054
+    text_field: text
+    source_formatter: null
+    download: simple_wikipedia
+    purpose: Clean factual grounding
+
+  - name: stack_python
+    component: general
+    hf_dataset: bigcode/the-stack-v2-dedup
+    hf_config: Python
+    split: train
+    tokens_b: 1.0
+    weight: 0.036
+    text_field: content
+    source_formatter: openstack
+    download: stack_python   # the-stack-v2 gated; ungated python fallback used
+    purpose: Code structure (also feeds sheaf interface consistency)
+
+  # -------------------- kleene: transitive reasoning (4.7B) -----------
   - name: proofpile2
+    component: kleene
     hf_dataset: EleutherAI/proof-pile-2
     hf_config: default
     split: train
-    tokens_b: 3.0
-    weight: 0.03
+    tokens_b: 1.5
+    weight: 0.054
     text_field: text
-    purpose: Formal logical structure
+    source_formatter: null
+    download: proofpile2
+    purpose: Formal proof dependency chains
 
-  - name: gutenberg
-    hf_dataset: sedthh/gutenberg_english
+  - name: finemath
+    component: kleene
+    hf_dataset: HuggingFaceTB/finemath
+    hf_config: finemath-4plus
+    split: train
+    tokens_b: 1.5
+    weight: 0.054
+    text_field: text
+    source_formatter: null
+    purpose: Curated math derivations
+
+  - name: nli
+    component: kleene
+    hf_dataset: facebook/anli
     hf_config: null
     split: train
-    tokens_b: 3.0
-    weight: 0.03
-    text_field: TEXT
-    purpose: Narrative coherence
+    tokens_b: 0.7
+    weight: 0.025
+    text_field: text
+    source_formatter: nli
+    download: nli            # anli + snli + multi_nli (downloaded)
+    purpose: Entailment (kleene) / contradiction (sheaf) pairs
 
-# Aggregate: 92.0B tokens, weights sum to 1.00
-total_tokens_b: 92.0
+  - name: syn_type_c
+    component: kleene
+    hf_dataset: null
+    hf_config: null
+    split: null
+    tokens_b: 1.0
+    weight: 0.036
+    text_field: text
+    source_formatter: null
+    purpose: Synthetic transitive dependency chains (validated)
+
+  # -------------------- gist: compression (3.7B) ----------------------
+  - name: arxiv_gist
+    component: gist
+    hf_dataset: arxiv_dataset
+    hf_config: null
+    split: train
+    tokens_b: 2.0
+    weight: 0.072
+    text_field: abstract
+    source_formatter: arxiv
+    download: arxiv_gist
+    purpose: Body -> abstract compression pairs
+
+  - name: syn_type_e
+    component: gist
+    hf_dataset: null
+    hf_config: null
+    split: null
+    tokens_b: 1.7
+    weight: 0.061
+    text_field: text
+    source_formatter: null
+    purpose: Synthetic progressive-summary pairs (validated)
+
+  # -------------------- sheaf: consistency (2.8B) ---------------------
+  - name: obo_ontology
+    component: sheaf
+    hf_dataset: null
+    hf_config: null
+    split: null
+    tokens_b: 0.8
+    weight: 0.029
+    text_field: text
+    source_formatter: obo
+    download: [go_obo, chebi_obo]   # downloaded to raw/ontologies
+    purpose: Ontology term/parent consistency
+
+  - name: syn_type_a
+    component: sheaf
+    hf_dataset: null
+    hf_config: null
+    split: null
+    tokens_b: 1.0
+    weight: 0.036
+    text_field: text
+    source_formatter: null
+    purpose: Synthetic constraint-satisfaction (validated)
+
+  - name: syn_type_b
+    component: sheaf
+    hf_dataset: null
+    hf_config: null
+    split: null
+    tokens_b: 1.0
+    weight: 0.036
+    text_field: text
+    source_formatter: null
+    purpose: Synthetic consistency/contradiction (validated)
+
+  # -------------------- padic: hierarchy (2.8B) -----------------------
+  - name: wordnet
+    component: padic
+    hf_dataset: null
+    hf_config: null
+    split: null
+    tokens_b: 0.8
+    weight: 0.029
+    text_field: text
+    source_formatter: wordnet
+    download: wordnet        # nltk wordnet (downloaded)
+    purpose: Lexical hypernym hierarchies (<|level_n|>)
+
+  - name: syn_type_d
+    component: padic
+    hf_dataset: null
+    hf_config: null
+    split: null
+    tokens_b: 2.0
+    weight: 0.072
+    text_field: text
+    source_formatter: null
+    purpose: Synthetic taxonomy/ontology trees (validated)
+
+  # -------------------- rg: multi-scale (2.8B) ------------------------
+  - name: syn_type_f
+    component: rg
+    hf_dataset: null
+    hf_config: null
+    split: null
+    tokens_b: 2.0
+    weight: 0.072
+    text_field: text
+    source_formatter: null
+    purpose: Synthetic multi-scale decomposition (validated)
+
+  - name: syn_type_g
+    component: sheaf
+    hf_dataset: null
+    hf_config: null
+    split: null
+    tokens_b: 1.0
+    weight: 0.036
+    text_field: text
+    source_formatter: null
+    purpose: Synthetic world model maintenance (validated)
+
+  - name: syn_type_h
+    component: gist
+    hf_dataset: null
+    hf_config: null
+    split: null
+    tokens_b: 1.0
+    weight: 0.036
+    text_field: text
+    source_formatter: null
+    purpose: Synthetic long-form compression (validated)
+
+  - name: kyro
+    component: general
+    local_path: E:/ml/tsrn_data/synthetic/kyro
+    hf_dataset: null
+    hf_config: null
+    split: null
+    tokens_b: 0.5
+    weight: 0.018
+    text_field: text
+    source_formatter: null
+    purpose: Voice-first assistant tool-use conversations (validated)
+
+  - name: openwebmath
+    component: rg
+    hf_dataset: open-web-math/open-web-math
+    hf_config: null
+    split: train
+    tokens_b: 0.8
+    weight: 0.028
+    text_field: text
+    source_formatter: null
+    purpose: Multi-scale math reasoning
+
+# Aggregate: ~27.8B tokens, weights sum to ~1.00
+total_tokens_b: 27.8
+
+# Component-resonant curriculum (consumed by Step 7 phased weighting).
+# Phases are keyed on fraction of total training progress. Each phase lists
+# the components whose weight is RAMPED UP during it; unlisted components keep
+# a small floor weight so nothing fully starves (soft scheduled mixture).
+curriculum:
+  mode: soft            # soft scheduled mixture (interpolated weights)
+  floor_weight: 0.15    # min fraction of a component's base weight when "off"
+  phases:
+    - name: grammar
+      until: 0.15
+      emphasize: [general]
+    - name: logic_kleene
+      until: 0.30
+      emphasize: [general, kleene]
+    - name: logic_tropical
+      until: 0.45
+      emphasize: [general, kleene, sheaf]
+    - name: logic_sheaf
+      until: 0.60
+      emphasize: [general, kleene, sheaf]
+    - name: memory
+      until: 0.80
+      emphasize: [general, padic, gist]
+    - name: integration
+      until: 1.00
+      emphasize: [general, kleene, sheaf, padic, gist, rg]

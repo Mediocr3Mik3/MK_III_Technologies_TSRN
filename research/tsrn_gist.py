@@ -27,6 +27,16 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
+# Ensure the sibling modules in this directory (research/) take precedence over
+# any same-named stale module at the repo root (e.g. an older top-level
+# tsrn_dml.py that lacks KleeneSSM/build_ssm). Without this, importing
+# `research.tsrn_gist` from a parent that has the repo root on sys.path would
+# bind bare `import tsrn_dml` to the wrong file.
+import sys as _sys
+_RESEARCH_DIR = os.path.dirname(os.path.abspath(__file__))
+if _RESEARCH_DIR not in _sys.path:
+    _sys.path.insert(0, _RESEARCH_DIR)
+
 from tsrn_dml import (
     TropicalAttention, CliffordFFN, RGPool, PAdicMemory,
     EchoStateReservoir, PAdicAttention, TropicalSSM,
@@ -94,12 +104,24 @@ class SheafRotorDiffusion(nn.Module):
             if delta == 0:
                 x_nb = x
             elif delta > 0:
-                x_nb = torch.cat([x[:, delta:, :],
-                    torch.zeros(B, delta, d, device=x.device, dtype=x.dtype)], dim=1)
+                # Look-ahead shift by delta, pad tail with zeros. Guard
+                # delta >= T so we never cat a zero-length tensor (DirectML
+                # raises "The parameter is incorrect" on empty-dim concat).
+                if delta >= T:
+                    x_nb = torch.zeros_like(x)
+                else:
+                    x_nb = torch.cat([x[:, delta:, :],
+                        torch.zeros(B, delta, d, device=x.device, dtype=x.dtype)], dim=1)
             else:
                 ad = -delta
-                x_nb = torch.cat([torch.zeros(B, ad, d, device=x.device, dtype=x.dtype),
-                    x[:, :T-ad, :]], dim=1)
+                # Look-back shift by ad, pad head with zeros. Guard ad >= T
+                # (short prompts during generation, e.g. T=3 with window=3)
+                # to avoid the zero-length cat that crashes on DirectML.
+                if ad >= T:
+                    x_nb = torch.zeros_like(x)
+                else:
+                    x_nb = torch.cat([torch.zeros(B, ad, d, device=x.device, dtype=x.dtype),
+                        x[:, :T-ad, :]], dim=1)
             lap = lap + rotor.inverse(Rx - x_nb)
         out = x - self.alpha.abs() * lap
         return self.drop(out + self.correction(out))
@@ -257,68 +279,81 @@ class GistBuffer(nn.Module):
     def store(self, theta: Tensor, mag: Tensor, ctx_repr: Tensor):
         B = theta.shape[0]
         with torch.no_grad():
+            dev = self.stored_theta.device
             key = self.key_proj(ctx_repr.detach())
-            
-            # Vectorize: compute all write indices at once
-            indices = torch.arange(B, device=theta.device)  # [0, 1, ..., B-1]
-            ptrs = (self.write_ptr + indices) % self.max_gists  # (B,)
-            
-            # Batch scatter writes using index_put_.
-            # Cast inputs to buffer dtype (buffers are fp32; AMP forward
-            # produces bf16/fp16) — index_put_ requires matching dtype.
-            self.stored_theta.index_put_((ptrs,), theta.detach().to(self.stored_theta.dtype))
-            self.stored_mag.index_put_((ptrs,), mag.detach().to(self.stored_mag.dtype))
-            self.stored_keys.index_put_((ptrs,), key.detach().to(self.stored_keys.dtype))
-            
-            # Update write_ptr and count using tensor ops
+            theta = theta.detach().to(dev, self.stored_theta.dtype)
+            mag = mag.detach().to(dev, self.stored_mag.dtype)
+            key = key.detach().to(dev, self.stored_keys.dtype)
+
+            # Circular write indices for this batch.
+            ptrs = (self.write_ptr + torch.arange(B, device=dev)) % self.max_gists  # (B,)
+
+            # DirectML-safe write WITHOUT scatter. index_put_/index_copy_ trigger
+            # "DirectML scatter doesn't allow partially modified dimensions" (and
+            # index_copy.out silently falls back to CPU). Instead we build a
+            # (G, B) one-hot selection matrix and combine via matmul + where,
+            # which uses only dense ops DirectML supports natively.
+            # NOTE: requires B <= max_gists so each slot receives <= 1 row
+            # (always true here: B is the micro-batch, G=max_gists).
+            slots = torch.arange(self.max_gists, device=dev).unsqueeze(1)   # (G, 1)
+            sel = (slots == ptrs.unsqueeze(0)).to(self.stored_theta.dtype)  # (G, B)
+            write_mask = sel.sum(dim=1, keepdim=True) > 0                   # (G, 1)
+
+            self.stored_theta.copy_(torch.where(write_mask, sel @ theta, self.stored_theta))
+            self.stored_mag.copy_(torch.where(write_mask, sel @ mag, self.stored_mag))
+            self.stored_keys.copy_(torch.where(write_mask, sel @ key, self.stored_keys))
+
+            # Update write_ptr and count.
             self.write_ptr.add_(B)
-            new_count = torch.minimum(self.write_ptr, 
-                                      torch.tensor(self.max_gists, device=self.write_ptr.device))
+            new_count = torch.minimum(self.write_ptr,
+                                      torch.tensor(self.max_gists, device=dev))
             self.count.copy_(new_count)
 
     def retrieve(self, query: Tensor, top_k: int = 4):
         B = query.shape[0]
+        dev = query.device
         n = self.count.long()  # Keep as tensor (0-d)
-        
+
         # Handle empty buffer with torch.where (no Python conditional)
         is_empty = (n == 0)
         n_clamped = n.clamp(max=self.max_gists)
-        
-        # Use full buffer with masking to avoid dynamic shapes (torch.compile friendly)
-        # Dynamic slicing [:n_clamped] causes graph breaks and recompilation
-        keys = self.stored_keys  # (max_gists, d_model) - fixed size
-        query_expanded = query.detach().unsqueeze(1)  # (B, 1, d_model)
-        keys_expanded = keys.unsqueeze(0)  # (1, max_gists, d_model)
-        scores = torch.logsumexp(query_expanded + keys_expanded, dim=-1)  # (B, max_gists)
-        
+
+        # All math on the query/buffer device (DirectML). retrieve is read-only
+        # and the query is detached, so nothing here enters the backward graph.
+        keys = self.stored_keys                          # (G, d_model)
+        query_expanded = query.detach().unsqueeze(1)     # (B, 1, d_model)
+        keys_expanded = keys.unsqueeze(0)                # (1, G, d_model)
+        scores = torch.logsumexp(query_expanded + keys_expanded, dim=-1)  # (B, G)
+
         # Mask out unused positions (where index >= n)
-        indices = torch.arange(self.max_gists, device=query.device).unsqueeze(0)  # (1, max_gists)
-        valid_mask = (indices < n_clamped)  # (1, max_gists) - broadcasts to (B, max_gists)
+        indices = torch.arange(self.max_gists, device=dev).unsqueeze(0)  # (1, G)
+        valid_mask = (indices < n_clamped)  # (1, G) - broadcasts to (B, G)
         scores = scores.masked_fill(~valid_mask, float('-inf'))
-        
+
         # Compute k using tensor min
-        k_tensor = torch.tensor(top_k, device=query.device, dtype=torch.long)
+        k_tensor = torch.tensor(top_k, device=dev, dtype=torch.long)
         k_clamped = torch.minimum(k_tensor, n_clamped)
-        
-        # Get topk
-        k_safe = k_clamped.max()  # scalar for topk
+
+        # Get topk — DirectML requires k as Python int, not tensor.
+        # Clamp minimum to 1 because topk(0) is invalid on all backends.
+        k_safe = max(int(k_clamped.max().item()), 1)
         topk_s, topk_i = scores.topk(k_safe, dim=-1)  # (B, k_safe)
         w = torch.softmax(topk_s, dim=-1)
-        
-        # Index into stored tensors (use full buffer, indices handle selection)
+
+        # Gather selected gists (read-only buffer; gather is supported on DML).
         theta_out = self.stored_theta[topk_i]  # (B, k_safe, dh)
-        mag_out = self.stored_mag[topk_i]     # (B, k_safe, 1)
-        
+        mag_out = self.stored_mag[topk_i]      # (B, k_safe, 1)
+
         # For empty case, return zeros/ones (match buffer dtype to avoid mismatches)
-        theta_default = torch.zeros(B, 1, self.dh, device=query.device, dtype=self.stored_theta.dtype)
-        mag_default = torch.zeros(B, 1, 1, device=query.device, dtype=self.stored_mag.dtype)
-        w_default = torch.ones(B, 1, device=query.device, dtype=w.dtype)
-        
+        theta_default = torch.zeros(B, 1, self.dh, device=dev, dtype=self.stored_theta.dtype)
+        mag_default = torch.zeros(B, 1, 1, device=dev, dtype=self.stored_mag.dtype)
+        w_default = torch.ones(B, 1, device=dev, dtype=w.dtype)
+
         # Use torch.where to select based on is_empty
         theta_out = torch.where(is_empty.view(-1, 1, 1), theta_default, theta_out)
         mag_out = torch.where(is_empty.view(-1, 1, 1), mag_default, mag_out)
         w_out = torch.where(is_empty.view(-1, 1), w_default, w)
-        
+
         return theta_out, mag_out, w_out
 
     def reset(self):
@@ -369,6 +404,82 @@ class GistBuffer(nn.Module):
         self.write_ptr.fill_(n_vectors)
 
         self.binary_path = path
+
+
+# ---------------------------------------------------------------------------
+#  Gist Chain Context — inference-side compressed memory of evicted windows
+#
+#  As a long conversation slides past the active window, each evicted window
+#  is compressed to a single gist summary (theta/mag from GistExtractor plus a
+#  retrieval key) and appended to an ordered chain. At each new window we
+#  retrieve the top-k most relevant past-window gists by TROPICAL similarity
+#  (max-plus inner product) on the keys, giving effectively unbounded context
+#  at O(k) cost.
+#
+#  This is an INFERENCE-ONLY helper used by InferenceContextManager. It does
+#  not touch TSRNGist.forward and therefore cannot affect the audited causal
+#  training path. Every stored gist comes from a strictly-past window, so its
+#  use at the current window is causal by construction.
+# ---------------------------------------------------------------------------
+
+class GistChainContext:
+    """Ordered, append-only chain of per-window gist summaries (inference)."""
+
+    def __init__(self, d_model: int, dh: int, max_links: int = 4096,
+                 device: torch.device = None):
+        self.d = d_model
+        self.dh = dh
+        self.max_links = max_links
+        self.device = device or torch.device("cpu")
+        self.reset()
+
+    def reset(self) -> None:
+        self.keys = torch.zeros(0, self.d, device=self.device)
+        self.theta = torch.zeros(0, self.dh, device=self.device)
+        self.mag = torch.zeros(0, 1, device=self.device)
+        self.n_links = 0
+
+    @torch.no_grad()
+    def append(self, key: Tensor, theta: Tensor, mag: Tensor) -> None:
+        """Append one evicted window's gist summary.
+
+        key:   (d,) or (1, d) retrieval key (e.g. ctx_summary key projection).
+        theta: (dh,) or (1, dh) gist angle vector.
+        mag:   (1,) or scalar gist magnitude.
+        """
+        key = key.reshape(1, self.d).to(self.device)
+        theta = theta.reshape(1, self.dh).to(self.device)
+        mag = mag.reshape(1, 1).to(self.device)
+        self.keys = torch.cat([self.keys, key], dim=0)
+        self.theta = torch.cat([self.theta, theta], dim=0)
+        self.mag = torch.cat([self.mag, mag], dim=0)
+        self.n_links += 1
+        if self.keys.shape[0] > self.max_links:
+            # Evict oldest links (FIFO); sinks/recent windows matter most.
+            self.keys = self.keys[-self.max_links:]
+            self.theta = self.theta[-self.max_links:]
+            self.mag = self.mag[-self.max_links:]
+
+    @torch.no_grad()
+    def retrieve(self, query_key: Tensor, top_k: int = 8
+                 ) -> Tuple[Tensor, Tensor, Tensor]:
+        """Retrieve top-k past-window gists by tropical similarity on keys.
+
+        Returns (theta_k, mag_k, weights_k):
+          theta_k: (K, dh), mag_k: (K, 1), weights_k: (K,) softmax over
+          tropical scores. Returns empty tensors when the chain is empty.
+        """
+        if self.keys.shape[0] == 0:
+            empty = torch.zeros(0, self.dh, device=self.device)
+            return empty, torch.zeros(0, 1, device=self.device), \
+                torch.zeros(0, device=self.device)
+        q = query_key.reshape(1, self.d).to(self.device)
+        # Tropical (max-plus) inner product: score_i = max_d (q_d + key_{i,d}).
+        scores = (q + self.keys).max(dim=-1).values            # (N,)
+        k = min(top_k, scores.shape[0])
+        top_scores, idx = scores.topk(k)
+        weights = torch.softmax(top_scores, dim=0)             # (K,)
+        return self.theta[idx], self.mag[idx], weights
 
 
 # ---------------------------------------------------------------------------
@@ -745,6 +856,24 @@ class TSRNGist(nn.Module):
         self.s2_block.attn.cross_window_mem.enabled = enabled
         if not enabled:
             self.reset_cross_window()
+
+    def reset_sinks(self):
+        """Reset attention-sink caches in all attention layers (conversation start)."""
+        for block in self.s1_blocks:
+            block.attn.sink_cache.reset()
+        self.s2_block.attn.sink_cache.reset()
+
+    def set_sink_enabled(self, enabled: bool):
+        """Enable/disable attention-sink caches in all attention layers.
+
+        Disabled by default. Enable only for SEQUENTIAL autoregressive
+        generation, where the conversation's opening tokens should remain
+        permanently visible. Resets sinks when disabling."""
+        for block in self.s1_blocks:
+            block.attn.sink_cache.enabled = enabled
+        self.s2_block.attn.sink_cache.enabled = enabled
+        if not enabled:
+            self.reset_sinks()
 
     def set_maslov_h(self, h: float):
         """Set Maslov temperature h on every TropicalAttention layer.

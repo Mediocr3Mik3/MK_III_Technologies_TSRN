@@ -2,14 +2,17 @@ $schema: https://azuremlschemas.azureedge.net/latest/commandJob.schema.json
 type: command
 display_name: tropformer-pretrain
 experiment_name: tropformer-pretrain
-description: 92B-token pretrain on 8x H100 (Standard_ND96isr_H100_v5)
+description: TSRN pretrain (GPU-agnostic; no H100 assumed). Scale via env vars.
 
-compute: azureml:h100-cluster   # 8x H100 80GB
+# EDIT for your SKU. Examples: a gpu-cluster of A100/A10/L4/V100, etc.
+# process_count_per_instance MUST equal the GPU count on the node AND the
+# TROPFORMER_WORLD_SIZE env var below.
+compute: azureml:gpu-cluster
 resources:
-  instance_count: 1             # single-node 8 GPU; raise for multi-node
+  instance_count: 1             # single-node; raise for multi-node
 distribution:
   type: pytorch
-  process_count_per_instance: 8
+  process_count_per_instance: 1   # = GPUs per node
 
 environment: azureml:tropformer-cuda124@latest
 
@@ -23,24 +26,32 @@ inputs:
   tokenizer:
     type: uri_file
     mode: ro_mount
-    path: azureml://datastores/blobdata/paths/tokenizers/tmt_32k.json
+    path: azureml://datastores/blobdata/paths/tokenizers/tmt_48k.json
 outputs:
   ckpt_dir:
     type: uri_folder
     mode: rw_mount
     path: azureml://datastores/blobdata/paths/checkpoints/pretrain
 
-# The trainer reads tokens_dir + tmt_path from the config (pretrain_h100x8.py).
-# We override via env vars; the config picks them up at load time.
+# The trainer reads tokens_dir + tmt_path + scaling knobs from env at load time
+# (see configs/pretrain_flex.py and apply_env_overrides). Tune the TROPFORMER_*
+# values below for the GPU SKU you actually get; WORLD_SIZE must match
+# process_count_per_instance * instance_count.
 environment_variables:
   TROPFORMER_TOKENS_DIR: ${{inputs.tokens_dir}}
   TROPFORMER_TMT_PATH: ${{inputs.tokenizer}}
   TROPFORMER_OUTPUT_DIR: ${{outputs.ckpt_dir}}
+  TROPFORMER_WORLD_SIZE: "1"      # = total GPUs across all nodes
+  TROPFORMER_BATCH_SIZE: "4"      # per-GPU micro-batch; lower if OOM
+  TROPFORMER_GRAD_ACCUM: "16"     # raise to keep effective batch large
+  TROPFORMER_CONTEXT_LEN: "1024"  # lower (e.g. 512) on small-VRAM SKUs
+  TROPFORMER_COMPILE: "0"         # enable only on CUDA SKUs you've tested
+  TROPFORMER_GRADIENT_CHECKPOINT: "1"
   WANDB_API_KEY: $WANDB_API_KEY
   WANDB_PROJECT: tropformer-pretrain
 
 command: >-
   python -m research.cloud.azure.train_pretrain_cloud
-  --config pretrain_h100x8
+  --config pretrain_flex
   --tag    azure_run
   --wandb-project tropformer-pretrain

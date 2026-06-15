@@ -51,6 +51,44 @@ class _DatasetSpec:
     weight: float
     shards: List[Path] = field(default_factory=list)
     sample_weight_multiplier: float = 1.0
+    component: str = "general"
+
+
+class Curriculum:
+    """Soft scheduled component-resonant curriculum.
+
+    Each component becomes "active" at the start of the earliest phase that
+    emphasizes it, ramping from ``floor_weight`` to 1.0 over ``ramp`` of
+    training progress, and staying engaged afterwards (monotonic — avoids
+    catastrophic forgetting). Before activation it sits at the floor so no
+    component is fully starved.
+    """
+
+    def __init__(self, cfg: dict, ramp: float = 0.05):
+        self.floor = float(cfg.get("floor_weight", 0.15))
+        self.ramp = max(1e-6, float(cfg.get("ramp", ramp)))
+        phases = cfg.get("phases", [])
+        # activation start (fraction) per component = start of first phase
+        # that emphasizes it; phase start = previous phase's `until` (0 first).
+        self.activation: Dict[str, float] = {}
+        prev_until = 0.0
+        for ph in phases:
+            start = prev_until
+            for comp in ph.get("emphasize", []):
+                if comp not in self.activation:
+                    self.activation[comp] = start
+            prev_until = float(ph.get("until", prev_until))
+
+    def multiplier(self, component: str, progress: float) -> float:
+        act = self.activation.get(component)
+        if act is None:
+            return self.floor  # never emphasized -> stays at floor
+        if progress >= act:
+            return 1.0
+        # ramp up over [act - ramp, act]
+        x = (progress - (act - self.ramp)) / self.ramp
+        x = min(1.0, max(0.0, x))
+        return self.floor + (1.0 - self.floor) * x
 
 
 class TokenShardStream(IterableDataset):
@@ -64,6 +102,9 @@ class TokenShardStream(IterableDataset):
         world: int = 1,
         eos_id: int = 2,
         only: Optional[List[str]] = None,
+        curriculum: Optional[dict] = None,
+        progress_path: Optional[str] = None,
+        progress_refresh: int = 512,
     ) -> None:
         super().__init__()
         self.context_len = context_len
@@ -71,9 +112,17 @@ class TokenShardStream(IterableDataset):
         self.rank = rank
         self.world = world
         self.eos_id = eos_id
+        self.progress_path = progress_path
+        self.progress_refresh = max(1, int(progress_refresh))
 
         with open(manifest, "r", encoding="utf-8") as f:
             m = yaml.safe_load(f)
+
+        # curriculum: explicit arg overrides manifest's `curriculum:` block.
+        cur_cfg = curriculum if curriculum is not None else m.get("curriculum")
+        self.curriculum: Optional[Curriculum] = (
+            Curriculum(cur_cfg) if cur_cfg and cur_cfg.get("mode", "soft") != "off"
+            else None)
 
         tokens_root = Path(tokens_dir)
         self.specs: List[_DatasetSpec] = []
@@ -101,6 +150,7 @@ class TokenShardStream(IterableDataset):
                 shards=shards,
                 sample_weight_multiplier=float(
                     entry.get("sample_weight_multiplier", 1.0)),
+                component=str(entry.get("component", "general")),
             ))
 
         if not self.specs:
@@ -110,15 +160,74 @@ class TokenShardStream(IterableDataset):
         total = sum(s.weight for s in self.specs)
         for s in self.specs:
             s.weight = s.weight / total
-        self._weights = np.asarray([s.weight for s in self.specs], dtype=np.float64)
+        self._base_weights = np.asarray([s.weight for s in self.specs],
+                                        dtype=np.float64)
+        self._weights = self._base_weights.copy()
+        # curriculum progress cache (per-worker). Start at refresh so the first
+        # pick computes curriculum weights immediately.
+        self._cached_progress = 0.0
+        self._picks_since_refresh = self.progress_refresh
 
         # mmap each shard once (lazy by mmap)
         self._mmaps: Dict[Path, np.memmap] = {}
+        self._open_mmaps()
+
+    def _open_mmaps(self) -> None:
+        """Re-populate self._mmaps from self.specs (used by __setstate__)."""
+        self._mmaps.clear()
         for s in self.specs:
             for sh in s.shards:
                 self._mmaps[sh] = np.memmap(sh, dtype=np.uint32, mode="r")
 
+    def __getstate__(self):
+        """Drop unpicklable memmaps; re-open via __setstate__."""
+        state = self.__dict__.copy()
+        state.pop("_mmaps", None)
+        return state
+
+    def __setstate__(self, state):
+        self.__dict__.update(state)
+        self._open_mmaps()
+
+    @staticmethod
+    def write_progress(path: str, frac: float) -> None:
+        """Trainer calls this periodically to publish training progress [0,1]."""
+        try:
+            tmp = str(path) + ".tmp"
+            with open(tmp, "w", encoding="utf-8") as f:
+                f.write(f"{max(0.0, min(1.0, float(frac))):.6f}")
+            import os
+            os.replace(tmp, path)
+        except OSError:
+            pass
+
+    def _read_progress(self) -> float:
+        if not self.progress_path:
+            return 0.0
+        try:
+            with open(self.progress_path, "r", encoding="utf-8") as f:
+                return float(f.read().strip() or 0.0)
+        except (OSError, ValueError):
+            return self._cached_progress
+
+    def _refresh_curriculum_weights(self) -> None:
+        if self.curriculum is None:
+            return
+        self._picks_since_refresh += 1
+        if self._picks_since_refresh < self.progress_refresh:
+            return
+        self._picks_since_refresh = 0
+        p = self._read_progress()
+        self._cached_progress = p
+        mult = np.asarray(
+            [self.curriculum.multiplier(s.component, p) for s in self.specs],
+            dtype=np.float64)
+        w = self._base_weights * mult
+        total = w.sum()
+        self._weights = (w / total) if total > 0 else self._base_weights
+
     def _pick_window(self, rng: random.Random) -> Tuple[np.ndarray, str]:
+        self._refresh_curriculum_weights()
         spec_idx = rng.choices(range(len(self.specs)), weights=self._weights, k=1)[0]
         spec = self.specs[spec_idx]
         shard = rng.choice(spec.shards)

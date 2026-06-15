@@ -27,10 +27,10 @@ CONFIG = {
     "use_hyperbolic":  True,
     "gist_chaining":   True,
 
-    # ---- Tokenizer ----
+    # ---- Tokenizer (frozen 48k TMT with the 92 TSRN special tokens) ----
     "use_tmt_tokenizer": True,
-    "tmt_path":          "/mnt/blob/tokenizers/tmt_32k.json",
-    "vocab_size":        32000,
+    "tmt_path":          "/mnt/blob/tokenizers/tmt_48k.json",
+    "vocab_size":        48000,
 
     # ---- Training schedule ----
     "steps":           180_000,

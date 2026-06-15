@@ -56,8 +56,14 @@ def tropical_matmul_naive(A: Tensor, B: Tensor) -> Tensor:
 
     Materialises a ``(..., M, K, N)`` intermediate so it scales as O(M*K*N)
     memory.  Use only as ground truth in tests.
+
+    Reduction uses ``amax`` (not ``max(dim).values``) so the backward pass is
+    a comparison mask (``self == result``) instead of an index ``scatter``.
+    This is mathematically identical in the forward direction but is required
+    for the DirectML backend, whose scatter rejects the gradient of
+    ``max(dim)`` ("partially modified dimensions").
     """
-    return (A.unsqueeze(-1) + B.unsqueeze(-3)).max(dim=-2).values
+    return (A.unsqueeze(-1) + B.unsqueeze(-3)).amax(dim=-2)
 
 
 # ---------------------------------------------------------------------------

@@ -577,7 +577,8 @@ def build_alibi_bias(T: int, slopes: Tensor) -> Tensor:
 class TropicalAttention(nn.Module):
     def __init__(self, d_model: int, top_k: int = 8, n_heads: int = 4,
                  dropout: float = 0.0, max_seq_len: int = 4096,
-                 use_pacs: bool = False, training_ctx: int = 512):
+                 use_pacs: bool = False, training_ctx: int = 512,
+                 sink_tokens: int = 4):
         super().__init__()
         assert d_model % n_heads == 0
         self.H = n_heads
@@ -603,6 +604,8 @@ class TropicalAttention(nn.Module):
         # Cross-window K/V cache — extends effective context during eval
         self.cross_window_mem = PersistentCrossWindowMemory(
             d_model, n_heads, max_cached_len=256)
+        # Attention-sink cache — permanently retains first n_sink tokens (eval-only)
+        self.sink_cache = SinkTokenCache(d_model, n_heads, n_sink=sink_tokens)
         # Maslov dequantization parameter h (NEXUS Innovation #3).
         # h * logsumexp(raw/h) -> max as h->0 (tropical), -> smooth as h->inf.
         # Registered as buffer so set_maslov_h() can cycle it during training.
@@ -736,11 +739,26 @@ class TropicalAttention(nn.Module):
                 K = torch.cat([ck, K], dim=2)
                 V = torch.cat([cv, V], dim=2)
                 T_c = ck.shape[2]
+        # Attention sinks: prepend the conversation's opening tokens at the
+        # front (oldest position) so they remain globally visible. Eval-only,
+        # detached, and only prepended once sinks have been recorded (avoids
+        # duplicating the opening window's own first tokens).
+        if not self.training and self.sink_cache.enabled:
+            sk, sv = self.sink_cache.get_sinks(B)
+            if sk is not None:
+                K = torch.cat([sk, K], dim=2)
+                V = torch.cat([sv, V], dim=2)
+                T_c += sk.shape[2]
         T_kv = K.shape[2]
 
         # ── Hybrid attention: fast path vs O(T·k) memory path ──
+        # Threshold sized so training-shape scores (e.g. B=8,H=4,T=256 -> 32MB)
+        # take the fast path. The slow path gradient-checkpoints _attend_chunk,
+        # recomputing the whole attention in backward; on a 12GB card the
+        # full (B,H,T,T) scores are cheap, so prefer the fast path here and
+        # reserve the chunked path for long eval contexts (large T_kv).
         score_bytes = B * H * T * T_kv * 4
-        use_fast = score_bytes <= 24 * 1024 * 1024
+        use_fast = score_bytes <= 96 * 1024 * 1024
 
         if use_fast:
             scores = self._channel_chunked_scores(Q, K, B, H, T_kv, dh)
@@ -793,6 +811,9 @@ class TropicalAttention(nn.Module):
         # Cache current window K/V for next eval call (opt-in)
         if not self.training and self.cross_window_mem.enabled:
             self.cross_window_mem.cache_kv(K_orig, V_orig)
+        # Record sinks once from the opening window (post-RoPE, pre-prepend K/V)
+        if not self.training and self.sink_cache.enabled:
+            self.sink_cache.record_sinks(K_orig, V_orig)
 
         return self.Wo(ctx)
 
@@ -1069,29 +1090,34 @@ class EchoStateReservoir(nn.Module):
         rho_target = torch.sigmoid(self.log_rho) * 1.5
         rho_current = self._power_iter_spectral_radius(self.W_res)
         scale = rho_target / rho_current.clamp(min=1e-6)
-        W_scaled = self.W_res * scale
+        W_scaled_T = (self.W_res * scale).T              # (dr, dr)
 
         # Vectorize all input-dependent projections outside the loop (1 kernel each)
         U = self.W_in(x)                                 # (B, T, dr)
-        W_z_h = self.W_z.weight[:, :dr]                  # (dr, dr)
-        W_z_u = self.W_z.weight[:, dr:]                  # (dr, dr)
-        W_r_h = self.W_r.weight[:, :dr]
-        W_r_u = self.W_r.weight[:, dr:]
-        U_for_z = U @ W_z_u.T + self.W_z.bias            # (B, T, dr) — u-contribution to z
-        U_for_r = U @ W_r_u.T + self.W_r.bias            # (B, T, dr) — u-contribution to r
+        W_z_h_T = self.W_z.weight[:, :dr].T              # (dr, dr)
+        W_z_u_T = self.W_z.weight[:, dr:].T
+        W_r_h_T = self.W_r.weight[:, :dr].T
+        W_r_u_T = self.W_r.weight[:, dr:].T
+
+        # DirectML is kernel-launch-bound on this sequential recurrence, so we
+        # FUSE the z and r gates along the output dim: one h-matmul + one
+        # sigmoid per step instead of two of each. Mathematically identical to
+        # the separate gates below. u-contributions are precomputed (1 GEMM).
+        W_hh = torch.cat([W_z_h_T, W_r_h_T], dim=1)      # (dr, 2*dr): [:,:dr]=z, [:,dr:]=r
+        U_for_zr = torch.cat([
+            U @ W_z_u_T + self.W_z.bias,                 # u-contribution to z
+            U @ W_r_u_T + self.W_r.bias,                 # u-contribution to r
+        ], dim=-1)                                       # (B, T, 2*dr)
 
         # Causal GRU recurrence (inherently sequential; per-step kernels minimized)
         h = torch.zeros(B, dr, device=device, dtype=x.dtype)
         outs = []
-        W_scaled_T = W_scaled.T
-        W_z_h_T = W_z_h.T
-        W_r_h_T = W_r_h.T
         for t in range(T):
-            u_t = U[:, t, :]
-            z = torch.sigmoid(h @ W_z_h_T + U_for_z[:, t, :])
-            r = torch.sigmoid(h @ W_r_h_T + U_for_r[:, t, :])
-            h_tilde = torch.tanh((r * h) @ W_scaled_T + u_t)
-            h = (1 - z) * h + z * h_tilde
+            zr = torch.sigmoid(h @ W_hh + U_for_zr[:, t, :])   # (B, 2*dr)
+            z = zr[:, :dr]
+            r = zr[:, dr:]
+            h_tilde = torch.tanh((r * h) @ W_scaled_T + U[:, t, :])
+            h = h + z * (h_tilde - h)                          # = (1-z)*h + z*h_tilde
             outs.append(h)
 
         H = torch.stack(outs, dim=1)
@@ -1497,10 +1523,12 @@ class KleeneAttention(nn.Module):
             iter_disc = discount * (it + 1)
 
             # Two-hop: (R (X) R)_ij = max_k (R_ik + R_kj + iter_disc)
+            # amax (not max(dim).values) -> mask-based backward, no scatter
+            # (DirectML rejects the gradient scatter of max(dim)).
             two_hop = (
                 result.unsqueeze(-1) +    # (B, H, T, T, 1)  rows
                 result.unsqueeze(-3)      # (B, H, 1, T, T)  cols
-            ).max(dim=-2).values + iter_disc  # (B, H, T, T)
+            ).amax(dim=-2) + iter_disc  # (B, H, T, T)
 
             new_result = torch.maximum(result, two_hop)
             result = new_result
@@ -1674,6 +1702,60 @@ class PersistentCrossWindowMemory(nn.Module):
         self.cached_k = torch.zeros(0, device=self.cached_k.device)
         self.cached_v = torch.zeros(0, device=self.cached_v.device)
         self._has_cache = False
+
+
+class SinkTokenCache(nn.Module):
+    """Permanently retains the first ``n_sink`` tokens' K/V (attention sinks).
+
+    StreamingLLM-style sinks: the first few tokens of a conversation (system
+    prompt, user name, key preferences) are never evicted regardless of how
+    long the conversation grows. They act as global context anchors.
+
+    OPT-IN and EVAL-ONLY, mirroring PersistentCrossWindowMemory. Cached K/V are
+    detached, so they never participate in gradients and cannot carry future
+    information backward (causal-safe). Sinks are recorded once (on the first
+    forward of a conversation) and prepended to subsequent windows only — so a
+    single-window forward never duplicates its own opening tokens.
+
+    Usage:
+      model.set_sink_enabled(True)    # before sequential generation
+      model.reset_sinks()             # at conversation start
+    """
+    def __init__(self, d_model: int, n_heads: int, n_sink: int = 4):
+        super().__init__()
+        self.H = n_heads
+        self.dh = d_model // n_heads
+        self.n_sink = n_sink
+        self.register_buffer("sink_k", torch.zeros(0))
+        self.register_buffer("sink_v", torch.zeros(0))
+        self._has_sinks = False
+        self.enabled = False
+
+    def record_sinks(self, k: Tensor, v: Tensor) -> None:
+        """Store the first ``n_sink`` tokens' K/V from the opening window.
+        k, v: (B, H, T, dh). Uses the first batch element (identical in LM)."""
+        if self._has_sinks or self.n_sink <= 0:
+            return
+        with torch.no_grad():
+            n = min(self.n_sink, k.shape[2])
+            if n <= 0:
+                return
+            self.sink_k = k[0, :, :n, :].detach().clone()  # (H, n, dh)
+            self.sink_v = v[0, :, :n, :].detach().clone()
+            self._has_sinks = True
+
+    def get_sinks(self, B: int) -> Tuple[Optional[Tensor], Optional[Tensor]]:
+        """Return sink K/V expanded to batch size, or (None, None)."""
+        if not self._has_sinks or self.sink_k.numel() == 0:
+            return None, None
+        k = self.sink_k.unsqueeze(0).expand(B, -1, -1, -1)
+        v = self.sink_v.unsqueeze(0).expand(B, -1, -1, -1)
+        return k, v
+
+    def reset(self) -> None:
+        self.sink_k = torch.zeros(0, device=self.sink_k.device)
+        self.sink_v = torch.zeros(0, device=self.sink_v.device)
+        self._has_sinks = False
 
 
 # ---------------------------------------------------------------------------
@@ -1900,6 +1982,26 @@ class TSRN(nn.Module):
             block.attn.cross_window_mem.enabled = enabled
         if not enabled:
             self.reset_cross_window()
+
+    def reset_sinks(self):
+        """Reset attention-sink caches in all attention layers (conversation start)."""
+        for block in self.s1_blocks:
+            block.attn.sink_cache.reset()
+        for block in self.s2_blocks:
+            block.attn.sink_cache.reset()
+
+    def set_sink_enabled(self, enabled: bool):
+        """Enable/disable attention-sink caches across all attention layers.
+
+        Default disabled. Enable only for SEQUENTIAL autoregressive generation
+        where the first tokens (system prompt, key context) should remain
+        permanently visible. Resets sinks when disabling."""
+        for block in self.s1_blocks:
+            block.attn.sink_cache.enabled = enabled
+        for block in self.s2_blocks:
+            block.attn.sink_cache.enabled = enabled
+        if not enabled:
+            self.reset_sinks()
 
     def forward(self, idx: Tensor, targets: Optional[Tensor] = None):
         B, T = idx.shape

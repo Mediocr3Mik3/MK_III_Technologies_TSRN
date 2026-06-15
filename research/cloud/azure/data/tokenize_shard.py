@@ -117,9 +117,12 @@ def _tokenize_shard(args) -> dict:
             if total >= shard_tokens:
                 break
 
-    np.save(tmp_idx, np.stack([np.asarray(starts, dtype=np.int64),
-                               np.asarray(lengths, dtype=np.int64)],
-                              axis=1))
+    # NB: write via a file handle so np.save does not append an extra ".npy"
+    # to a tmp path that already ends in ".npy.tmp".
+    with open(tmp_idx, "wb") as fidx:
+        np.save(fidx, np.stack([np.asarray(starts, dtype=np.int64),
+                                np.asarray(lengths, dtype=np.int64)],
+                               axis=1))
     os.replace(tmp_bin, bin_path)
     os.replace(tmp_idx, idx_path)
     return {

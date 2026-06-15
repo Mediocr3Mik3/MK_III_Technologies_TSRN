@@ -38,6 +38,8 @@ if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
 from research.tropical_tokenizer import TropicalMergingTokenizer  # noqa: E402
+from research.cloud.azure.data.special_tokens import (  # noqa: E402
+    build_special_tokens, NUM_SPECIAL_TOKENS)
 
 logger = logging.getLogger(__name__)
 
@@ -171,14 +173,16 @@ def main(argv: Optional[List[str]] = None) -> None:
                    help="Directory of raw shards (output of download.py)")
     p.add_argument("--output", required=True,
                    help="Where to save tmt_*.json (and _embeddings.pt)")
-    p.add_argument("--vocab-size", type=int, default=32000)
+    p.add_argument("--vocab-size", type=int, default=48000)
     p.add_argument("--sample-bytes", type=float, default=5e9,
                    help="Bytes of text to sample for pair counts (default 5GiB)")
     p.add_argument("--bootstrap-steps", type=int, default=5000,
                    help="Phase 0 model training steps (logged but not run here)")
-    p.add_argument("--rounds", type=int, default=14)
+    p.add_argument("--rounds", type=int, default=22)
     p.add_argument("--k-pairs-per-round", type=int, default=2300,
-                   help="Merges per round. 14 rounds * 2300 = 32200 vocab.")
+                   help="Merges per round. ~21 rounds * 2300 reaches 48k vocab.")
+    p.add_argument("--no-special-tokens", action="store_true",
+                   help="Skip the frozen TSRN special-token inventory (debug only).")
     p.add_argument("--theta", type=float, default=0.1,
                    help="Synergy threshold for accepting a merge")
     p.add_argument("--d-model", type=int, default=512,
@@ -197,9 +201,13 @@ def main(argv: Optional[List[str]] = None) -> None:
     docs = sample_corpus(raw_dir, int(args.sample_bytes))
 
     logger.info("Phase 0: initializing TMT and counting pairs...")
+    specials = None if args.no_special_tokens else build_special_tokens()
+    if specials:
+        logger.info("reserving %d frozen TSRN special tokens", len(specials))
     tok = TropicalMergingTokenizer(
         vocab_size=args.vocab_size,
         theta=args.theta,
+        special_tokens=specials,
     )
     tok.update_pair_counts(docs)
 
@@ -227,9 +235,18 @@ def main(argv: Optional[List[str]] = None) -> None:
         logger.info("  merged %d pairs, vocab now %d",
                     len(merges), tok.current_vocab_size)
 
+    # sanity: every frozen special token must be in the final vocabulary
+    if specials:
+        missing = [t for t in specials if t not in tok.vocab_to_id]
+        if missing:
+            raise RuntimeError(
+                f"{len(missing)} special tokens missing from vocab: {missing[:5]}...")
+        logger.info("verified %d special tokens present in vocab", len(specials))
+
     tok.save(str(out_path))
-    logger.info("saved tokenizer -> %s (vocab=%d)",
-                out_path, tok.current_vocab_size)
+    logger.info("saved tokenizer -> %s (vocab=%d, specials=%d)",
+                out_path, tok.current_vocab_size,
+                0 if not specials else NUM_SPECIAL_TOKENS)
 
 
 if __name__ == "__main__":

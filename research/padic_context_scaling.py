@@ -145,6 +145,43 @@ class PAdicContextScaling(nn.Module):
 
         return scaled_positions, temp_correction
 
+    def apply_to_rope(
+        self,
+        positions: torch.Tensor,
+        inference_ctx: int,
+        cos_cache: torch.Tensor,
+        sin_cache: torch.Tensor,
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        """
+        Apply PaCS scaling to RoPE cos/sin lookups (RoPE-interpolation mode).
+
+        Instead of looking up cos/sin at integer positions, interpolate at the
+        non-integer scaled positions produced by ``scale``. This is an
+        alternative to the temperature-correction mode used inside
+        TropicalAttention; it is provided for the inference context manager and
+        for callers that want PaCS expressed directly in the rotary phase.
+
+        Args:
+            positions: (T,) integer position indices.
+            inference_ctx: target inference context length.
+            cos_cache, sin_cache: (max_seq_len, dim) RoPE caches.
+
+        Returns:
+            (cos_scaled, sin_scaled), each (T, dim), gathered by linear
+            interpolation between adjacent cached entries.
+
+        Note: scaling only compresses position *values*; it never reorders the
+        causal mask. Causality is enforced by the attention mask, not here.
+        """
+        scaled_pos, _ = self.scale(positions, inference_ctx)
+        max_idx = cos_cache.shape[0] - 2
+        floor_idx = scaled_pos.floor().long().clamp(0, max_idx)
+        frac = (scaled_pos - floor_idx.float()).clamp(0.0, 1.0).unsqueeze(-1)
+
+        cos_scaled = cos_cache[floor_idx] * (1 - frac) + cos_cache[floor_idx + 1] * frac
+        sin_scaled = sin_cache[floor_idx] * (1 - frac) + sin_cache[floor_idx + 1] * frac
+        return cos_scaled, sin_scaled
+
     def forward(
         self,
         position_ids: torch.Tensor,

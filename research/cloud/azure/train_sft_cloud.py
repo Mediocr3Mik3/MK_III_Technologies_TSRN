@@ -512,6 +512,17 @@ def main(argv: Optional[List[str]] = None) -> None:
     logging.basicConfig(level=logging.INFO,
                         format="%(asctime)s [%(levelname)s] %(message)s")
     cfg = load_config(args.config)
+
+    # AML path overrides — keeps VM and AzureML paths working without config edits.
+    if os.environ.get("TROPFORMER_TMT_PATH"):
+        cfg["tmt_path"] = os.environ["TROPFORMER_TMT_PATH"]
+    if os.environ.get("TROPFORMER_TOKENS_DIR"):
+        cfg["tokens_dir"] = os.environ["TROPFORMER_TOKENS_DIR"]
+    if os.environ.get("TROPFORMER_OUTPUT_DIR"):
+        cfg["output_dir"] = os.environ["TROPFORMER_OUTPUT_DIR"]
+    if os.environ.get("TROPFORMER_INIT_FROM") and args.init_from is None:
+        args.init_from = os.environ["TROPFORMER_INIT_FROM"]
+
     if args.wandb_project is None:
         args.wandb_project = cfg.get("wandb_project")
     train(cfg, args)

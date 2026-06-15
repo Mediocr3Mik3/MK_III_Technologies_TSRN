@@ -1,0 +1,476 @@
+=== TropFormer Azure Provisioning ===
+Subscription: 5bca8e1c-5fed-46a8-918d-91bb5afec472
+Resource Group: m.freeman-rg
+Location: eastus2
+VM Size: Standard_ND96isr_H100_v5
+
+=== Step 1: Azure Login ===
+Select the account you want to log in with. For more information on login with Azure CLI, see https://go.microsoft.com/fwlink/?linkid=2271136
+
+Retrieving tenants and subscriptions for the selection...
+[
+  {
+    "cloudName": "AzureCloud",
+    "homeTenantId": "2336a498-7062-46ac-9eb0-35d9c34572c0",
+    "id": "5bca8e1c-5fed-46a8-918d-91bb5afec472",
+    "isDefault": true,
+    "managedByTenants": [],
+    "name": "Azure subscription 1",
+    "state": "Enabled",
+    "tenantDefaultDomain": "mfreemanmkiii.onmicrosoft.com",
+    "tenantDisplayName": "Default Directory",
+    "tenantId": "2336a498-7062-46ac-9eb0-35d9c34572c0",
+    "user": {
+      "name": "m.freeman@mkiii.tech",
+      "type": "user"
+    }
+  }
+]
+
+=== Step 2: Resource Group ===
+[OK] Resource group 'm.freeman-rg' already exists
+
+=== Step 3: Storage Account ===
+[OK] Storage account name 'tropformer' is available
+Creating storage account 'tropformer'...
+{
+  "accessTier": "Hot",
+  "accountMigrationInProgress": null,
+  "allowBlobPublicAccess": false,
+  "allowCrossTenantReplication": false,
+  "allowSharedKeyAccess": null,
+  "allowedCopyScope": null,
+  "azureFilesIdentityBasedAuthentication": null,
+  "blobRestoreStatus": null,
+  "creationTime": "2026-05-16T13:34:11.568373+00:00",
+  "customDomain": null,
+  "defaultToOAuthAuthentication": null,
+  "dnsEndpointType": null,
+  "dualStackEndpointPreference": null,
+  "enableExtendedGroups": null,
+  "enableHttpsTrafficOnly": true,
+  "enableNfsV3": null,
+  "encryption": {
+    "encryptionIdentity": null,
+    "keySource": "Microsoft.Storage",
+    "keyVaultProperties": null,
+    "requireInfrastructureEncryption": null,
+    "services": {
+      "blob": {
+        "enabled": true,
+        "keyType": "Account",
+        "lastEnabledTime": "2026-05-16T13:34:11.948789+00:00"
+      },
+      "file": {
+        "enabled": true,
+        "keyType": "Account",
+        "lastEnabledTime": "2026-05-16T13:34:11.948789+00:00"
+      },
+      "queue": null,
+      "table": null
+    }
+  },
+  "extendedLocation": null,
+  "failoverInProgress": null,
+  "geoPriorityReplicationStatus": null,
+  "geoReplicationStats": null,
+  "id": "/subscriptions/5bca8e1c-5fed-46a8-918d-91bb5afec472/resourceGroups/m.freeman-rg/providers/Microsoft.Storage/storageAccounts/tropformer",
+  "identity": null,
+  "immutableStorageWithVersioning": null,
+  "isHnsEnabled": null,
+  "isLocalUserEnabled": null,
+  "isSftpEnabled": null,
+  "isSkuConversionBlocked": null,
+  "keyCreationTime": {
+    "key1": "2026-05-16T13:34:11.946768+00:00",
+    "key2": "2026-05-16T13:34:11.946768+00:00"
+  },
+  "keyPolicy": null,
+  "kind": "StorageV2",
+  "largeFileSharesState": null,
+  "lastGeoFailoverTime": null,
+  "location": "eastus2",
+  "minimumTlsVersion": "TLS1_0",
+  "name": "tropformer",
+  "networkRuleSet": {
+    "bypass": "AzureServices",
+    "defaultAction": "Allow",
+    "ipRules": [],
+    "ipv6Rules": [],
+    "resourceAccessRules": null,
+    "virtualNetworkRules": []
+  },
+  "placement": null,
+  "primaryEndpoints": {
+    "blob": "https://tropformer.blob.core.windows.net/",
+    "dfs": "https://tropformer.dfs.core.windows.net/",
+    "file": "https://tropformer.file.core.windows.net/",
+    "internetEndpoints": null,
+    "ipv6Endpoints": null,
+    "microsoftEndpoints": null,
+    "queue": "https://tropformer.queue.core.windows.net/",
+    "table": "https://tropformer.table.core.windows.net/",
+    "web": "https://tropformer.z20.web.core.windows.net/"
+  },
+  "primaryLocation": "eastus2",
+  "privateEndpointConnections": [],
+  "provisioningState": "Succeeded",
+  "publicNetworkAccess": null,
+  "resourceGroup": "m.freeman-rg",
+  "routingPreference": null,
+  "sasPolicy": null,
+  "secondaryEndpoints": null,
+  "secondaryLocation": null,
+  "sku": {
+    "name": "Standard_LRS",
+    "tier": "Standard"
+  },
+  "statusOfPrimary": "available",
+  "statusOfSecondary": null,
+  "storageAccountSkuConversionStatus": null,
+  "tags": {},
+  "type": "Microsoft.Storage/storageAccounts",
+  "zones": null
+}
+[OK] Storage account created
+
+=== Step 4: Storage Container ===
+Creating container 'tropformer'...
+{
+  "created": true
+}
+[OK] Container created
+
+=== Step 5: Networking ===
+Creating VNet 'tropformer-vnet'...
+Resource provider 'Microsoft.Network' used by this operation is not registered. We are registering for you.
+Registration succeeded.
+{
+  "newVNet": {
+    "addressSpace": {
+      "addressPrefixes": [
+        "10.0.0.0/16"
+      ]
+    },
+    "enableDdosProtection": false,
+    "etag": "W/\"b4c9a6e1-7eb7-4b94-b0e0-adc2de4ed58e\"",
+    "id": "/subscriptions/5bca8e1c-5fed-46a8-918d-91bb5afec472/resourceGroups/m.freeman-rg/providers/Microsoft.Network/virtualNetworks/tropformer-vnet",
+    "location": "eastus2",
+    "name": "tropformer-vnet",
+    "privateEndpointVNetPolicies": "Disabled",
+    "provisioningState": "Succeeded",
+    "resourceGroup": "m.freeman-rg",
+    "resourceGuid": "b617f373-78ae-4c47-923c-4fb04ce5d6f5",
+    "subnets": [],
+    "type": "Microsoft.Network/virtualNetworks",
+    "virtualNetworkPeerings": []
+  }
+}
+[OK] VNet created
+Creating subnet 'tropformer-subnet'...
+{
+  "addressPrefix": "10.0.1.0/24",
+  "delegations": [],
+  "etag": "W/\"00471238-9fdd-40a5-925d-3493f79b11e5\"",
+  "id": "/subscriptions/5bca8e1c-5fed-46a8-918d-91bb5afec472/resourceGroups/m.freeman-rg/providers/Microsoft.Network/virtualNetworks/tropformer-vnet/subnets/tropformer-subnet",
+  "name": "tropformer-subnet",
+  "privateEndpointNetworkPolicies": "Disabled",
+  "privateLinkServiceNetworkPolicies": "Enabled",
+  "provisioningState": "Succeeded",
+  "resourceGroup": "m.freeman-rg",
+  "type": "Microsoft.Network/virtualNetworks/subnets"
+}
+[OK] Subnet created
+Creating NSG 'tropformer-nsg'...
+{
+  "NewNSG": {
+    "defaultSecurityRules": [
+      {
+        "access": "Allow",
+        "description": "Allow inbound traffic from all VMs in VNET",
+        "destinationAddressPrefix": "VirtualNetwork",
+        "destinationAddressPrefixes": [],
+        "destinationPortRange": "*",
+        "destinationPortRanges": [],
+        "direction": "Inbound",
+        "etag": "W/\"26f5be51-2cd1-4bba-abdf-58e889ef4b22\"",
+        "id": "/subscriptions/5bca8e1c-5fed-46a8-918d-91bb5afec472/resourceGroups/m.freeman-rg/providers/Microsoft.Network/networkSecurityGroups/tropformer-nsg/defaultSecurityRules/AllowVnetInBound",
+        "name": "AllowVnetInBound",
+        "priority": 65000,
+        "protocol": "*",
+        "provisioningState": "Succeeded",
+        "resourceGroup": "m.freeman-rg",
+        "sourceAddressPrefix": "VirtualNetwork",
+        "sourceAddressPrefixes": [],
+        "sourcePortRange": "*",
+        "sourcePortRanges": [],
+        "type": "Microsoft.Network/networkSecurityGroups/defaultSecurityRules"
+      },
+      {
+        "access": "Allow",
+        "description": "Allow inbound traffic from azure load balancer",
+        "destinationAddressPrefix": "*",
+        "destinationAddressPrefixes": [],
+        "destinationPortRange": "*",
+        "destinationPortRanges": [],
+        "direction": "Inbound",
+        "etag": "W/\"26f5be51-2cd1-4bba-abdf-58e889ef4b22\"",
+        "id": "/subscriptions/5bca8e1c-5fed-46a8-918d-91bb5afec472/resourceGroups/m.freeman-rg/providers/Microsoft.Network/networkSecurityGroups/tropformer-nsg/defaultSecurityRules/AllowAzureLoadBalancerInBound",
+        "name": "AllowAzureLoadBalancerInBound",
+        "priority": 65001,
+        "protocol": "*",
+        "provisioningState": "Succeeded",
+        "resourceGroup": "m.freeman-rg",
+        "sourceAddressPrefix": "AzureLoadBalancer",
+        "sourceAddressPrefixes": [],
+        "sourcePortRange": "*",
+        "sourcePortRanges": [],
+        "type": "Microsoft.Network/networkSecurityGroups/defaultSecurityRules"
+      },
+      {
+        "access": "Deny",
+        "description": "Deny all inbound traffic",
+        "destinationAddressPrefix": "*",
+        "destinationAddressPrefixes": [],
+        "destinationPortRange": "*",
+        "destinationPortRanges": [],
+        "direction": "Inbound",
+        "etag": "W/\"26f5be51-2cd1-4bba-abdf-58e889ef4b22\"",
+        "id": "/subscriptions/5bca8e1c-5fed-46a8-918d-91bb5afec472/resourceGroups/m.freeman-rg/providers/Microsoft.Network/networkSecurityGroups/tropformer-nsg/defaultSecurityRules/DenyAllInBound",
+        "name": "DenyAllInBound",
+        "priority": 65500,
+        "protocol": "*",
+        "provisioningState": "Succeeded",
+        "resourceGroup": "m.freeman-rg",
+        "sourceAddressPrefix": "*",
+        "sourceAddressPrefixes": [],
+        "sourcePortRange": "*",
+        "sourcePortRanges": [],
+        "type": "Microsoft.Network/networkSecurityGroups/defaultSecurityRules"
+      },
+      {
+        "access": "Allow",
+        "description": "Allow outbound traffic from all VMs to all VMs in VNET",
+        "destinationAddressPrefix": "VirtualNetwork",
+        "destinationAddressPrefixes": [],
+        "destinationPortRange": "*",
+        "destinationPortRanges": [],
+        "direction": "Outbound",
+        "etag": "W/\"26f5be51-2cd1-4bba-abdf-58e889ef4b22\"",
+        "id": "/subscriptions/5bca8e1c-5fed-46a8-918d-91bb5afec472/resourceGroups/m.freeman-rg/providers/Microsoft.Network/networkSecurityGroups/tropformer-nsg/defaultSecurityRules/AllowVnetOutBound",
+        "name": "AllowVnetOutBound",
+        "priority": 65000,
+        "protocol": "*",
+        "provisioningState": "Succeeded",
+        "resourceGroup": "m.freeman-rg",
+        "sourceAddressPrefix": "VirtualNetwork",
+        "sourceAddressPrefixes": [],
+        "sourcePortRange": "*",
+        "sourcePortRanges": [],
+        "type": "Microsoft.Network/networkSecurityGroups/defaultSecurityRules"
+      },
+      {
+        "access": "Allow",
+        "description": "Allow outbound traffic from all VMs to Internet",
+        "destinationAddressPrefix": "Internet",
+        "destinationAddressPrefixes": [],
+        "destinationPortRange": "*",
+        "destinationPortRanges": [],
+        "direction": "Outbound",
+        "etag": "W/\"26f5be51-2cd1-4bba-abdf-58e889ef4b22\"",
+        "id": "/subscriptions/5bca8e1c-5fed-46a8-918d-91bb5afec472/resourceGroups/m.freeman-rg/providers/Microsoft.Network/networkSecurityGroups/tropformer-nsg/defaultSecurityRules/AllowInternetOutBound",
+        "name": "AllowInternetOutBound",
+        "priority": 65001,
+        "protocol": "*",
+        "provisioningState": "Succeeded",
+        "resourceGroup": "m.freeman-rg",
+        "sourceAddressPrefix": "*",
+        "sourceAddressPrefixes": [],
+        "sourcePortRange": "*",
+        "sourcePortRanges": [],
+        "type": "Microsoft.Network/networkSecurityGroups/defaultSecurityRules"
+      },
+      {
+        "access": "Deny",
+        "description": "Deny all outbound traffic",
+        "destinationAddressPrefix": "*",
+        "destinationAddressPrefixes": [],
+        "destinationPortRange": "*",
+        "destinationPortRanges": [],
+        "direction": "Outbound",
+        "etag": "W/\"26f5be51-2cd1-4bba-abdf-58e889ef4b22\"",
+        "id": "/subscriptions/5bca8e1c-5fed-46a8-918d-91bb5afec472/resourceGroups/m.freeman-rg/providers/Microsoft.Network/networkSecurityGroups/tropformer-nsg/defaultSecurityRules/DenyAllOutBound",
+        "name": "DenyAllOutBound",
+        "priority": 65500,
+        "protocol": "*",
+        "provisioningState": "Succeeded",
+        "resourceGroup": "m.freeman-rg",
+        "sourceAddressPrefix": "*",
+        "sourceAddressPrefixes": [],
+        "sourcePortRange": "*",
+        "sourcePortRanges": [],
+        "type": "Microsoft.Network/networkSecurityGroups/defaultSecurityRules"
+      }
+    ],
+    "etag": "W/\"26f5be51-2cd1-4bba-abdf-58e889ef4b22\"",
+    "id": "/subscriptions/5bca8e1c-5fed-46a8-918d-91bb5afec472/resourceGroups/m.freeman-rg/providers/Microsoft.Network/networkSecurityGroups/tropformer-nsg",
+    "location": "eastus2",
+    "name": "tropformer-nsg",
+    "provisioningState": "Succeeded",
+    "resourceGroup": "m.freeman-rg",
+    "resourceGuid": "8d594138-01dc-4e88-b780-2de50f596e65",
+    "securityRules": [],
+    "type": "Microsoft.Network/networkSecurityGroups"
+  }
+}
+{
+  "access": "Allow",
+  "destinationAddressPrefix": "*",
+  "destinationAddressPrefixes": [],
+  "destinationPortRange": "22",
+  "destinationPortRanges": [],
+  "direction": "Inbound",
+  "etag": "W/\"8f4367a4-ce8b-44c2-b746-abe1f1e1e0f5\"",
+  "id": "/subscriptions/5bca8e1c-5fed-46a8-918d-91bb5afec472/resourceGroups/m.freeman-rg/providers/Microsoft.Network/networkSecurityGroups/tropformer-nsg/securityRules/AllowSSH",
+  "name": "AllowSSH",
+  "priority": 100,
+  "protocol": "Tcp",
+  "provisioningState": "Succeeded",
+  "resourceGroup": "m.freeman-rg",
+  "sourceAddressPrefix": "*",
+  "sourceAddressPrefixes": [],
+  "sourcePortRange": "*",
+  "sourcePortRanges": [],
+  "type": "Microsoft.Network/networkSecurityGroups/securityRules"
+}
+[OK] NSG created with SSH rule
+Creating public IP 'tropformer-pip'...
+[Coming breaking change] In the coming release, the default behavior will be changed as follows when sku is Standard and zone is not provided: For zonal regions, you will get a zone-redundant IP indicated by zones:["1","2","3"]; For non-zonal regions, you will get a non zone-redundant IP indicated by zones:null.
+{
+  "publicIp": {
+    "ddosSettings": {
+      "protectionMode": "VirtualNetworkInherited"
+    },
+    "etag": "W/\"e447eab0-5e09-42c3-aee6-c6f8522957b1\"",
+    "id": "/subscriptions/5bca8e1c-5fed-46a8-918d-91bb5afec472/resourceGroups/m.freeman-rg/providers/Microsoft.Network/publicIPAddresses/tropformer-pip",
+    "idleTimeoutInMinutes": 4,
+    "ipAddress": "20.96.36.106",
+    "ipTags": [],
+    "location": "eastus2",
+    "name": "tropformer-pip",
+    "provisioningState": "Succeeded",
+    "publicIPAddressVersion": "IPv4",
+    "publicIPAllocationMethod": "Static",
+    "resourceGroup": "m.freeman-rg",
+    "resourceGuid": "90b8be5f-33c3-4ed8-954d-1d1671648aa5",
+    "sku": {
+      "name": "Standard",
+      "tier": "Regional"
+    },
+    "type": "Microsoft.Network/publicIPAddresses"
+  }
+}
+[OK] Public IP created
+
+=== Step 6: SSH Key ===
+Generating SSH key at C:\Users\freem\.ssh\tropformer_azure_key...
+option requires an argument -- N
+usage: ssh-keygen [-q] [-a rounds] [-b bits] [-C comment] [-f output_keyfile]
+                  [-m format] [-N new_passphrase] [-O option]
+                  [-t dsa | ecdsa | ecdsa-sk | ed25519 | ed25519-sk | rsa]
+                  [-w provider] [-Z cipher]
+       ssh-keygen -p [-a rounds] [-f keyfile] [-m format] [-N new_passphrase]
+                   [-P old_passphrase] [-Z cipher]
+       ssh-keygen -i [-f input_keyfile] [-m key_format]
+       ssh-keygen -e [-f input_keyfile] [-m key_format]
+       ssh-keygen -y [-f input_keyfile]
+       ssh-keygen -c [-a rounds] [-C comment] [-f keyfile] [-P passphrase]
+       ssh-keygen -l [-v] [-E fingerprint_hash] [-f input_keyfile]
+       ssh-keygen -B [-f input_keyfile]
+       ssh-keygen -D pkcs11
+       ssh-keygen -F hostname [-lv] [-f known_hosts_file]
+       ssh-keygen -H [-f known_hosts_file]
+       ssh-keygen -K [-a rounds] [-w provider]
+       ssh-keygen -R hostname [-f known_hosts_file]
+       ssh-keygen -r hostname [-g] [-f input_keyfile]
+       ssh-keygen -M generate [-O option] output_file
+       ssh-keygen -M screen [-f input_file] [-O option] output_file
+       ssh-keygen -I certificate_identity -s ca_key [-hU] [-D pkcs11_provider]
+                  [-n principals] [-O option] [-V validity_interval]
+                  [-z serial_number] file ...
+       ssh-keygen -L [-f input_keyfile]
+       ssh-keygen -A [-a rounds] [-f prefix_path]
+       ssh-keygen -k -f krl_file [-u] [-s ca_public] [-z version_number]
+                  file ...
+       ssh-keygen -Q [-l] -f krl_file [file ...]
+       ssh-keygen -Y find-principals -s signature_file -f allowed_signers_file
+       ssh-keygen -Y match-principals -I signer_identity -f allowed_signers_file
+       ssh-keygen -Y check-novalidate -n namespace -s signature_file
+       ssh-keygen -Y sign -f key_file -n namespace file [-O option] ...
+       ssh-keygen -Y verify -f allowed_signers_file -I signer_identity
+                  -n namespace -s signature_file [-r krl_file] [-O option]
+[OK] SSH key generated
+WARNING: SSH public key not found at C:\Users\freem\.ssh\tropformer_azure_key.pub
+
+=== Step 7: VM Creation ===
+This will take 10-20 minutes...
+Creating VM...
+argument --ssh-key-values: expected at least one argument
+
+Examples from command's help:
+az vm create -n MyVm -g MyResourceGroup --public-ip-address-dns-name MyUniqueDnsName --image Ubuntu2204 --data-disk-sizes-gb 10 20 --size Standard_DS2_v2 --generate-ssh-keys
+Create a simple Ubuntu Linux VM with a public IP address, DNS entry, two data disks (10GB and 20GB), and then generate RSA ssh key pairs.
+
+az vm create -n MyVm -g MyResourceGroup --image Debian11 --vnet-name MyVnet --subnet subnet1 --availability-set MyAvailabilitySet --public-ip-address-dns-name MyUniqueDnsName --ssh-key-values @key-file
+Create a Debian11 VM with SSH key authentication and a public DNS entry, located on an existing virtual network and availability set.
+
+az vm create -n MyVm -g MyResourceGroup --public-ip-address "" --image Win2012R2Datacenter
+Create a default Windows Server VM with a private IP address.
+
+https://aka.ms/cli_ref
+Read more about the command in reference docs
+[OK] VM created
+
+=== Provisioning Complete ===
+
+CONNECTION DETAILS:
+===================
+Subscription ID:    5bca8e1c-5fed-46a8-918d-91bb5afec472
+Resource Group:     m.freeman-rg
+Location:           eastus2
+VM Name:            tropformer-vm
+Public IP:          20.96.36.106
+Admin Username:     azureuser
+SSH Key:            C:\Users\freem\.ssh\tropformer_azure_key
+
+STORAGE DETAILS:
+================
+Storage Account:    tropformer
+Container:          tropformer
+Storage Key:        <REDACTED — provide via $env:TROPFORMER_STORAGE_KEY; rotate this key in the Azure Portal>
+
+NEXT STEPS:
+===========
+1. SSH into the VM:
+   ssh -i C:\Users\freem\.ssh\tropformer_azure_key azureuser@20.96.36.106
+
+2. Clone the repo:
+   git clone -b kleene-star https://github.com/Mediocr3Mik3/MK_III_Technologies_TSRN.git TropFormer
+   cd TropFormer
+
+3. Mount blob storage:
+   export STORAGE_ACCOUNT=tropformer
+   export STORAGE_CONTAINER=tropformer
+   export STORAGE_KEY="$TROPFORMER_STORAGE_KEY"   # set in your shell; never paste the real key into tracked files
+   bash research/cloud/azure/scripts/blob_mount.sh
+
+4. Setup Python environment:
+   bash research/cloud/azure/scripts/setup_vm.sh
+
+5. Run smoke test:
+   bash research/cloud/azure/scripts/smoke_test.sh
+
+6. Start pretraining:
+   bash research/cloud/azure/scripts/run_pretrain.sh
+
+SAVE THIS OUTPUT - you'll need the storage key and connection details!

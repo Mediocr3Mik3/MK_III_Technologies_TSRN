@@ -19,7 +19,7 @@ Usage:
   python tsrn_gist.py --preset 22m  --dataset enwik8
 """
 
-import argparse, json, math, os, time
+import argparse, gc, json, math, os, time
 from typing import Dict, List, Optional, Tuple
 
 import torch
@@ -27,13 +27,36 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
+# Ensure the sibling modules in this directory (research/) take precedence over
+# any same-named stale module at the repo root (e.g. an older top-level
+# tsrn_dml.py that lacks KleeneSSM/build_ssm). Without this, importing
+# `research.tsrn_gist` from a parent that has the repo root on sys.path would
+# bind bare `import tsrn_dml` to the wrong file.
+import sys as _sys
+_RESEARCH_DIR = os.path.dirname(os.path.abspath(__file__))
+if _RESEARCH_DIR not in _sys.path:
+    _sys.path.insert(0, _RESEARCH_DIR)
+
 from tsrn_dml import (
     TropicalAttention, CliffordFFN, RGPool, PAdicMemory,
-    EchoStateReservoir, PAdicAttention,
+    EchoStateReservoir, PAdicAttention, TropicalSSM,
+    KleeneSSM, KleeneAttention, build_attention, build_ssm,
+    SheafHarmonicPE,
+)
+try:
+    from model_config import ModelConfig, nano_config
+except ImportError:
+    ModelConfig = None  # type: ignore
+    nano_config = None  # type: ignore
+from tsrn_dml import (
     CharDataset, CharDatasetSplit, load_enwik8, load_wikitext2,
     generate_synthetic_data, detect_device, evaluate,
     evaluate_sequential, get_lr, device_sync,
+    AdamWDML,
 )
+
+# Import v2.0 components
+from hyperbolic_embeddings import poincare_to_tangent, tangent_to_poincare
 
 
 # ---------------------------------------------------------------------------
@@ -123,9 +146,10 @@ class SheafRotorDiffusion(nn.Module):
 # ---------------------------------------------------------------------------
 
 class GistExtractor(nn.Module):
-    def __init__(self, d_model: int, n_heads: int = 4):
+    def __init__(self, d_model: int, n_heads: int = 4, use_hyperbolic: bool = False):
         super().__init__()
         self.d, self.H, self.dh = d_model, n_heads, d_model // n_heads
+        self.use_hyperbolic = use_hyperbolic
         # One learnable query per coarse position is parameter-expensive;
         # instead use a single query prototype that is position-modulated
         # by a learned coarse positional embedding (same capacity, less params).
@@ -135,14 +159,18 @@ class GistExtractor(nn.Module):
         self.proj_theta = nn.Linear(d_model, d_model // 2)
         self.proj_mag = nn.Linear(d_model, 1)
         self.ln = nn.LayerNorm(d_model)
+        # For hyperbolic gist output (v2.0)
+        if use_hyperbolic:
+            self.hyperbolic_proj = nn.Linear(d_model, d_model, bias=False)
 
-    def forward(self, x: Tensor) -> Tuple[Tensor, Tensor]:
+    def forward(self, x: Tensor) -> Tuple[Tensor, Tensor, Optional[Tensor]]:
         """
         Args:
             x: (B, T, d) — Scale 1 output, T must be even.
         Returns:
             theta : (B, T2, d//2)  causal per-coarse gist angles
             mag   : (B, T2, 1)     causal per-coarse magnitude gates
+            hyperbolic_gist : (B, T2, d) optional hyperbolic gist vectors (v2.0)
         where T2 = T // 2.
         """
         B, T, d = x.shape
@@ -178,9 +206,18 @@ class GistExtractor(nn.Module):
 
         theta = self.proj_theta(pooled)                 # B T2 d//2
         mag   = torch.sigmoid(self.proj_mag(pooled))   # B T2 1
-        return theta, mag
 
-    def forward_single(self, x: Tensor) -> Tuple[Tensor, Tensor]:
+        # Optional hyperbolic gist output (v2.0)
+        hyperbolic_gist = None
+        if self.use_hyperbolic:
+            # Project to hyperbolic space
+            hyperbolic_repr = self.hyperbolic_proj(pooled)  # B T2 d
+            # Project to Poincaré disk
+            hyperbolic_gist = tangent_to_poincare(hyperbolic_repr)
+
+        return theta, mag, hyperbolic_gist
+
+    def forward_single(self, x: Tensor) -> Tuple[Tensor, Tensor, Optional[Tensor]]:
         """Legacy single-vector extraction (causal: attends to all of x,
         which is the maximum safe prefix for cross-batch gist storage).
         Used only by GistBuffer.store to produce the ring-buffer key."""
@@ -193,55 +230,231 @@ class GistExtractor(nn.Module):
         # No mask needed: storing a summary of the entire (past) window is causal.
         pooled = (torch.softmax(scores, -1) @ v).permute(0,2,1,3).reshape(B, d)
         pooled = self.ln(pooled)
-        return self.proj_theta(pooled), torch.sigmoid(self.proj_mag(pooled))
+        theta = self.proj_theta(pooled)
+        mag = torch.sigmoid(self.proj_mag(pooled))
+        
+        # Optional hyperbolic gist output (v2.0)
+        hyperbolic_gist = None
+        if self.use_hyperbolic:
+            hyperbolic_repr = self.hyperbolic_proj(pooled)  # B d
+            hyperbolic_gist = tangent_to_poincare(hyperbolic_repr)
+        
+        return theta, mag, hyperbolic_gist
 
 
 # ---------------------------------------------------------------------------
 #  Gist Buffer — ring buffer with tropical retrieval
 # ---------------------------------------------------------------------------
 
+import torch._dynamo
+
+@torch._dynamo.disable
 class GistBuffer(nn.Module):
-    def __init__(self, d_model: int, max_gists: int = 64):
+    def __init__(self, d_model: int, max_gists: int = 64, use_hyperbolic: bool = False):
         super().__init__()
         self.dh = d_model // 2
         self.max_gists = max_gists
+        self.use_hyperbolic = use_hyperbolic
         self.register_buffer("stored_theta", torch.zeros(max_gists, d_model//2))
         self.register_buffer("stored_mag", torch.zeros(max_gists, 1))
         self.register_buffer("stored_keys", torch.zeros(max_gists, d_model))
         self.register_buffer("count", torch.tensor(0, dtype=torch.long))
         self.register_buffer("write_ptr", torch.tensor(0, dtype=torch.long))
         self.key_proj = nn.Linear(d_model, d_model, bias=False)
+        # For binary storage
+        self.binary_path = None
 
     def store(self, theta: Tensor, mag: Tensor, ctx_repr: Tensor):
         B = theta.shape[0]
         with torch.no_grad():
             key = self.key_proj(ctx_repr.detach())
-            for b in range(B):
-                ptr = self.write_ptr.item() % self.max_gists
-                self.stored_theta[ptr] = theta[b].detach()
-                self.stored_mag[ptr] = mag[b].detach()
-                self.stored_keys[ptr] = key[b].detach()
-                self.write_ptr.add_(1)
-            self.count.fill_(min(self.write_ptr.item(), self.max_gists))
+            
+            # Vectorize: compute all write indices at once
+            indices = torch.arange(B, device=theta.device)  # [0, 1, ..., B-1]
+            ptrs = (self.write_ptr + indices) % self.max_gists  # (B,)
+            
+            # Batch scatter writes using index_put_.
+            # Cast inputs to buffer dtype (buffers are fp32; AMP forward
+            # produces bf16/fp16) — index_put_ requires matching dtype.
+            self.stored_theta.index_put_((ptrs,), theta.detach().to(self.stored_theta.dtype))
+            self.stored_mag.index_put_((ptrs,), mag.detach().to(self.stored_mag.dtype))
+            self.stored_keys.index_put_((ptrs,), key.detach().to(self.stored_keys.dtype))
+            
+            # Update write_ptr and count using tensor ops
+            self.write_ptr.add_(B)
+            new_count = torch.minimum(self.write_ptr, 
+                                      torch.tensor(self.max_gists, device=self.write_ptr.device))
+            self.count.copy_(new_count)
 
     def retrieve(self, query: Tensor, top_k: int = 4):
-        n, B = self.count.item(), query.shape[0]
-        if n == 0:
-            return (torch.zeros(B,1,self.dh, device=query.device),
-                    torch.zeros(B,1,1, device=query.device),
-                    torch.ones(B,1, device=query.device))
-        keys = self.stored_keys[:n]
-        # Detach: buffer is a non-differentiable cache; avoids DML scatter in topk backward
-        scores = torch.logsumexp(
-            query.detach().unsqueeze(1) + keys.unsqueeze(0), dim=-1)
-        k = min(top_k, n)
-        topk_s, topk_i = scores.topk(k, dim=-1)
+        B = query.shape[0]
+        n = self.count.long()  # Keep as tensor (0-d)
+        
+        # Handle empty buffer with torch.where (no Python conditional)
+        is_empty = (n == 0)
+        n_clamped = n.clamp(max=self.max_gists)
+        
+        # Use full buffer with masking to avoid dynamic shapes (torch.compile friendly)
+        # Dynamic slicing [:n_clamped] causes graph breaks and recompilation
+        keys = self.stored_keys  # (max_gists, d_model) - fixed size
+        query_expanded = query.detach().unsqueeze(1)  # (B, 1, d_model)
+        keys_expanded = keys.unsqueeze(0)  # (1, max_gists, d_model)
+        scores = torch.logsumexp(query_expanded + keys_expanded, dim=-1)  # (B, max_gists)
+        
+        # Mask out unused positions (where index >= n)
+        indices = torch.arange(self.max_gists, device=query.device).unsqueeze(0)  # (1, max_gists)
+        valid_mask = (indices < n_clamped)  # (1, max_gists) - broadcasts to (B, max_gists)
+        scores = scores.masked_fill(~valid_mask, float('-inf'))
+        
+        # Compute k using tensor min
+        k_tensor = torch.tensor(top_k, device=query.device, dtype=torch.long)
+        k_clamped = torch.minimum(k_tensor, n_clamped)
+        
+        # Get topk
+        k_safe = k_clamped.max()  # scalar for topk
+        topk_s, topk_i = scores.topk(k_safe, dim=-1)  # (B, k_safe)
         w = torch.softmax(topk_s, dim=-1)
-        return self.stored_theta[:n][topk_i], self.stored_mag[:n][topk_i], w
+        
+        # Index into stored tensors (use full buffer, indices handle selection)
+        theta_out = self.stored_theta[topk_i]  # (B, k_safe, dh)
+        mag_out = self.stored_mag[topk_i]     # (B, k_safe, 1)
+        
+        # For empty case, return zeros/ones (match buffer dtype to avoid mismatches)
+        theta_default = torch.zeros(B, 1, self.dh, device=query.device, dtype=self.stored_theta.dtype)
+        mag_default = torch.zeros(B, 1, 1, device=query.device, dtype=self.stored_mag.dtype)
+        w_default = torch.ones(B, 1, device=query.device, dtype=w.dtype)
+        
+        # Use torch.where to select based on is_empty
+        theta_out = torch.where(is_empty.view(-1, 1, 1), theta_default, theta_out)
+        mag_out = torch.where(is_empty.view(-1, 1, 1), mag_default, mag_out)
+        w_out = torch.where(is_empty.view(-1, 1), w_default, w)
+        
+        return theta_out, mag_out, w_out
 
     def reset(self):
         self.stored_theta.zero_(); self.stored_mag.zero_()
         self.stored_keys.zero_(); self.count.zero_(); self.write_ptr.zero_()
+
+    def save_vectors_bin(self, path: str):
+        """Save gist vectors to binary format (v2.0)."""
+        n = self.count.item()
+        if n == 0:
+            return
+
+        import numpy as np
+        theta_np = self.stored_theta[:n].cpu().numpy()
+        mag_np = self.stored_mag[:n].cpu().numpy()
+        keys_np = self.stored_keys[:n].cpu().numpy()
+
+        # Save with header: d_model, n_vectors
+        header = np.array([self.stored_theta.shape[1] + 1, n], dtype=np.int32)
+        combined = np.concatenate([theta_np, mag_np], axis=-1)
+
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "wb") as f:
+            f.write(header.tobytes())
+            f.write(combined.tobytes())
+            f.write(keys_np.tobytes())
+
+        self.binary_path = path
+
+    def load_vectors_bin(self, path: str):
+        """Load gist vectors from binary format (v2.0)."""
+        import numpy as np
+
+        with open(path, "rb") as f:
+            header = np.frombuffer(f.read(8), dtype=np.int32)
+            d_model, n_vectors = header[0], header[1]
+            combined = np.frombuffer(f.read(n_vectors * d_model * 4), dtype=np.float32)
+            keys_np = np.frombuffer(f.read(n_vectors * d_model * 4), dtype=np.float32)
+
+        combined = combined.reshape(n_vectors, d_model)
+        theta_np = combined[:, :self.dh]
+        mag_np = combined[:, self.dh:]
+
+        self.stored_theta[:n_vectors] = torch.from_numpy(theta_np)
+        self.stored_mag[:n_vectors] = torch.from_numpy(mag_np)
+        self.stored_keys[:n_vectors] = torch.from_numpy(keys_np)
+        self.count.fill_(n_vectors)
+        self.write_ptr.fill_(n_vectors)
+
+        self.binary_path = path
+
+
+# ---------------------------------------------------------------------------
+#  Gist Chain Context — inference-side compressed memory of evicted windows
+#
+#  As a long conversation slides past the active window, each evicted window
+#  is compressed to a single gist summary (theta/mag from GistExtractor plus a
+#  retrieval key) and appended to an ordered chain. At each new window we
+#  retrieve the top-k most relevant past-window gists by TROPICAL similarity
+#  (max-plus inner product) on the keys, giving effectively unbounded context
+#  at O(k) cost.
+#
+#  This is an INFERENCE-ONLY helper used by InferenceContextManager. It does
+#  not touch TSRNGist.forward and therefore cannot affect the audited causal
+#  training path. Every stored gist comes from a strictly-past window, so its
+#  use at the current window is causal by construction.
+# ---------------------------------------------------------------------------
+
+class GistChainContext:
+    """Ordered, append-only chain of per-window gist summaries (inference)."""
+
+    def __init__(self, d_model: int, dh: int, max_links: int = 4096,
+                 device: torch.device = None):
+        self.d = d_model
+        self.dh = dh
+        self.max_links = max_links
+        self.device = device or torch.device("cpu")
+        self.reset()
+
+    def reset(self) -> None:
+        self.keys = torch.zeros(0, self.d, device=self.device)
+        self.theta = torch.zeros(0, self.dh, device=self.device)
+        self.mag = torch.zeros(0, 1, device=self.device)
+        self.n_links = 0
+
+    @torch.no_grad()
+    def append(self, key: Tensor, theta: Tensor, mag: Tensor) -> None:
+        """Append one evicted window's gist summary.
+
+        key:   (d,) or (1, d) retrieval key (e.g. ctx_summary key projection).
+        theta: (dh,) or (1, dh) gist angle vector.
+        mag:   (1,) or scalar gist magnitude.
+        """
+        key = key.reshape(1, self.d).to(self.device)
+        theta = theta.reshape(1, self.dh).to(self.device)
+        mag = mag.reshape(1, 1).to(self.device)
+        self.keys = torch.cat([self.keys, key], dim=0)
+        self.theta = torch.cat([self.theta, theta], dim=0)
+        self.mag = torch.cat([self.mag, mag], dim=0)
+        self.n_links += 1
+        if self.keys.shape[0] > self.max_links:
+            # Evict oldest links (FIFO); sinks/recent windows matter most.
+            self.keys = self.keys[-self.max_links:]
+            self.theta = self.theta[-self.max_links:]
+            self.mag = self.mag[-self.max_links:]
+
+    @torch.no_grad()
+    def retrieve(self, query_key: Tensor, top_k: int = 8
+                 ) -> Tuple[Tensor, Tensor, Tensor]:
+        """Retrieve top-k past-window gists by tropical similarity on keys.
+
+        Returns (theta_k, mag_k, weights_k):
+          theta_k: (K, dh), mag_k: (K, 1), weights_k: (K,) softmax over
+          tropical scores. Returns empty tensors when the chain is empty.
+        """
+        if self.keys.shape[0] == 0:
+            empty = torch.zeros(0, self.dh, device=self.device)
+            return empty, torch.zeros(0, 1, device=self.device), \
+                torch.zeros(0, device=self.device)
+        q = query_key.reshape(1, self.d).to(self.device)
+        # Tropical (max-plus) inner product: score_i = max_d (q_d + key_{i,d}).
+        scores = (q + self.keys).max(dim=-1).values            # (N,)
+        k = min(top_k, scores.shape[0])
+        top_scores, idx = scores.topk(k)
+        weights = torch.softmax(top_scores, dim=0)             # (K,)
+        return self.theta[idx], self.mag[idx], weights
 
 
 # ---------------------------------------------------------------------------
@@ -383,18 +596,48 @@ class TSRNGistBlock(nn.Module):
                  sheaf_window: int, mem_depth: int,
                  use_reservoir: bool, use_padic_attn: bool,
                  use_memory: bool, use_gist_cross_attn: bool = True,
-                 dropout: float = 0.1):
+                 use_tropical_ssm: bool = False,
+                 dropout: float = 0.1,
+                 config=None):
+        """
+        Args:
+            config: Optional ModelConfig. If provided, attention and SSM
+                modules are built via build_attention()/build_ssm() so
+                Kleene variants are wired in when their flags are set.
+                Backwards compatible: if config is None, uses
+                TropicalAttention + (optionally) TropicalSSM as before.
+        """
         super().__init__()
         self.ln_attn = nn.LayerNorm(d_model)
-        self.attn = TropicalAttention(d_model, top_k=top_k, n_heads=n_heads,
-                                       dropout=dropout)
+        if config is not None:
+            self.attn = build_attention(config)
+        else:
+            self.attn = TropicalAttention(d_model, top_k=top_k, n_heads=n_heads,
+                                           dropout=dropout)
         self.ln_sheaf = nn.LayerNorm(d_model)
         self.sheaf = SheafRotorDiffusion(d_model, window=sheaf_window,
                                           dropout=dropout)
         self.use_reservoir = use_reservoir
         if use_reservoir:
             self.ln_res = nn.LayerNorm(d_model)
-            self.reservoir = EchoStateReservoir(d_model)
+            self.reservoir = EchoStateReservoir(d_model, d_reservoir=d_model // 2)
+
+        # Tropical / Kleene SSM (optional, parallel to reservoir).
+        # When config is provided, we always build via build_ssm() because the
+        # config controls whether SSM is on at all (use_kleene_ssm flag covers
+        # both KleeneSSM=True and TropicalSSM=False fallback).
+        self.use_tropical_ssm = use_tropical_ssm
+        if config is not None:
+            # config-driven path: SSM is on iff use_kleene_ssm OR caller
+            # explicitly passed use_tropical_ssm=True for the legacy path.
+            ssm_on = bool(getattr(config, "use_kleene_ssm", True)) or use_tropical_ssm
+            self.use_tropical_ssm = ssm_on
+            if ssm_on:
+                self.ln_ssm = nn.LayerNorm(d_model)
+                self.tropical_ssm = build_ssm(config)
+        elif use_tropical_ssm:
+            self.ln_ssm = nn.LayerNorm(d_model)
+            self.tropical_ssm = TropicalSSM(d_model)
 
         self.ln_gist = nn.LayerNorm(d_model)
         self.gist_rotation = GistRotationLayer(d_model)
@@ -424,6 +667,8 @@ class TSRNGistBlock(nn.Module):
         x = x + self.sheaf(self.ln_sheaf(x))
         if self.use_reservoir:
             x = x + self.reservoir(self.ln_res(x))
+        if self.use_tropical_ssm:
+            x = x + self.tropical_ssm(self.ln_ssm(x))
         if gist_theta is not None and gist_mag is not None:
             xn = self.ln_gist(x)
             x = x + (self.gist_rotation(xn, gist_theta, gist_mag, gist_weights) - xn)
@@ -460,46 +705,85 @@ class TSRNGist(nn.Module):
                  n_blocks: int = 1, top_k: int = 8, n_heads: int = 4,
                  mem_depth: int = 6, sheaf_window: int = 3,
                  max_gists: int = 64, gist_top_k: int = 4,
-                 dropout: float = 0.1):
+                 dropout: float = 0.1,
+                 # NEXUS Innovation #3 — Scale-2 RG fixed-point iteration
+                 s2_max_iters: Optional[int] = None,
+                 s2_eps: float = 0.01,
+                 # NEXUS Innovation #4 — Sheaf Harmonic positional encoding
+                 pe_harmonics: int = 64,
+                 # v2.0 features
+                 use_hyperbolic: bool = False,
+                 gist_chaining: bool = False,
+                 # Kleene / ModelConfig wiring
+                 config=None):
         super().__init__()
         self.ctx = context_len
         self.d = d_model
         self.gist_top_k = gist_top_k
+        self.use_hyperbolic = use_hyperbolic
+        self.gist_chaining = gist_chaining
 
         self.embed = nn.Embedding(vocab, d_model)
-        self.pos_s1 = nn.Embedding(context_len, d_model)
-        self.pos_s2 = nn.Embedding(context_len // 2, d_model)
         nn.init.normal_(self.embed.weight, std=0.02)
-        nn.init.normal_(self.pos_s1.weight, std=0.01)
-        nn.init.normal_(self.pos_s2.weight, std=0.01)
 
-        # Scale 1 blocks
+        # NEXUS Innovation #4 — Sheaf Harmonic PE (zero-init projection;
+        # model learns what frequency content to inject on top of RoPE/ALiBi)
+        self.sheaf_pe = SheafHarmonicPE(d_model, max_seq_len=context_len,
+                                        n_harmonics=pe_harmonics)
+
+        # Scale 1 blocks (reservoir + SSM in first block)
         self.s1_blocks = nn.ModuleList([
             TSRNGistBlock(d_model, top_k=top_k, n_heads=n_heads,
                           sheaf_window=sheaf_window, mem_depth=mem_depth,
                           use_reservoir=(i == 0),
                           use_padic_attn=False, use_memory=True,
-                          use_gist_cross_attn=True, dropout=dropout)
+                          use_gist_cross_attn=True,
+                          use_tropical_ssm=(i == 0),
+                          dropout=dropout,
+                          config=config)
             for i in range(n_blocks)
         ])
 
         # Gist extraction at RG boundary
-        self.gist_extractor = GistExtractor(d_model, n_heads=n_heads)
-        self.gist_buffer = GistBuffer(d_model, max_gists=max_gists)
+        self.gist_extractor = GistExtractor(d_model, n_heads=n_heads,
+                                            use_hyperbolic=use_hyperbolic)
+        self.gist_buffer = GistBuffer(d_model, max_gists=max_gists,
+                                      use_hyperbolic=use_hyperbolic)
+
+        # Gist chaining buffer (v2.0) - stores hyperbolic gists for infinite context
+        if gist_chaining and use_hyperbolic:
+            self.gist_chain_buffer = GistBuffer(d_model, max_gists=max_gists * 2,
+                                                use_hyperbolic=True)
+        else:
+            self.gist_chain_buffer = None
 
         # RG coarse-grain
         self.rg_pool = RGPool(d_model)
 
-        # Scale 2 blocks
-        self.s2_blocks = nn.ModuleList([
-            TSRNGistBlock(d_model, top_k=max(2, top_k // 2), n_heads=n_heads,
-                          sheaf_window=sheaf_window, mem_depth=mem_depth,
-                          use_reservoir=False,
-                          use_padic_attn=(i == n_blocks - 1),
-                          use_memory=False,
-                          use_gist_cross_attn=True, dropout=dropout)
-            for i in range(n_blocks)
-        ])
+        # NEXUS Innovation #3 — single shared Scale-2 block, iterated to
+        # RG fixed point.  s2_max_iters defaults to n_blocks (preserves the
+        # old forward budget); iteration stops early once
+        # ||x_new - x_old||_F / ||x_old||_F < s2_eps.  This gives adaptive
+        # depth and ~30% Scale-2 parameter reduction.
+        self.s2_block = TSRNGistBlock(
+            d_model, top_k=max(2, top_k // 2), n_heads=n_heads,
+            sheaf_window=sheaf_window, mem_depth=mem_depth,
+            use_reservoir=False,
+            use_padic_attn=True,  # present every iteration (stable RG map)
+            use_memory=False,
+            use_gist_cross_attn=True, dropout=dropout,
+            config=config)
+        self.s2_max_iters = int(s2_max_iters) if s2_max_iters else max(1, n_blocks)
+        self.s2_eps = float(s2_eps)
+        self.s2_n_blocks = n_blocks  # kept for checkpoint compat / logging
+        # Diagnostic: exposed for training loop to log avg iteration count
+        self.register_buffer("_last_s2_iters", torch.tensor(0, dtype=torch.long),
+                             persistent=False)
+
+        # Learnable gated fusion: replaces hard-coded 0.5 blend
+        self.fuse_gate = nn.Linear(2 * d_model, d_model, bias=True)
+        nn.init.zeros_(self.fuse_gate.weight)
+        nn.init.zeros_(self.fuse_gate.bias)  # starts as 0.5 via sigmoid(0)
 
         self.ln_f = nn.LayerNorm(d_model)
         self.head = nn.Linear(d_model, vocab, bias=False)
@@ -529,13 +813,77 @@ class TSRNGist(nn.Module):
     def count_params(self) -> int:
         return sum(p.numel() for p in self.parameters() if p.requires_grad)
 
+    def reset_cross_window(self):
+        """Reset cross-window memory in all attention layers."""
+        for block in self.s1_blocks:
+            block.attn.cross_window_mem.reset()
+        self.s2_block.attn.cross_window_mem.reset()
+
+    def set_cross_window_enabled(self, enabled: bool):
+        """Enable/disable cross-window K/V cache in all attention layers.
+
+        Disabled by default. Enable only for SEQUENTIAL autoregressive
+        generation (e.g. streaming inference). For random-batch evaluation
+        it is both semantically wrong (caches unrelated context) and slow
+        (doubles T_kv -> triggers O(T^2) chunked path)."""
+        for block in self.s1_blocks:
+            block.attn.cross_window_mem.enabled = enabled
+        self.s2_block.attn.cross_window_mem.enabled = enabled
+        if not enabled:
+            self.reset_cross_window()
+
+    def reset_sinks(self):
+        """Reset attention-sink caches in all attention layers (conversation start)."""
+        for block in self.s1_blocks:
+            block.attn.sink_cache.reset()
+        self.s2_block.attn.sink_cache.reset()
+
+    def set_sink_enabled(self, enabled: bool):
+        """Enable/disable attention-sink caches in all attention layers.
+
+        Disabled by default. Enable only for SEQUENTIAL autoregressive
+        generation, where the conversation's opening tokens should remain
+        permanently visible. Resets sinks when disabling."""
+        for block in self.s1_blocks:
+            block.attn.sink_cache.enabled = enabled
+        self.s2_block.attn.sink_cache.enabled = enabled
+        if not enabled:
+            self.reset_sinks()
+
+    def set_maslov_h(self, h: float):
+        """Set Maslov temperature h on every TropicalAttention layer.
+
+        h -> 0: tropical (argmax-like, committed combinatorial structure).
+        h  = 1: plain logsumexp (default, tropical-compatible).
+        h -> inf: smooth/classical (softmax-like).
+        Use with the Maslov cycling schedule in the training loop."""
+        h_tensor = torch.tensor(float(h))
+        for block in self.s1_blocks:
+            block.attn.maslov_h.fill_(float(h))
+        self.s2_block.attn.maslov_h.fill_(float(h))
+
+    def get_maslov_h(self) -> float:
+        return float(self.s1_blocks[0].attn.maslov_h.item())
+
     def forward(self, idx: Tensor, targets: Optional[Tensor] = None):
         B, T = idx.shape
-        pos = torch.arange(T, device=idx.device)
-        x = self.embed(idx) + self.pos_s1(pos)
+        x = self.embed(idx)
 
-        # Retrieve gists from buffer (strictly past windows — causal by construction)
-        ctx_summary = x.mean(dim=1)  # B d  (embedding mean; no future info here)
+        # NEXUS Innovation #4 — Sheaf Harmonic positional encoding (additive)
+        # Broadcast over batch.  Zero-init proj means no effect at step 0.
+        pe = self.sheaf_pe(T, x.device, x.dtype)          # (T, d)
+        x = x + pe.unsqueeze(0)                            # (B, T, d)
+
+        # Retrieve gists from buffer (strictly past windows — causal by construction).
+        #
+        # DATA-LEAKAGE FIX (kleene-star branch): the previous code used
+        # `x.mean(dim=1)` as the retrieval query, which averages over all T
+        # positions of the current window.  That made the gist *selection*
+        # at every position non-causal: at position t, the soft-weighted
+        # mixture of past gists depended on tokens at t' > t.  We now use
+        # `x[:, 0, :]` — the first-position embedding — which every
+        # position can causally observe.  See research/DATA_LEAKAGE_AUDIT.md.
+        ctx_summary = x[:, 0, :]                            # (B, d)
         gist_theta, gist_mag, gist_w = self.gist_buffer.retrieve(
             self.gist_buffer.key_proj(ctx_summary), top_k=self.gist_top_k)
         # gist_theta: (B, K, dh),  gist_mag: (B, K, 1),  gist_w: (B, K)
@@ -554,9 +902,10 @@ class TSRNGist(nn.Module):
         # GistExtractor.forward() now returns per-coarse-position gists:
         #   fresh_theta : (B, T2, dh)  where fresh_theta[j] encodes x_{0..2j}
         #   fresh_mag   : (B, T2, 1)
+        #   fresh_hyp   : (B, T2, d)  optional hyperbolic gist (v2.0)
         # This is strictly causal: coarse token j sees fine tokens 0..2j only.
         T2 = T // 2
-        fresh_theta, fresh_mag = self.gist_extractor(x)
+        fresh_theta, fresh_mag, fresh_hyp = self.gist_extractor(x)
         # fresh_theta shape: (B, T2, dh) — verify against T2
         assert fresh_theta.shape[1] == T2, (
             f"GistExtractor returned {fresh_theta.shape[1]} positions, expected {T2}")
@@ -566,19 +915,47 @@ class TSRNGist(nn.Module):
         # forward_single re-uses the same weights, attends to all of x (causal
         # because all of x is the current past window).
         if self.training:
-            store_theta, store_mag = self.gist_extractor.forward_single(x)
+            store_theta, store_mag, store_hyp = self.gist_extractor.forward_single(x)
             self.gist_buffer.store(store_theta, store_mag, ctx_summary)
+            # Gist chaining: store hyperbolic gists for infinite context (v2.0)
+            if self.gist_chaining and self.gist_chain_buffer is not None and store_hyp is not None:
+                # Convert hyperbolic gist to tangent for storage
+                hyp_tangent = poincare_to_tangent(store_hyp.unsqueeze(1))  # B 1 d
+                self.gist_chain_buffer.store(
+                    store_theta, store_mag, hyp_tangent.squeeze(1))
 
         # RG coarse-grain (now causal — see RGPool docstring)
-        pos2 = torch.arange(T2, device=idx.device)
-        xc = self.rg_pool(x) + self.pos_s2(pos2)
+        xc = self.rg_pool(x)
 
-        # Scale 2 — coarse tokens.
-        # Pass fresh_theta/mag with gist_weights=None to signal per-position mode.
-        # GistRotationLayer and GistCrossAttention use per-position gist[j] for
-        # coarse token j — no future information crosses the causal boundary.
-        for block in self.s2_blocks:
-            xc = block(xc, gist_theta, gist_mag, gist_w)  # same past-window gists as Scale 1
+        # NEXUS Innovation #3 — RG fixed-point iteration on Scale-2.
+        # Apply the SAME shared block up to s2_max_iters times, with early
+        # stopping once ||xc_new - xc_prev||_F / ||xc_prev||_F < s2_eps.
+        # Causality: every op inside self.s2_block is causally masked
+        # (TropicalAttention causal=True, SheafRotorDiffusion causal offsets,
+        # PAdicAttention causal future_mask, GistCrossAttention receives
+        # past-window gists only).  Repeated application of a causal operator
+        # remains causal — iteration cannot create new future dependencies.
+        s2_iters_used = 0
+        for it in range(self.s2_max_iters):
+            xc_prev = xc
+            if self.gradient_checkpoint and self.training:
+                xc = torch.utils.checkpoint.checkpoint(
+                    self.s2_block, xc, gist_theta, gist_mag, gist_w,
+                    use_reentrant=False)
+            else:
+                xc = self.s2_block(xc, gist_theta, gist_mag, gist_w)
+            s2_iters_used = it + 1
+            # Early-stopping on relative Frobenius change (inference-time
+            # adaptive depth; training always runs the full budget so
+            # autograd sees a consistent graph and all params get gradient).
+            if not self.training and it + 1 < self.s2_max_iters:
+                with torch.no_grad():
+                    denom = xc_prev.norm().clamp(min=1e-6)
+                    delta = (xc - xc_prev).norm() / denom
+                if delta.item() < self.s2_eps:
+                    break
+        # Record for logging (detached; buffer is non-persistent)
+        self._last_s2_iters.fill_(int(s2_iters_used))
 
         # Upsample & fuse
         # xc_up[t] = xc[t//2], which was built from fine tokens 0..t (causal). ✓
@@ -587,7 +964,10 @@ class TSRNGist(nn.Module):
             xc_up = F.pad(xc_up, (0, 0, 0, T - xc_up.size(1)))
         else:
             xc_up = xc_up[:, :T, :]
-        x = x + 0.5 * xc_up
+        # Learnable gated fusion: gate = sigma(W_g [x; xc_up])
+        # At init, W_g=0,b=0 => gate=0.5, recovering the original blend.
+        gate = torch.sigmoid(self.fuse_gate(torch.cat([x, xc_up], dim=-1)))
+        x = x + gate * xc_up
 
         logits = self.head(self.ln_f(x))
         if targets is None:
@@ -605,7 +985,8 @@ def train_gist(dataset, device, n_steps=100000, batch_size=8,
                n_blocks=3, n_heads=8, top_k=16, mem_depth=7,
                max_gists=64, gist_top_k=4,
                dropout=0.1, ckpt_every=10000, resume_from=None,
-               tag="", grad_accum_steps=1, gradient_checkpoint=False):
+               tag="", grad_accum_steps=1, gradient_checkpoint=False,
+               use_hyperbolic=False, gist_chaining=False):
     V = dataset.vocab_sz
     ctx = context_len
 
@@ -614,7 +995,9 @@ def train_gist(dataset, device, n_steps=100000, batch_size=8,
                      gradient_checkpoint=gradient_checkpoint,
                      n_blocks=n_blocks, top_k=top_k, n_heads=n_heads,
                      mem_depth=mem_depth, max_gists=max_gists,
-                     gist_top_k=gist_top_k, dropout=dropout)
+                     gist_top_k=gist_top_k, dropout=dropout,
+                     use_hyperbolic=use_hyperbolic,
+                     gist_chaining=gist_chaining)
 
     start_step = 0
     if resume_from and os.path.exists(resume_from):
@@ -633,13 +1016,20 @@ def train_gist(dataset, device, n_steps=100000, batch_size=8,
     print(f"  LR: {lr_max}  |  Gists: {max_gists} buf, top-{gist_top_k}")
     print(f"  Checkpoint every {ckpt_every} steps")
 
-    decay = {p for n, p in model.named_parameters()
-             if p.requires_grad and p.dim() >= 2}
-    no_decay = {p for p in model.parameters()
-                if p.requires_grad and p not in decay}
-    optimizer = torch.optim.AdamW([
-        {"params": list(decay), "weight_decay": 0.1},
-        {"params": list(no_decay), "weight_decay": 0.0},
+    # Deterministic param ordering for resume safety
+    decay_params, no_decay_params = [], []
+    for n, p in model.named_parameters():
+        if not p.requires_grad:
+            continue
+        if p.dim() >= 2:
+            decay_params.append(p)
+        else:
+            no_decay_params.append(p)
+    # AdamWDML avoids the aten::lerp DirectML CPU fallback that causes
+    # monotonic GPU heap growth in plain torch.optim.AdamW.
+    optimizer = AdamWDML([
+        {"params": decay_params, "weight_decay": 0.1},
+        {"params": no_decay_params, "weight_decay": 0.0},
     ], lr=lr_max, betas=(0.9, 0.95))
 
     os.makedirs("checkpoints", exist_ok=True)
@@ -647,7 +1037,6 @@ def train_gist(dataset, device, n_steps=100000, batch_size=8,
 
     log = []
     best_val_bpc = float("inf")
-    best_model_state = None
     eval_every = max(1, n_steps // 50)
     t0 = time.time()
 
@@ -679,6 +1068,13 @@ def train_gist(dataset, device, n_steps=100000, batch_size=8,
         gnorm = nn.utils.clip_grad_norm_(model.parameters(), 1.0)
         optimizer.step()
 
+        # DirectML has no empty_cache() and does not compact its allocator,
+        # so Python refs to intermediate tensors gradually fragment the heap
+        # and eventually OOM on small allocations.  Periodic gc.collect()
+        # drops those refs and lets DML reclaim storage.
+        if step % 500 == 0:
+            gc.collect()
+
         if step % eval_every == 0 or step == 1:
             model.gist_buffer.reset()
             val_loss, val_ppl, val_bpc = evaluate(
@@ -701,11 +1097,14 @@ def train_gist(dataset, device, n_steps=100000, batch_size=8,
 
             if val_bpc < best_val_bpc:
                 best_val_bpc = val_bpc
-                best_model_state = {k: v.cpu().clone()
-                                    for k, v in model.state_dict().items()}
+                # Move state_dict to CPU once for torch.save, then drop the
+                # reference immediately.  Holding it in best_model_state
+                # caused steady CPU growth and DML staging-buffer pressure.
+                cpu_state = {k: v.detach().cpu()
+                             for k, v in model.state_dict().items()}
                 torch.save({
                     "step": step,
-                    "model_state_dict": best_model_state,
+                    "model_state_dict": cpu_state,
                     "val_bpc": val_bpc,
                     "config": {
                         "d_model": d_model, "context_len": ctx,
@@ -715,17 +1114,22 @@ def train_gist(dataset, device, n_steps=100000, batch_size=8,
                         "dropout": dropout, "vocab": V,
                     },
                 }, f"checkpoints/tsrn_gist_best{tag}.pt")
+                del cpu_state
+                gc.collect()
 
         if step % ckpt_every == 0:
             ckpt_path = f"checkpoints/tsrn_gist_{step}steps{tag}.pt"
+            cpu_state = {k: v.detach().cpu()
+                         for k, v in model.state_dict().items()}
             torch.save({
                 "step": step,
-                "model_state_dict": {k: v.cpu().clone()
-                                     for k, v in model.state_dict().items()},
+                "model_state_dict": cpu_state,
                 "optimizer_state_dict": optimizer.state_dict(),
                 "val_bpc": log[-1]["val_bpc"] if log else None,
                 "log": log,
             }, ckpt_path)
+            del cpu_state
+            gc.collect()
             print(f"  >> Checkpoint: {ckpt_path}")
             with open(f"results/tsrn_gist_progress_{step}steps{tag}.json",
                       "w") as f:
@@ -733,12 +1137,15 @@ def train_gist(dataset, device, n_steps=100000, batch_size=8,
                           f, indent=2)
 
     final_path = f"checkpoints/tsrn_gist_final_{n_steps}steps{tag}.pt"
+    cpu_state = {k: v.detach().cpu()
+                 for k, v in model.state_dict().items()}
     torch.save({
         "step": n_steps,
-        "model_state_dict": {k: v.cpu().clone()
-                             for k, v in model.state_dict().items()},
+        "model_state_dict": cpu_state,
         "log": log, "best_val_bpc": best_val_bpc,
     }, final_path)
+    del cpu_state
+    gc.collect()
 
     print(f"\n{'='*85}")
     print(f"  Training complete. Best val BPC: {best_val_bpc:.4f}")
@@ -795,6 +1202,8 @@ def main():
     parser.add_argument("--tag", type=str, default="")
     parser.add_argument("--grad_accum", type=int, default=1)
     parser.add_argument("--grad_ckpt", action="store_true")
+    parser.add_argument("--use_hyperbolic", action="store_true", help="Use hyperbolic gist vectors (v2.0)")
+    parser.add_argument("--gist_chaining", action="store_true", help="Enable gist chaining for infinite context (v2.0)")
     args = parser.parse_args()
 
     cfg = dict(PRESETS[args.preset])
@@ -838,6 +1247,8 @@ def main():
         resume_from=args.resume, tag=args.tag,
         grad_accum_steps=args.grad_accum,
         gradient_checkpoint=args.grad_ckpt,
+        use_hyperbolic=args.use_hyperbolic,
+        gist_chaining=args.gist_chaining,
     )
 
     # Final sequential test evaluation

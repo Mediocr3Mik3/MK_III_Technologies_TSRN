@@ -61,7 +61,37 @@ logger = logging.getLogger(__name__)
 
 CONFIG_MODULES = {
     "pretrain_h100x8": "research.cloud.azure.configs.pretrain_h100x8",
+    "pretrain_flex":   "research.cloud.azure.configs.pretrain_flex",
+    "pretrain_smoke":  "research.cloud.azure.configs.pretrain_smoke",
 }
+
+# Env vars that override numeric/bool config knobs at load time, so a single
+# config adapts to whatever GPU SKU is available (we are NOT guaranteed H100s).
+_ENV_INT_OVERRIDES = {
+    "TROPFORMER_WORLD_SIZE":   "world_size",
+    "TROPFORMER_BATCH_SIZE":   "batch_size",
+    "TROPFORMER_GRAD_ACCUM":   "grad_accum_steps",
+    "TROPFORMER_CONTEXT_LEN":  "context_len",
+    "TROPFORMER_STEPS":        "steps",
+    "TROPFORMER_WARMUP_STEPS": "warmup_steps",
+}
+_ENV_BOOL_OVERRIDES = {
+    "TROPFORMER_COMPILE":              "compile",
+    "TROPFORMER_GRADIENT_CHECKPOINT":  "gradient_checkpoint",
+}
+
+
+def apply_env_overrides(cfg: Dict[str, Any]) -> Dict[str, Any]:
+    """Apply TROPFORMER_* numeric/bool env overrides onto a config dict."""
+    for env, key in _ENV_INT_OVERRIDES.items():
+        v = os.environ.get(env)
+        if v:
+            cfg[key] = int(v)
+    for env, key in _ENV_BOOL_OVERRIDES.items():
+        v = os.environ.get(env)
+        if v is not None and v != "":
+            cfg[key] = v.strip().lower() in ("1", "true", "yes", "on")
+    return cfg
 
 
 def load_config(name: str) -> Dict[str, Any]:
@@ -166,6 +196,18 @@ def train(cfg: Dict[str, Any], args: argparse.Namespace) -> None:
         logger.info("loaded TMT tokenizer (vocab=%d) from %s",
                     V, cfg["tmt_path"])
 
+    # Component-resonant curriculum: train stream reads the manifest's
+    # `curriculum:` block and is driven by a file-based progress signal the
+    # trainer publishes each step (works across DataLoader worker processes).
+    curriculum_enabled = cfg.get("curriculum_enabled", True)
+    progress_path = cfg.get("curriculum_progress_path") or str(
+        Path(cfg.get("output_dir", "/mnt/blob/checkpoints/pretrain"))
+        / "curriculum_progress.txt")
+    if curriculum_enabled and is_main:
+        Path(progress_path).parent.mkdir(parents=True, exist_ok=True)
+        # seed the file; the resume-aware value is written just before the loop
+        TokenShardStream.write_progress(progress_path, 0.0)
+
     # streaming dataset
     train_stream = TokenShardStream(
         manifest=cfg["manifest"],
@@ -175,7 +217,11 @@ def train(cfg: Dict[str, Any], args: argparse.Namespace) -> None:
         rank=rank,
         world=world,
         eos_id=tokenizer.vocab_to_id.get("<eos>", 2),
+        curriculum=None if curriculum_enabled else {"mode": "off"},
+        progress_path=progress_path if curriculum_enabled else None,
     )
+    # validation uses the full static mixture (curriculum off) so eval BPC
+    # reflects all components regardless of training phase.
     val_stream = TokenShardStream(
         manifest=cfg["manifest"],
         tokens_dir=cfg["tokens_dir"],
@@ -184,10 +230,12 @@ def train(cfg: Dict[str, Any], args: argparse.Namespace) -> None:
         rank=rank,
         world=world,
         eos_id=tokenizer.vocab_to_id.get("<eos>", 2),
+        curriculum={"mode": "off"},
     )
+    _nw = cfg.get("num_workers", 4)
     train_loader = DataLoader(train_stream, batch_size=cfg["batch_size"],
-                              num_workers=cfg.get("num_workers", 4),
-                              pin_memory=True, persistent_workers=True)
+                              num_workers=_nw, pin_memory=True,
+                              persistent_workers=_nw > 0)
     val_loader = DataLoader(val_stream, batch_size=cfg["batch_size"],
                             num_workers=2, pin_memory=True)
 
@@ -288,8 +336,16 @@ def train(cfg: Dict[str, Any], args: argparse.Namespace) -> None:
         del resume_blob
         gc.collect()
 
+    # publish resume-aware curriculum progress before workers begin iterating
+    if curriculum_enabled and is_main:
+        TokenShardStream.write_progress(progress_path, start_step / max(1, n_steps))
+
     t0 = time.time()
     for step in range(start_step + 1, n_steps + 1):
+        # publish curriculum progress (single writer; workers poll the file)
+        if curriculum_enabled and is_main and step % cfg.get("curriculum_update_every", 50) == 0:
+            TokenShardStream.write_progress(progress_path, step / n_steps)
+
         lr = get_lr(step, cfg.get("warmup_steps", 4000),
                     n_steps, cfg["lr"], cfg.get("min_lr", cfg["lr"] * 0.1))
         for g in optimizer.param_groups:
@@ -430,6 +486,22 @@ def main(argv: Optional[List[str]] = None) -> None:
     logging.basicConfig(level=logging.INFO,
                         format="%(asctime)s [%(levelname)s] %(message)s")
     cfg = load_config(args.config)
+
+    # AML input/output path overrides — aml_pretrain.yaml sets these env vars
+    # so the trainer works whether run on a bare VM (/mnt/blob/...) or via
+    # AzureML (dynamic input/output mount paths).
+    if os.environ.get("TROPFORMER_TOKENS_DIR"):
+        cfg["tokens_dir"] = os.environ["TROPFORMER_TOKENS_DIR"]
+    if os.environ.get("TROPFORMER_TMT_PATH"):
+        cfg["tmt_path"] = os.environ["TROPFORMER_TMT_PATH"]
+    if os.environ.get("TROPFORMER_OUTPUT_DIR"):
+        cfg["output_dir"] = os.environ["TROPFORMER_OUTPUT_DIR"]
+    if os.environ.get("TROPFORMER_RESUME") and args.resume is None:
+        args.resume = os.environ["TROPFORMER_RESUME"]
+
+    # Numeric/bool overrides so one config adapts to the available GPU SKU.
+    cfg = apply_env_overrides(cfg)
+
     if args.steps is not None:
         cfg["steps"] = args.steps
     if args.no_compile:

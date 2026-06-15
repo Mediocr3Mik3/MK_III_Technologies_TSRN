@@ -101,7 +101,7 @@ class ModelConfig:
 
     # -- Context Extension (inference only) --------------------------------
     use_padic_context_scaling: bool = True
-    inference_context_multiplier: int = 8  # Nano: 8x, Pro: 16x, Kyro: 32x
+    inference_context_multiplier: int = 8  # PaCS extension factor (8x all tiers)
     sink_tokens: int = 4             # permanent sink tokens for long context
     pacs_v_threshold: float = 4.7    # p-adic valuation threshold separating
                                      # local from global structure
@@ -139,6 +139,47 @@ class ModelConfig:
 
 # -- Pre-built tier configurations -----------------------------------------
 
+def nano_directml_config(**overrides) -> ModelConfig:
+    """
+    Nano-DirectML: ~20-25M parameters. Local training on AMD RX 6750 XT (12 GB).
+    Aggressively shrunk dims to fit VRAM while keeping KleeneSSM ON.
+    """
+    cfg = ModelConfig(
+        tier="nano_directml",
+        vocab_size=50349,           # GPT-2 (50,257) + 92 TSRN specials
+        d_model=256,
+        n_heads=4,
+        n_blocks=3,
+        context_len=256,
+        d_reservoir=128,
+        padic_depth=5,
+        max_gists=32,
+        gist_top_k=4,
+        kleene_ssm_d_state=64,
+        kleene_ssm_iters=4,
+        use_kleene_ssm=True,
+        use_kleene_attention=False,
+        use_differential_attention=False,
+        use_cross_window_memory=False,
+        use_sheaf_diffusion=True,
+        use_reservoir=True,
+        use_padic_memory=True,
+        use_padic_attention=True,
+        use_gist=True,
+        use_rg_coarsening=True,
+        inference_context_multiplier=8,
+        pacs_v_threshold=4.7,
+        quantization_bits=32,       # full precision for training
+        use_mixed_precision=False,  # DirectML bfloat16 unreliable
+        use_gradient_checkpointing=False,
+        weight_tying=True,
+        dropout=0.0,
+    )
+    for k, v in overrides.items():
+        setattr(cfg, k, v)
+    return cfg
+
+
 def nano_config(**overrides) -> ModelConfig:
     """
     Nano: 50-80M parameters. Always-on phone model.
@@ -151,7 +192,7 @@ def nano_config(**overrides) -> ModelConfig:
         d_model=512,
         n_heads=8,
         n_blocks=3,
-        context_len=512,
+        context_len=1024,            # training ctx (was 512); inference 8x = 8192
         d_reservoir=256,
         padic_depth=7,
         max_gists=64,
@@ -163,6 +204,7 @@ def nano_config(**overrides) -> ModelConfig:
         use_differential_attention=False,
         use_cross_window_memory=False,
         inference_context_multiplier=8,
+        pacs_v_threshold=5.7,         # floor(log2(1024/20)) ~ 5.7
         quantization_bits=8,
     )
     for k, v in overrides.items():
@@ -182,7 +224,7 @@ def pro_config(**overrides) -> ModelConfig:
         d_model=1024,
         n_heads=16,
         n_blocks=6,
-        context_len=1024,
+        context_len=2048,            # training ctx (was 1024); inference 8x = 16384
         d_reservoir=512,
         padic_depth=9,
         max_gists=128,
@@ -194,8 +236,9 @@ def pro_config(**overrides) -> ModelConfig:
         kleene_attn_iters=3,
         use_differential_attention=True,
         use_cross_window_memory=True,
-        cross_window_size=1024,
-        inference_context_multiplier=16,
+        cross_window_size=2048,
+        inference_context_multiplier=8,
+        pacs_v_threshold=6.7,         # floor(log2(2048/20)) ~ 6.7
         s2_max_iters=4,
         quantization_bits=8,
     )
@@ -214,7 +257,7 @@ def kyro_config(**overrides) -> ModelConfig:
         d_model=2048,
         n_heads=32,
         n_blocks=12,
-        context_len=2048,
+        context_len=4096,            # training ctx (was 2048); inference 8x = 32768
         d_reservoir=1024,
         padic_depth=12,
         max_gists=256,
@@ -226,8 +269,9 @@ def kyro_config(**overrides) -> ModelConfig:
         kleene_attn_iters=4,
         use_differential_attention=True,
         use_cross_window_memory=True,
-        cross_window_size=2048,
-        inference_context_multiplier=32,
+        cross_window_size=4096,
+        inference_context_multiplier=8,
+        pacs_v_threshold=7.7,         # floor(log2(4096/20)) ~ 7.7
         s2_max_iters=6,
         s2_eps=0.001,
         quantization_bits=8,
@@ -235,3 +279,10 @@ def kyro_config(**overrides) -> ModelConfig:
     for k, v in overrides.items():
         setattr(cfg, k, v)
     return cfg
+
+
+# Pre-built instances (used by cloud trainer tier map)
+NANO_DIRECTML_CONFIG = nano_directml_config()
+NANO_CONFIG = nano_config()
+PRO_CONFIG = pro_config()
+KYRO_CONFIG = kyro_config()
