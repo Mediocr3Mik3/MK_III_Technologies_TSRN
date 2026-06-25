@@ -123,7 +123,8 @@ class SheafRotorDiffusion(nn.Module):
                     x_nb = torch.cat([torch.zeros(B, ad, d, device=x.device, dtype=x.dtype),
                         x[:, :T-ad, :]], dim=1)
             lap = lap + rotor.inverse(Rx - x_nb)
-        out = x - self.alpha.abs() * lap
+        alpha = self.alpha.to(x.device).abs()
+        out = x - alpha * lap
         return self.drop(out + self.correction(out))
 
 
