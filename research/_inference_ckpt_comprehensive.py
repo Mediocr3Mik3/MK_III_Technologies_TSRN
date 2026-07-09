@@ -19,7 +19,7 @@ from model_config import ModelConfig
 from transformers import GPT2TokenizerFast
 import dataclasses
 
-CKPT_PATH = r"D:\ml\tsrn_data\checkpoints\20260619_v2_kleene_directml_osc_d256_ctx256_step0120000.pt"
+CKPT_PATH = r"D:\ml\tsrn_data\checkpoints\20260625_v2_kleene_directml_osc_d256_ctx256_step0156000.pt"
 TOK_PATH = r"D:\ml\tsrn_data\tokenizer\gpt2_tsrn_base"
 CTX_LEN = 256
 
